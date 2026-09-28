@@ -45,7 +45,7 @@ by side, except the last, which carries S15 alone.
 | ID | Screen | Area | Ruled by | Sheet | Built |
 |---|---|---|---|---|---|
 | S1 | Connect TikTok Shop | Onboarding | Wireframes | 02 | `shops`, while no shop is connected, with the return page at `connections/tiktok/callback`. The step dots and the Settings sentence are left out |
-| S2 | First sync | Onboarding | Wireframes | 02 | |
+| S2 | First sync | Onboarding | Wireframes | 02 | `shops/[shopId]/sync` (28 September). No period on the orders row, and the button leads to Products because S3 is not built |
 | S3 | Product costs choice | Onboarding | Wireframes, amended A15.4 | 03 | |
 | S4 | Upload mapping | Onboarding | Wireframes | 03 | |
 | S5 | Tax profile | Onboarding | Wireframes | 04 | |
@@ -55,11 +55,11 @@ by side, except the last, which carries S15 alone.
 | S9 | Products | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products` |
 | S10 | Product detail | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products/[productId]` |
 | S11 | Money | Core | Wireframes, revised A18 | 07 | `shops/[shopId]/money` |
-| S12 | Tax | Core | Wireframes | 07 | |
+| S12 | Tax | Core | Wireframes | 07 | `shops/[shopId]/tax`, the fifth tab (28 September). A threshold monitor, a set-aside that stays empty until its rules are ruled, and the tax dates |
 | S13 | Notifications | Core | Wireframes | 08 | `shops/[shopId]/notifications`, reached from the bell. Each open notice can be marked read or done, and the bell's count falls with it (25 September). Rows are not links yet, because a notification carries no address |
 | S14 | Discrepancy detail | Core | Wireframes, revised A18 | 08 | `shops/[shopId]/discrepancies`, as a list |
-| S15 | Settings and data | Settings | Wireframes | 09 | |
-| S16 | Product transactions | Products | A3 | | |
+| S15 | Settings and data | Settings | Wireframes | 09 | `shops/[shopId]/settings`, from the top bar (28 September). The "Your data" card is left out, because export, download and deletion are not built |
+| S16 | Product transactions | Products | A3 | | `shops/[shopId]/products/[productId]/transactions` (28 September) |
 | S17 | Start | Account | A3 as Sign up, renamed A14 | | `start`, handing off to Stack's pages at `handler/[...stack]`. No privacy or terms link yet, because neither page exists |
 | ~~S18~~ | ~~Return~~ | | **Cut by A15.3** | | |
 | ~~S19~~ | ~~Sign in~~ | | **Cut by A15.2** | | |
@@ -67,15 +67,15 @@ by side, except the last, which carries S15 alone.
 | S21 | Add or edit a product cost | Products | A3 | | Inline on each variant of `shops/[shopId]/products/[productId]` |
 | S22 | Records behind a figure | Money | A3, revised A18 | | `shops/[shopId]/records` |
 | S23 | Export | Money | A3, revised A18 | | |
-| S24 | Other-channel sales | Money | A3 | | |
+| S24 | Other-channel sales | Money | A3 | | `shops/[shopId]/other-sales` (28 September) |
 | S25 | Stock adjustment | Stock | A3, revised A18 | | At the top of `shops/[shopId]/stock/[skuId]` |
 | S26 | Stock movement history | Stock | A3, revised A18 | | `shops/[shopId]/stock/[skuId]`. The heading names the product, variant and seller SKU (25 September) |
-| S27 | Alert settings | Settings | A3 | | |
-| S28 | Connection problem | Onboarding | A3 | | |
-| S29 | Disconnect | Settings | A3 | | |
+| S27 | Alert settings | Settings | A3 | | `shops/[shopId]/settings/alerts` (28 September) |
+| S28 | Connection problem | Onboarding | A3 | | `shops/[shopId]/connection-problem`, reached from the status on S15 (28 September). Covers the contract's `needs_reconnect`, `disconnected` and `pending` |
+| S29 | Disconnect | Settings | A3 | | `shops/[shopId]/settings/disconnect` (28 September) |
 | S30 | Delete my account | Settings | A3 | | |
 | S31 | Download my data | Settings | A3 | | |
-| S32 | Glossary | Reference | A3 | | |
+| S32 | Glossary | Reference | A3 | | `shops/[shopId]/glossary` (28 September) |
 | S33 | Plan and card | Onboarding | A14 | | `(site)/billing` |
 | S34 | Payment confirmed | Onboarding | A14 | | `(site)/billing/confirmed` |
 | S35 | Continue setting up | Account | A14 | | |

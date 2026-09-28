@@ -58,8 +58,22 @@ These faults were corrected on the way in:
 | Glossary screen | An amount is formatted by `formatMoney`, and the empty state uses a card, because the stylesheet has no `state` class |
 | Both reference rule seeds | Each is marked as not re-verified. The VAT seed's `reviewed_at` of 26 June 2026 is Emergent's wrong date and stays flagged until checked against gov.uk |
 
-The new screens have no navigation entry yet. Tax is not in `ShopNav`, and the Settings hub
-is under "Worth taking once fixed", so it was not taken.
+The five items under "Worth taking once fixed" were taken on 28 September at the owner's
+instruction, each with its fault fixed, and each was checked by running it: the service
+tests and a rolled-back transaction on the local copy of development for the cost change,
+and a browser against the local service for the screens.
+
+| Change | What was fixed |
+|---|---|
+| Cost at the period's end | `created_at desc` breaks the tie between two costs entered on one day, so the correction wins. A cost entered on 28 September left August's figures unchanged |
+| S28 Connection problem | It handles the contract's `needs_reconnect`, `disconnected` and `pending`, and reconnects with the same button as S1 |
+| S2 First sync | Rewritten. Plain words replace status codes, the chips are ones the stylesheet has, times are London time, and the type check passes |
+| Navigation | Tax is the fifth tab. Settings sits in the top bar, as sheet 09 draws it |
+| S15 Settings and data | Redrawn to sheet 09 from served values. The data card with export, download and deletion is left out |
+
+Exports, cost uploads and the data download wait on the file store. The owner chose Neon
+object storage on 28 September. A10.8 records that Neon offered no object storage in the
+London region, and that has not yet been checked again.
 
 ### Worth taking
 
