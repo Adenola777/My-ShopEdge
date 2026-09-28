@@ -7,10 +7,10 @@
  * low stock threshold from getAlertSettings and the missing costs from getCostCoverage. A
  * value whose request fails is shown as not available rather than guessed.
  *
- * Left out of the sheet: the whole "Your data" card, because the export, the data download
- * and account deletion are not built. Deletion is withheld because Emergent's version told
- * the seller their data was erased when nothing was, and the other two wait on the file
- * store. The privacy notice sentence is left out because the notice does not exist.
+ * Left out of the sheet: the export and the data download in the "Your data" card, because
+ * neither is built. Emergent's version offered deletion and told the seller their data was
+ * erased when nothing was. Deletion was built on 28 September to A30.1 and is linked at the
+ * foot as S30. The privacy notice sentence is left out because the notice does not exist.
  */
 
 import Link from "next/link";
@@ -131,6 +131,11 @@ export default async function SettingsPage({ params }) {
           </Link>
         </p>
         <p className="footnote">Disconnecting stops updates. Nothing you already have is deleted.</p>
+        <p>
+          <Link className="btn btn--quiet btn--block" href={`${base}/settings/delete`} data-testid="settings-delete">
+            Delete my account
+          </Link>
+        </p>
       </div>
     </section>
   );

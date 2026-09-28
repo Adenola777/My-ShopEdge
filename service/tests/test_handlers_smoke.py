@@ -33,7 +33,7 @@ os.environ.setdefault("NEON_AUTH_ISSUER", "https://test.invalid")
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.auth import Account, require_account
+from app.auth import Account, require_account, require_signed_in
 from app import discrepancies, products, records, settlements, shops, stock
 
 ACCOUNT = Account(
@@ -87,6 +87,7 @@ def check(name, fn):
 
 
 app.dependency_overrides[require_account] = lambda: ACCOUNT
+app.dependency_overrides[require_signed_in] = lambda: ACCOUNT
 app.dependency_overrides[shops.require_shop] = lambda: SHOP
 client = TestClient(app)
 
@@ -840,12 +841,12 @@ from app import me
 
 def me_and_shops():
     acct = (ACCOUNT.id, "owner@synthetic-uk-shop.test", "Synthetic UK Shop Ltd", "en-GB",
-            "Europe/London", "active", NOW, 1)
+            "Europe/London", "active", NOW, None, 1)
     shop = (SHOP, "tiktok_shop", "7495000000000000001", None, "Synthetic UK Shop", "GB",
             None, "GBP", "connected", None, None)
     me.tenant = with_conn(me, [
         ("from accounts a", Result(["id","email","display_name","locale","timezone","status",
-                                    "created_at","shop_count"], [acct])),
+                                    "created_at","deletion_scheduled_at","shop_count"], [acct])),
         ("from shops where connection_status", Result(["id","platform","tiktok_shop_id",
             "tiktok_shop_code","shop_name","region","seller_type","currency",
             "connection_status","first_synced_at","last_synced_at"], [shop])),
@@ -1245,6 +1246,50 @@ def return_check():
     r = client.post(url, json={"seller_check_status": "not_applicable", "return_postage": {"amount_minor": 1, "currency": "GBP"}})
     _assert(r.status_code == 422, "postage on nothing-came-back is refused")
 check("checkReturnItem writes a write-off and postage, and refuses a second check", return_check)
+
+
+# --- account deletion (A30.1)
+from app import account_deletion as deletion
+
+def delete_and_cancel():
+    writes = []
+    def make(status):
+        import contextlib
+        @contextlib.contextmanager
+        def fake(_a):
+            class C(Conn):
+                def execute(self, sql, args=None):
+                    flat = " ".join(sql.split())
+                    if flat.startswith("update"): writes.append(flat[:40])
+                    return super().execute(sql, args)
+            yield C([
+                ("from accounts where id", Result(["email", "status", "deleted_at"], [(ACCOUNT.email, status, NOW)])),
+                ("update accounts set status = 'deleted'", Result(["deleted_at"], [(NOW,)])),
+                ("update tiktok_connections", Result([], [])),
+                ("update shops", Result([], [])),
+                ("from tiktok_invoices", Result(["m"], [(date(2026, 6, 30),)])),
+                ("update accounts set status = 'active'", Result(["id"], [(ACCOUNT.id,)] if status == "deleted" else [])),
+                ("select count(*) from shops", Result(["n"], [(1,)])),
+            ])
+        return fake
+    deletion.tenant = make("active")
+    r = client.request("DELETE", "/v1/me", json={"confirm_email": "someone@else.test"})
+    _assert(r.status_code == 422 and not writes, "a wrong email is refused before anything is written")
+    r = client.request("DELETE", "/v1/me", json={"confirm_email": ACCOUNT.email.upper()})
+    _assert(r.status_code == 202, r.text)
+    b = r.json()
+    _assert(b["scheduled_at"].startswith("2026-09-14") and b["cancel_by"] == b["scheduled_at"], b)
+    _assert(b["invoices_retained_until"] == "2032-06-30" and len(b["includes"]) == 5, b)
+    _assert(len(writes) == 3, writes)
+    writes.clear()
+    deletion.tenant = make("deleted")
+    r = client.request("DELETE", "/v1/me", json={"confirm_email": ACCOUNT.email})
+    _assert(r.status_code == 202 and not writes, "a repeat keeps the first dates and writes nothing")
+    r = client.post("/v1/me/deletion/cancel")
+    _assert(r.status_code == 200 and r.json()["shops_disconnected"] == 1, r.text)
+    deletion.tenant = make("active")
+    _assert(client.post("/v1/me/deletion/cancel").status_code == 409, "nothing to cancel")
+check("deleteMe closes the account with dates, and cancelAccountDeletion reopens it", delete_and_cancel)
 
 
 print()

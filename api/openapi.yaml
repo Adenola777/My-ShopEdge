@@ -77,20 +77,21 @@ paths:
       tags:
       - Account
       summary: Delete the account and its data
-      description: 'Traces ACC-4. Deletion is asynchronous and irreversible. It removes the account''s
+      description: |
+        Traces ACC-4 and A30.1. The account closes at once and is erased thirty days later.
 
-        rows and every object under its prefixes in the file store.
+        At the request, sign-in stops working for every operation except getMe and
+        cancelAccountDeletion, every connected shop is disconnected and its TikTok tokens
+        are marked revoked. When the thirty days end, the name and email are erased, the
+        stored TikTok tokens are erased, and every object under the account's prefixes in
+        the file store is deleted. The ledger rows stay, attached to no person, for the
+        retention period that financial records carry. Until `cancel_by` the seller can
+        cancel.
 
-
-        The response states what will be deleted and when, so the seller has a record of
-
-        what they asked for. `invoices_retained_until` is present when the account holds
-
-        TikTok fee invoices, which are kept for six years from the end of the VAT period
-
-        rather than deleted with the account.
-
-        '
+        The response states what will happen and when, so the seller has a record of what
+        they asked for. A repeat request while the account is closing returns the same
+        dates. `invoices_retained_until` is present when the account holds TikTok fee
+        invoices, which are kept for six years from the end of the VAT period.
       operationId: deleteMe
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -121,6 +122,53 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /me/deletion/cancel:
+    post:
+      tags:
+      - Account
+      summary: Cancel a requested account deletion
+      description: |
+        A30.1 rules that a seller can cancel a deletion during its thirty days. The account
+        becomes active again. Its shops stay disconnected, because their TikTok tokens were
+        revoked at the request, so the seller connects them again. After the thirty days
+        the account is erased and there is nothing to cancel.
+
+        Added 28 September 2026 with deleteMe. The ruling allowed cancelling and the
+        contract had no operation for it.
+      operationId: cancelAccountDeletion
+      responses:
+        '200':
+          description: Deletion cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - account_id
+                - status
+                - shops_disconnected
+                properties:
+                  account_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum:
+                    - active
+                  shops_disconnected:
+                    type: integer
+                    minimum: 0
+                    description: Shops that need connecting again.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The account has no deletion to cancel
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/RateLimited'
   /me/export:
@@ -3132,6 +3180,15 @@ components:
         shop_count:
           type: integer
           minimum: 0
+        deletion_scheduled_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: |
+            Present while the account is closing under A30.1: the moment its name, email,
+            TikTok tokens and files are erased. Until then the seller can cancel the
+            deletion with cancelAccountDeletion. Null for an account that is not closing.
     Shop:
       type: object
       required:

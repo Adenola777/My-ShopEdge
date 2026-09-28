@@ -22,7 +22,7 @@ Five things were checked, and each is named against the line it produced:
 | Cut by a later ruling | **2** | S18 and S19, both cut by A15 |
 | **Live screens** | **36** | This is the number that matters |
 | Wireframed | 15 | S1 to S15 only |
-| Built in code | 25 | S1, S2, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S21, S22, S24, S25, S26, S27, S28, S29, S32, S33 and S34, counted from this register on 28 September. Sign-in works on the live site since 24 September. No screen has shown a real shop's figures, because no shop is connected and nothing reads TikTok's data yet |
+| Built in code | 26 | S1, S2, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S21, S22, S24, S25, S26, S27, S28, S29, S30, S32, S33 and S34, counted from this register on 28 September. Sign-in works on the live site since 24 September. No screen has shown a real shop's figures, because no shop is connected and nothing reads TikTok's data yet |
 
 **`CLAUDE.md` and `README_v0.2.md` both said "39 screens". That number is wrong twice.**
 No ruling defines an S39. The only place S39 appears in the whole repository is
@@ -73,7 +73,7 @@ by side, except the last, which carries S15 alone.
 | S27 | Alert settings | Settings | A3 | | `shops/[shopId]/settings/alerts` (28 September) |
 | S28 | Connection problem | Onboarding | A3 | | `shops/[shopId]/connection-problem`, reached from the status on S15 (28 September). Covers the contract's `needs_reconnect`, `disconnected` and `pending` |
 | S29 | Disconnect | Settings | A3 | | `shops/[shopId]/settings/disconnect` (28 September) |
-| S30 | Delete my account | Settings | A3 | | |
+| S30 | Delete my account | Settings | A3 | | `shops/[shopId]/settings/delete`, from S15 (28 September), with `account/closing` for a closing account. Built to A30.1, which supersedes A3's list of what is deleted. The typed email replaces A3's password, which a seller signing in with Google has not got. No data download is offered, because S31 is not built, and the screen says so |
 | S31 | Download my data | Settings | A3 | | |
 | S32 | Glossary | Reference | A3 | | `shops/[shopId]/glossary` (28 September) |
 | S33 | Plan and card | Onboarding | A14 | | `(site)/billing` |

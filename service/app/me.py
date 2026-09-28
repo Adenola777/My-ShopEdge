@@ -33,7 +33,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Response
 from pydantic import BaseModel
 
-from .auth import Account, require_account
+from .auth import Account, require_account, require_signed_in
 from .db import tenant
 from .problems import Problem
 
@@ -49,6 +49,7 @@ class AccountOut(BaseModel):
     status: Literal["active", "suspended", "deleted"]
     created_at: datetime
     shop_count: int
+    deletion_scheduled_at: datetime | None = None
 
 
 class Shop(BaseModel):
@@ -73,6 +74,8 @@ class ShopList(BaseModel):
 ACCOUNT_SQL = """
 select a.id, a.email::text as email, a.display_name, a.locale, a.timezone, a.status,
        a.created_at,
+       case when a.status = 'deleted'
+            then a.deleted_at + interval '30 days' end as deletion_scheduled_at,
        (select count(*) from shops s
          where s.account_id = a.id and s.connection_status <> 'deleted') as shop_count
   from accounts a
@@ -106,7 +109,9 @@ def _with_etag(model: BaseModel, response: Response, if_none_match: str | None):
 @router.get("/me", response_model=AccountOut)
 def get_me(
     response: Response,
-    account: Annotated[Account, Depends(require_account)],
+    # A closing account can read itself, so the front end can say what is happening and
+    # offer the cancellation A30.1 allows. It can read nothing else.
+    account: Annotated[Account, Depends(require_signed_in)],
     if_none_match: Annotated[str | None, Header()] = None,
 ):
     with tenant(account.id) as conn:

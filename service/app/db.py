@@ -29,6 +29,7 @@ from datetime import datetime
 from typing import Iterator
 from uuid import UUID
 
+import psycopg
 from psycopg import Connection
 from psycopg_pool import ConnectionPool
 
@@ -88,6 +89,24 @@ def resolve_account_id(subject: str) -> UUID | None:
     with unscoped() as conn:
         row = conn.execute("select resolve_account(%s)", (subject,)).fetchone()
     return row[0] if row and row[0] else None
+
+
+def account_of_subject(subject: str) -> tuple[UUID, str] | None:
+    """The id and status of the subject's account whatever its status, or None (0025).
+
+    `resolve_account` finds active accounts only. This is asked when it finds nothing, so
+    that a closing account is recognised before the first sign-in path, which needs an email.
+    """
+    try:
+        with unscoped() as conn:
+            row = conn.execute("select id, status from account_of_subject(%s)", (subject,)).fetchone()
+    except psycopg.errors.UndefinedFunction:
+        # 0025 is not on this branch yet. Answering None keeps the first sign-in path
+        # working as it did before 0025, so merging this code ahead of the migration
+        # cannot stop sellers signing up. A closing account cannot exist without 0025's
+        # service either, so nothing is let in that should not be.
+        return None
+    return (row[0], row[1]) if row else None
 
 
 def lookup_identity(subject: str) -> tuple[str | None, str | None] | None:

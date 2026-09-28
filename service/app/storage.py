@@ -146,3 +146,22 @@ def get_bytes(key: str) -> bytes:
 
 def put_bytes(key: str, data: bytes, content_type: str) -> None:
     _client().put_object(Bucket=_bucket(), Key=key, Body=data, ContentType=content_type)
+
+
+def delete_prefix(prefix: str) -> int:
+    """Deletes every object whose key starts with `prefix`, and returns how many.
+
+    Written for account erasure (A30.1), which must reach the store as well as the rows
+    (A10.8). The prefix must end in a slash, so `uploads/{shop}` cannot also match a shop
+    id that merely begins with the same characters.
+    """
+    if not prefix.endswith("/") or prefix.count("/") < 2:
+        raise ValueError(f"refusing to delete under {prefix!r}")
+    client, bucket, deleted = _client(), _bucket(), 0
+    for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
+        keys = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+        if keys:
+            # delete_objects takes at most 1,000 keys, which is also a page's most.
+            client.delete_objects(Bucket=bucket, Delete={"Objects": keys, "Quiet": True})
+            deleted += len(keys)
+    return deleted

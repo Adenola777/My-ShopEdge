@@ -27,6 +27,18 @@ A10 records six years for the TikTok fee invoices. Whether the same period appli
 ledger needs the Data Protection document, and until it is ruled the anonymised rows are
 kept and nothing deletes them.
 
+**Built, 28 September 2026.** `deleteMe`, `cancelAccountDeletion` and
+`service/scripts/erase_accounts.py`, with migration 0025, S30 and the closing page. Three
+parts of the ruling needed a reading, recorded here so they can be corrected.
+
+- "Sign-in stops working" is read as: every operation refuses the account except getMe and
+  the cancellation, because a seller who could not sign in at all could never cancel.
+- The contract had no way to cancel, so `POST /me/deletion/cancel` was added to it.
+- A cancelled deletion leaves the shops disconnected, because their tokens were revoked.
+
+Three things the ruling does not cover are not built: what happens to a paid Stripe plan,
+the confirmation email of A3's step 4, and a schedule that runs the erasure.
+
 ## 30.2 Checking a returned item
 
 **Ruling.** The owner accepted all four proposals. `checkReturnItem` writes to the ledger
