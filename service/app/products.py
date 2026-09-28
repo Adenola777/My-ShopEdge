@@ -190,12 +190,18 @@ returned as (
      and (coalesce(r.refund_completed_at, r.requested_at) at time zone 'Europe/London')::date <= %(to)s
    group by s.product_id, s.id
 ),
--- The cost in force for the SKU, which is the latest not-superseded row.
+-- The cost in force at the end of the period, so a past month keeps the cost that applied
+-- then and a cost entered today does not rewrite it, as the contract requires (CST-4). A
+-- cost whose effective_from falls after the period end is not used. Superseded rows are
+-- read too, because superseded_at records when a row was replaced, not the business date a
+-- cost stopped applying. Two rows can share one effective_from when a seller corrects a
+-- cost on the day they entered it, so created_at breaks the tie and the later entry wins.
+-- Taken from Emergent AI's commit d87f6a0 on 28 September 2026 with that tie-break added.
 cost as (
   select distinct on (sku_id) sku_id, cost_minor
     from product_costs
-   where shop_id = %(shop)s and superseded_at is null
-   order by sku_id, effective_from desc
+   where shop_id = %(shop)s and effective_from <= %(to)s
+   order by sku_id, effective_from desc, created_at desc
 ),
 -- A4: retained cost is cost x (sold - returned), per SKU, floored at zero because more
 -- returns than sales in a period is possible at a month boundary and negative cost is not.
