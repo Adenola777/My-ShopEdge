@@ -49,11 +49,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query, Response
+from fastapi import APIRouter, Depends, Header, Path, Query, Response
 from pydantic import BaseModel
 
 from .auth import Account, require_account
@@ -366,3 +367,97 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
         ),
     )
     return view
+
+
+# The two routes below were written by Emergent AI in `Adenola777/MYSHOPEDGE` (commit
+# 3f1bd43, 27 September 2026) and brought into this repository on 28 September at the
+# owner's instruction. See audit/EMERGENT_review_28_september.md.
+#
+# --- getMonthSummary, LED-6 ----------------------------------------------------------------
+#
+# One closed month, on either basis. It is the same calculator as `/money`, given the first
+# and last London day of the month, so the summary and the Money screen for that month are
+# the same arithmetic on the same rows and cannot disagree.
+
+
+def _month_bounds(month: str) -> tuple[date, date]:
+    year, mon = int(month[:4]), int(month[5:7])
+    start = date(year, mon, 1)
+    end = date(year + (1 if mon == 12 else 0), 1 if mon == 12 else mon + 1, 1)
+    return start, end - timedelta(days=1)
+
+
+@router.get("/shops/{shopId}/summary/{month}", response_model=MoneyView,
+            response_model_exclude_unset=True, summary="Month summary")
+def get_month_summary(
+    account: Annotated[Account, Depends(require_account)],
+    shop_id: Annotated[UUID, Depends(require_shop)],
+    month: Annotated[str, Path(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")],
+    basis: Annotated[str, Query(pattern="^(sales|cash)$")] = "sales",
+):
+    start, end = _month_bounds(month)
+    with tenant(account.id) as conn:
+        return calculate(conn, shop_id, start, end, basis, "month")
+
+
+# --- getWhereItWent, LED-8 -----------------------------------------------------------------
+#
+# The same deduction lines as the calculator, each expressed as a share of gross sales.
+# `pence_per_pound` is tenths of a penny per pound of gross, an integer so no float ever
+# holds it: 4.4 pence per pound is 44. Gross sales itself is not a deduction, so it is the
+# denominator rather than a line.
+
+
+class WhereItWentLine(CalculatorLine):
+    pence_per_pound: int
+
+
+class WhereItWent(BaseModel):
+    period: dict[str, Any]
+    gross_sales: Money
+    lines: list[WhereItWentLine]
+
+
+@router.get("/shops/{shopId}/money/where-it-went", response_model=WhereItWent,
+            summary="Deductions by category and pence per pound")
+def get_where_it_went(
+    account: Annotated[Account, Depends(require_account)],
+    shop_id: Annotated[UUID, Depends(require_shop)],
+    basis: Annotated[str, Query(pattern="^(sales|cash)$")] = "sales",
+    period_from: Annotated[date | None, Query(alias="from")] = None,
+    period_to: Annotated[date | None, Query(alias="to")] = None,
+) -> WhereItWent:
+    today = business_today()
+    start = period_from or today.replace(day=1)
+    end = period_to or today
+    with tenant(account.id) as conn:
+        view = calculate(conn, shop_id, start, end, basis, "month")
+
+    gross_minor = view.totals.gross_sales.amount_minor
+    currency = view.totals.gross_sales.currency
+    lines: list[WhereItWentLine] = []
+    for section in view.sections:
+        if section.key == "payout":
+            # The payout and the reserve are not deductions from gross. Emergent's version
+            # said so in this comment and still kept their lines; they are skipped here.
+            continue
+        if section.key == "revenue":
+            # Gross sales is the denominator. Seller discounts are a deduction and are kept.
+            keep = [ln for ln in section.lines if ln.category != "gross_sales"]
+        else:
+            keep = list(section.lines)
+        for line in keep:
+            if gross_minor:
+                ppp = int(
+                    (Decimal(abs(line.amount.amount_minor)) * 1000 / Decimal(gross_minor))
+                    .quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                )
+            else:
+                ppp = 0
+            lines.append(WhereItWentLine(**line.model_dump(), pence_per_pound=ppp))
+
+    return WhereItWent(
+        period={"from": start.isoformat(), "to": end.isoformat(), "basis": basis},
+        gross_sales=money(gross_minor, currency),
+        lines=lines,
+    )
