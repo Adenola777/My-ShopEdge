@@ -1,6 +1,7 @@
 /**
  * Where a signed-in seller lands. `listShops` returns the shops on the account, and the MVP
- * allows one (CON-3), so a seller with one shop goes straight to its Today screen. Before
+ * allows one (CON-3), so a seller with one shop is sent to the step of A14.2 they have
+ * reached (`nextStep`): First sync, the plan, a connection problem, or Today. Before
  * 24 September nothing gave a seller their shop id, so no shop screen could be reached
  * except by typing its address.
  */
@@ -10,6 +11,7 @@ import { redirect } from "next/navigation";
 import { api } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { ConnectTikTok } from "@/components/ConnectTikTok";
+import { nextStep } from "@/lib/onboarding";
 
 export const metadata = { title: "Your shops" };
 
@@ -21,7 +23,11 @@ export default async function ShopsPage() {
   /** @type {import("@/lib/api-types").components["schemas"]["Shop"][]} */
   const shops = result.data.shops ?? [];
   const only = shops.length === 1 ? shops[0] : undefined;
-  if (only) redirect(`/shops/${only.id}/today`);
+  if (only) {
+    // Resume at the right step of A14.2 rather than always at Today (lib/onboarding.js).
+    const sub = await api("/billing/subscription", { cache: "no-store" });
+    redirect(nextStep(only, sub.ok ? sub.data?.status ?? null : null));
+  }
 
   if (shops.length === 0) {
     // S1 Connect TikTok Shop, from wireframe sheet 02. Two lines of the wireframe are left

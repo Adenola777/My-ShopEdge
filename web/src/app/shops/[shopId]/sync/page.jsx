@@ -6,12 +6,14 @@
  *
  * Two parts of the sheet are left out. "Orders, last 12 months" is out of date, because
  * history is twenty four months on every plan, so the row says "Orders and sales" and no
- * period. "Continue to product costs" leads to S3, which is not built, so the button leads
- * to Products, where a cost is added to each variant today.
+ * period. A14.2 puts S33 Plan and card next, so a seller with no plan continues there.
+ * After that the sheet's "Continue to product costs" leads to S3, which is not built, so the
+ * button leads to Products, where a cost is added to each variant today.
  */
 
 import Link from "next/link";
-import { fetchShop } from "@/lib/api";
+import { api, fetchShop } from "@/lib/api";
+import { afterSync } from "@/lib/onboarding";
 import { apiProblem } from "@/components/ApiProblem";
 import { SyncProgress } from "@/components/SyncProgress";
 
@@ -20,9 +22,13 @@ export const metadata = { title: "Getting your shop ready" };
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function SyncPage({ params }) {
   const { shopId } = await params;
-  const result = await fetchShop(shopId, "/sync");
+  const [result, sub] = await Promise.all([
+    fetchShop(shopId, "/sync"),
+    api("/billing/subscription", { cache: "no-store" }),
+  ]);
   const problem = apiProblem(result, { what: "your sync status" });
   if (problem) return problem;
+  const status = sub.ok ? sub.data?.status ?? null : null;
 
   return (
     <section data-testid="sync-screen">
@@ -33,8 +39,8 @@ export default async function SyncPage({ params }) {
       <div className="stack">
         <SyncProgress shopId={shopId} initial={result.data} />
         <p>
-          <Link className="btn btn--primary btn--block" href={`/shops/${shopId}/products`}>
-            Continue to your products
+          <Link className="btn btn--primary btn--block" href={afterSync(shopId, status)} data-testid="sync-continue">
+            {status === "none" ? "Continue to your plan" : "Continue to your products"}
           </Link>
         </p>
       </div>

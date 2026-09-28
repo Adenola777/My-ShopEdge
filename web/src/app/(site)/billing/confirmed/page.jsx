@@ -14,6 +14,8 @@
  */
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
 import { api } from "@/lib/api";
 
 export const metadata = { title: "Payment confirmed" };
@@ -22,6 +24,8 @@ export const metadata = { title: "Payment confirmed" };
  * @param {{ searchParams: Promise<Record<string, string | undefined>> }} props
  */
 export default async function ConfirmedPage({ searchParams }) {
+  // A signed-out visitor has nothing to confirm (found 28 September, walking the journey).
+  if (STACK_CONFIGURED && !(await currentUser())) redirect("/start");
   const params = await searchParams;
   const hint = params.redirect_status;
 
@@ -45,7 +49,7 @@ export default async function ConfirmedPage({ searchParams }) {
         ) : (
           <p>We will email you three days before the first payment.</p>
         )}
-        <Link className="primary" href="/">
+        <Link className="btn btn--primary" href="/">
           Continue
         </Link>
       </main>
@@ -60,7 +64,7 @@ export default async function ConfirmedPage({ searchParams }) {
           Nothing has been charged. Banks refuse for ordinary reasons, and trying again
           usually works.
         </p>
-        <Link className="primary" href="/billing">
+        <Link className="btn btn--primary" href="/billing">
           Try the card again
         </Link>
       </main>
@@ -77,7 +81,7 @@ export default async function ConfirmedPage({ searchParams }) {
           ? "You have not started a trial yet."
           : `Your subscription is ${status}.`}
       </p>
-      <Link className="primary" href="/billing">
+      <Link className="btn btn--primary" href="/billing">
         Go to your plan
       </Link>
     </main>
