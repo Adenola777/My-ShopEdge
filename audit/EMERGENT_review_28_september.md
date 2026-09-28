@@ -35,9 +35,31 @@ one of which is `date.today()` in `rules.py` against the London business date ru
 ## Verdict on every change
 
 The owner approved on 28 September bringing Emergent's useful work into this repository.
-Each change was read in full and judged as follows. **Nothing has been brought across yet**:
-the step that copies the files was refused by this session's safety check, and the owner
-decides how to proceed.
+Each change was read in full and judged as follows. The first attempt to copy the files was
+refused by this session's safety check. The owner then instructed the copy of every item
+under "Worth taking", and on 28 September those items were written into this repository by
+hand, file by file, with a note in each file naming Emergent's commit. The Disconnect and
+Alert settings screens came with them, because their only dependencies are items on this
+list. **None of the ported code was run before it was committed.** The session's shell was
+unavailable, so the commit was made through GitHub directly, and this repository's CI on
+that commit is the first run of lint, the contract test and the type check against it. The
+local QA suites have not been run against it.
+
+These faults were corrected on the way in:
+
+| File | Correction |
+|---|---|
+| `rules.py` | `business_today()` replaces `date.today()` |
+| `alert_settings.py` | `now_utc()` replaces a naive `datetime.now()` that a `noqa` hid |
+| `money_view.py` | The unused `Problem` import is removed. Where it went counted the payout section as a deduction, and now skips it |
+| `other_sales.py` | A figure in a currency other than the shop's is refused with a 422 |
+| `SettingsForms.jsx` | Pounds convert to pence through `parsePounds`, not through a float. Missing style classes are replaced and the props are typed. The delete and export forms are left out |
+| Tax screen | `chip--good` replaces `chip--ok`, which the stylesheet lacks |
+| Glossary screen | An amount is formatted by `formatMoney`, and the empty state uses a card, because the stylesheet has no `state` class |
+| Both reference rule seeds | Each is marked as not re-verified. The VAT seed's `reviewed_at` of 26 June 2026 is Emergent's wrong date and stays flagged until checked against gov.uk |
+
+The new screens have no navigation entry yet. Tax is not in `ShopNav`, and the Settings hub
+is under "Worth taking once fixed", so it was not taken.
 
 ### Worth taking
 
