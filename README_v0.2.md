@@ -107,6 +107,7 @@ carries every platform, integration and commercial decision taken since.
 | Where Stack Auth processes identity data | Confirm before launch | Data protection alignment. `api.stack-auth.com` is not a Neon host |
 | Whether single factor authentication is acceptable at launch | Commercial and risk | Nothing technical. A14 section 14.7 |
 | Where the Python service is hosted | Decision | `NEXT_PUBLIC_API_BASE_URL` on Vercel, and where `DATABASE_URL` lives |
+| Emergent AI's work in `Adenola777/MYSHOPEDGE` | Adenola | Approved for porting on 28 September. The copy step needs a permission the session's safety check refused. See `audit/EMERGENT_review_28_september.md` |
 
 ## The Vercel, GitHub and Neon wiring
 
@@ -187,7 +188,7 @@ The specification is nearly complete. The application is not.
 | Billing | Screens built. The three products and prices were created in the live Stripe account on 23 September. See CLAUDE.md for the identifiers |
 | TikTok integration | Authorisation is built (`app/connections.py`) and has never made a live call. Ingestion still reads local JSON files |
 | Front end | 14 screens of 36 built. S17 Start, Stack's sign-in pages, S1 Connect TikTok Shop and the TikTok return page were added on 24 September. Sign-in works on the live site. No shop is connected yet. See `SCREENS.md` |
-| Deployment | The front end is live on Vercel production. The Python service has no host |
+| Deployment | The front end is live on Vercel production. The Python service runs on Render as `My-ShopEdge-1` in Frankfurt, deploying `main` of this repository, since 24 September |
 | Tests | Five files run in CI: auth, contract conformance, 44 handler smoke cases that call every served route, the London business date, and the cost file rules |
 
 ## Scope check

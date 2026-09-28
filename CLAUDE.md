@@ -129,6 +129,17 @@ none of the work. The product runs on `super-mouse-64697125`.
 The Next.js front end never touches the database. It calls the API over HTTP through
 `NEXT_PUBLIC_API_BASE_URL`. Any `DATABASE_URL` sitting on the Vercel project is inert.
 
+## Emergent AI's copy of this repository
+
+`Adenola777/MYSHOPEDGE` is a public copy of this repository made on 25 September, on which
+Emergent AI (`emergent-agent-e1 <github@emergent.sh>`) made 14 commits on 25 and 27
+September. None of them is in this repository, and nothing deploys from that copy.
+`audit/EMERGENT_review_28_september.md` lists every change with a verdict: worth taking,
+worth taking once fixed, or not taken and why. The owner approved bringing the useful work
+across on 28 September. The copy step was refused by that session's safety check, so it has
+not happened. Treat Emergent's claims of passing tests as claims: its code fails this
+repository's contract test and lint.
+
 ## The database rules that are easy to break
 
 Four hand rolled roles exist: `mse_owner`, `mse_app`, `mse_analytics`, `mse_migrator`.
