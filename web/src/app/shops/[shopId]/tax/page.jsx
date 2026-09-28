@@ -6,7 +6,9 @@
  * Written by Emergent AI in `Adenola777/MYSHOPEDGE` (commit 3f1bd43) and brought into this
  * repository on 28 September 2026 at the owner's instruction. See
  * `audit/EMERGENT_review_28_september.md`. The one change on the way in replaces
- * `chip--ok`, which this stylesheet does not have, with `chip--good`.
+ * `chip--ok`, which this stylesheet does not have, with `chip--good`. On 28 September the
+ * set-aside card was changed to show the service's reason and basis lines, when A30.3's
+ * estimate was built.
  */
 
 import Link from "next/link";
@@ -24,10 +26,14 @@ export default async function TaxPage({ params }) {
     fetchShop(shopId, "/tax/set-aside"),
     api("/tax/dates", { cache: "no-store" }),
   ]);
-  const problem = apiProblem(vatRes, { what: "your VAT position" });
+  // Found 28 September: production's reference_rules is empty, so getVatMonitor answers 503
+  // vat_unconfigured and this screen used to show only an error. A missing rule now empties
+  // its own card. A session, access or network fault still stops the screen.
+  const vatUnconfigured = vatRes.status === 503;
+  const problem = vatUnconfigured ? null : apiProblem(vatRes, { what: "your VAT position" });
   if (problem) return problem;
 
-  const vat = vatRes.data;
+  const vat = vatUnconfigured ? null : vatRes.data;
   const setAside = setAsideRes.ok ? setAsideRes.data : null;
   /** @type {{ rule_key: string, label: string, date: string, reviewed_at?: string | null }[]} */
   const dates = datesRes.ok ? (datesRes.data.dates ?? []) : [];
@@ -43,6 +49,12 @@ export default async function TaxPage({ params }) {
         <div className="card" data-testid="vat-monitor">
           <h2>VAT registration threshold</h2>
           <p className="card__why">Your rolling twelve-month turnover against the current threshold.</p>
+          {!vat ? (
+            <p className="muted" data-testid="vat-unconfigured">
+              The VAT registration threshold is not loaded on this deployment yet, so your
+              position against it cannot be shown.
+            </p>
+          ) : (<>
           <ul className="rows">
             <li><span>Rolling twelve-month turnover</span><Figure amount={vat.rolling_twelve_month_turnover} /></li>
             <li><span>Threshold</span><Figure amount={vat.threshold} /></li>
@@ -60,17 +72,30 @@ export default async function TaxPage({ params }) {
               ? "This includes the other-channel sales you entered."
               : (<>Only TikTok turnover is counted. <Link href={`/shops/${shopId}/other-sales`}>Add other-channel sales</Link> to see your whole turnover.</>)}
           </p>
+          </>)}
         </div>
 
         {setAside && (
           <div className="card" data-testid="set-aside">
             <h2>Tax to set aside</h2>
-            <p className="card__why">An estimate of what to keep back for tax.</p>
+            <p className="card__why">
+              An estimate of what to keep back for tax
+              {setAside.period ? ` on your profit from ${formatDate(setAside.period.from)} to ${formatDate(setAside.period.to)}` : ""}.
+            </p>
+            {/* The reason and the basis are the service's own words (A30.3), so the card
+                cannot describe a company, a missing cost or unloaded rates wrongly. */}
             <p className="hero__value"><Figure amount={setAside.amount} reason={
-              setAside.unavailable_reason === "no_tax_profile"
-                ? "Fill in your tax profile so a set-aside can be estimated."
-                : "Set-aside rates are not configured yet, so no amount is shown."
+              (setAside.basis_of_estimate ?? [])[0]?.label ?? "No amount can be produced yet."
             } /></p>
+            {setAside.amount && (
+              <ul className="rows">
+                {(setAside.basis_of_estimate ?? []).map((/** @type {NonNullable<import("@/lib/api-types").components["schemas"]["SetAside"]["basis_of_estimate"]>[number]} */ b) => (
+                  b.amount
+                    ? <li key={b.label}><span>{b.label}</span><strong>{formatMoney(b.amount)}</strong></li>
+                    : <li key={b.label}><span className="muted">{b.label}</span></li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 

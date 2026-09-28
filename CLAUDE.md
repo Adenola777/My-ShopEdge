@@ -291,6 +291,7 @@ file inside this repository. `.gitignore` already excludes `.env` and its varian
 | `createExport` and `requestAccountExport` | A worker, because both answer 202 and build the file later. The store they write to is now decided |
 | `checkReturnItem` | Nothing now. The four rulings were made on 28 September (A30.2) |
 | Erasing closed accounts on day thirty | A scheduler. `service/scripts/erase_accounts.py` does the erasure A30.1 rules and has run against the local copy and a local stand-in for S3. Nothing runs it daily until the owner creates a Render cron job, and migration 0025 has to be on the branch first |
+| Any tax figure on S12 | Reference rules. Production's `reference_rules` held 0 rows when queried on 28 September, so the VAT monitor, the set-aside and the tax dates all show that nothing is loaded. The set-aside method of A30.3 is built and tested on made-up values, and uses a rule only once its `reviewed_at` is set. The figures have to be read from gov.uk, which this session's network policy refuses, and loaded with their `source_url` |
 | What a deletion does to a paid plan | A ruling. A30.1 does not cover billing, so a seller who deletes the account keeps being charged by Stripe until it is ruled and built |
 | `getExpectedPayouts` | A source for TikTok's unsettled orders. The contract says it is read from that endpoint, nothing ingests it, and the ledger holds the week a sale happened, not the week TikTok will pay |
 

@@ -55,7 +55,7 @@ by side, except the last, which carries S15 alone.
 | S9 | Products | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products` |
 | S10 | Product detail | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products/[productId]` |
 | S11 | Money | Core | Wireframes, revised A18 | 07 | `shops/[shopId]/money` |
-| S12 | Tax | Core | Wireframes | 07 | `shops/[shopId]/tax`, the fifth tab (28 September). A threshold monitor, a set-aside that stays empty until its rules are ruled, and the tax dates |
+| S12 | Tax | Core | Wireframes | 07 | `shops/[shopId]/tax`, the fifth tab (28 September). A threshold monitor, the set-aside estimate of A30.3 with its basis lines, and the tax dates. Each card empties on its own when its reference rules are missing, and production held none on 28 September |
 | S13 | Notifications | Core | Wireframes | 08 | `shops/[shopId]/notifications`, reached from the bell. Each open notice can be marked read or done, and the bell's count falls with it (25 September). Rows are not links yet, because a notification carries no address |
 | S14 | Discrepancy detail | Core | Wireframes, revised A18 | 08 | `shops/[shopId]/discrepancies`, as a list |
 | S15 | Settings and data | Settings | Wireframes | 09 | `shops/[shopId]/settings`, from the top bar (28 September). The "Your data" card is left out, because export, download and deletion are not built |

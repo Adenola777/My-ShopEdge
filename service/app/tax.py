@@ -13,25 +13,30 @@ The VAT registration threshold is not held in code. It is a reference rule, read
 is one a release has to change. The current value, GBP 90,000 from 1 April 2024, is HMRC's
 under the Value Added Tax (Increase of Registration Limits) Order 2024.
 
-The set-aside amount needs the income tax and National Insurance reference rules, and a
-ruling on the method. Neither exists yet, so the estimate is returned as null with a reason
-rather than as a guessed figure. A seller who under-saves on a made-up number has been
-failed by the product, which is TAX-3's own warning.
+The set-aside follows A30.3, ruled 28 September 2026: a simple estimate for a sole trader,
+income tax and Class 4 National Insurance on profit to date, at the bands in force, read
+from reference rules. A limited company sees no figure. The method is in `_estimate` below
+and every number it uses is a reference rule, so no rate or band is written in this file.
+**No band is loaded on any branch**, because gov.uk could not be reached to check one, and
+until reviewed rules exist the set-aside answers with no amount and says why. A seller who
+under-saves on a made-up number has been failed by the product, which is TAX-3's own warning.
 """
 
 from __future__ import annotations
 
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .auth import Account, require_account
 from .dates import business_today, now_utc
 from .db import tenant, unscoped
 from .money import Money, money
+from .money_view import calculate
 from .problems import Problem
 from .shops import require_shop
 
@@ -76,11 +81,18 @@ class BasisItem(BaseModel):
     rule_key: str | None = None
 
 
+class SetAsidePeriod(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    basis: Literal["sales", "cash"]
+
+
 class SetAsideOut(BaseModel):
     as_of: str
     amount: Money | None = None
     unavailable_reason: Literal["incomplete_costs", "no_tax_profile", "insufficient_history"] | None = None
     confidence: Confidence
+    period: SetAsidePeriod | None = None
     basis_of_estimate: list[BasisItem] = []
 
 
@@ -228,30 +240,144 @@ def get_vat_monitor(
     )
 
 
+# --- getTaxSetAside, TAX-3 and A30.3 --------------------------------------------------------
+#
+# The rules the estimate reads, one row per tax year through `effective_from` and
+# `effective_to`, each used only once `reviewed_at` is set. The first two are in rule set
+# `income_tax` and the third in `national_insurance`, the two sets the schema's check allows:
+#
+#   income_tax_personal_allowance  {"amount_minor": int,
+#                                   "taper_from_minor": int | null, "taper_ratio": int}
+#   income_tax_bands               {"bands": [{"width_minor": int | null, "rate_bp": int}]}
+#                                  in order on taxable income; a null width is the last band
+#   class4_nic                     {"lower_minor": int, "upper_minor": int,
+#                                   "main_rate_bp": int, "upper_rate_bp": int}
+#
+# Rates are in basis points. The shape is this module's; the values are HMRC's and belong in
+# the table with `source_url` naming the gov.uk page they were read from.
+
+SET_ASIDE_RULES = ("income_tax_personal_allowance", "income_tax_bands", "class4_nic")
+
+
+def _tax_year_start(today: date) -> date:
+    """6 April of the UK tax year `today` falls in."""
+    start = date(today.year, 4, 6)
+    return start if today >= start else date(today.year - 1, 4, 6)
+
+
+def _pence(amount: int, rate_bp: int) -> int:
+    return int((Decimal(amount) * rate_bp / 10000).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def _estimate(profit: int, rules: dict) -> tuple[int, int, int]:
+    """Income tax and Class 4 on `profit`, all in minor units: (allowance, tax, class 4).
+
+    The allowance is reduced by one for every `taper_ratio` above `taper_from_minor` when
+    the rule sets a taper. Bands apply to taxable income in order. Class 4 applies to the
+    profit between the lower and upper limits at the main rate, and above the upper limit at
+    the upper rate. Nothing else is modelled: no other income, no reliefs, no Class 2.
+    """
+    profit = max(profit, 0)
+    pa_rule = rules["income_tax_personal_allowance"]
+    allowance = int(pa_rule["amount_minor"])
+    taper_from = pa_rule.get("taper_from_minor")
+    if taper_from is not None and profit > taper_from:
+        allowance = max(0, allowance - (profit - int(taper_from)) // int(pa_rule.get("taper_ratio", 2)))
+
+    remaining, tax = max(profit - allowance, 0), 0
+    for band in rules["income_tax_bands"]["bands"]:
+        width = band.get("width_minor")
+        part = remaining if width is None else min(remaining, int(width))
+        tax += _pence(part, int(band["rate_bp"]))
+        remaining -= part
+        if remaining <= 0:
+            break
+
+    c4 = rules["class4_nic"]
+    lower, upper = int(c4["lower_minor"]), int(c4["upper_minor"])
+    class4 = _pence(max(min(profit, upper) - lower, 0), int(c4["main_rate_bp"]))
+    class4 += _pence(max(profit - upper, 0), int(c4["upper_rate_bp"]))
+    return allowance, tax, class4
+
+
 @router.get("/shops/{shopId}/tax/set-aside", response_model=SetAsideOut, summary="Set-aside estimate")
 def get_set_aside(
     shopId: Annotated[UUID, Depends(require_shop)],
     account: Annotated[Account, Depends(require_account)],
 ) -> SetAsideOut:
     as_of = now_utc().isoformat()
+    today = business_today()
+    start = _tax_year_start(today)
+    period = SetAsidePeriod(from_=start, to=today, basis="sales")
     with tenant(account.id) as conn:
         profile = _profile_row(account, conn)
+        if profile is None:
+            return SetAsideOut(
+                as_of=as_of, amount=None, unavailable_reason="no_tax_profile",
+                confidence="incomplete",
+                basis_of_estimate=[BasisItem(
+                    label="Fill in your tax profile so a set-aside can be estimated.")],
+            )
+        structure = profile[0]
+        if structure == "company":
+            return SetAsideOut(
+                as_of=as_of, amount=None, confidence="incomplete",
+                basis_of_estimate=[BasisItem(
+                    label="A limited company pays Corporation Tax on its own profits, so no "
+                          "personal set-aside is estimated.")],
+            )
+        if structure != "sole_trader":
+            return SetAsideOut(
+                as_of=as_of, amount=None, unavailable_reason="no_tax_profile",
+                confidence="incomplete",
+                basis_of_estimate=[BasisItem(
+                    label="Choose sole trader or limited company in your tax profile so a "
+                          "set-aside can be estimated.")],
+            )
 
-    if profile is None:
+        rows = conn.execute(
+            "select distinct on (rule_key) rule_key, value from reference_rules "
+            "where rule_set in ('income_tax', 'national_insurance') and rule_key = any(%s) "
+            "and reviewed_at is not null "
+            "and effective_from <= %s and (effective_to is null or effective_to >= %s) "
+            "order by rule_key, effective_from desc",
+            (list(SET_ASIDE_RULES), today, today),
+        ).fetchall()
+        rules = {k: v for k, v in rows}
+        if len(rules) < len(SET_ASIDE_RULES):
+            return SetAsideOut(
+                as_of=as_of, amount=None, confidence="incomplete", period=period,
+                basis_of_estimate=[BasisItem(
+                    label="The income tax and National Insurance rates for this tax year are "
+                          "not loaded yet, so no amount can be produced.")],
+            )
+        view = calculate(conn, shopId, start, today, "sales")
+
+    currency = view.totals.net_sales.currency if view.totals.net_sales else "GBP"
+    if view.kept is None and view.kept_reason == "incomplete_costs":
         return SetAsideOut(
-            as_of=as_of, amount=None, unavailable_reason="no_tax_profile",
-            confidence="incomplete",
+            as_of=as_of, amount=None, unavailable_reason="incomplete_costs",
+            confidence="incomplete", period=period,
             basis_of_estimate=[BasisItem(
-                label="Fill in your tax profile so a set-aside can be estimated.")],
+                label="Some products you sold have no cost, so your profit is not known.")],
         )
-
-    # The profile exists, but the income tax and National Insurance reference rules a
-    # set-aside needs are not configured, and the method has not been ruled. No honest
-    # amount can be produced, so none is returned.
+    profit = view.kept.amount_minor if view.kept is not None else 0
+    allowance, tax, class4 = _estimate(profit, rules)
     return SetAsideOut(
-        as_of=as_of, amount=None, unavailable_reason=None, confidence="incomplete",
-        basis_of_estimate=[BasisItem(
-            label="Set-aside tax rates are not configured yet, so no amount can be produced.")],
+        as_of=as_of, amount=money(tax + class4, currency),
+        # Always an estimate: the tax year is not over, and only this shop's profit is known.
+        confidence="estimated", period=period,
+        basis_of_estimate=[
+            BasisItem(label="Profit so far this tax year, by sale date, before overheads",
+                      amount=money(profit, currency)),
+            BasisItem(label="Personal Allowance", amount=money(allowance, currency),
+                      rule_key="income_tax_personal_allowance"),
+            BasisItem(label="Income Tax", amount=money(tax, currency), rule_key="income_tax_bands"),
+            BasisItem(label="Class 4 National Insurance", amount=money(class4, currency),
+                      rule_key="class4_nic"),
+            BasisItem(label="This assumes the shop is your only income and leaves out your "
+                            "overheads, other income and reliefs. It is not tax advice."),
+        ],
     )
 
 

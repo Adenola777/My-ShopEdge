@@ -60,6 +60,14 @@ labelled as an estimate. A limited company sees no figure.
 gov.uk on 28 September, because the environment's network policy blocks it, so no band is
 loaded until someone checks it against its source.
 
+**Built, 28 September 2026.** `getTaxSetAside` applies the ruling in `service/app/tax.py`.
+Profit to date is the Money screen's gross profit after returns, by sale date, from 6 April
+to today, for the shop. The personal allowance with an optional taper, the income tax bands
+and Class 4 are three reference rules whose shape the module documents. A rule counts only
+once its `reviewed_at` is set. `tests/test_set_aside.py` checks the method on made-up round
+numbers. No real band is loaded: production's `reference_rules` held 0 rows when queried
+the same day, and gov.uk remained unreachable from the session.
+
 ## 30.4 Single-factor sign-in
 
 **Ruling.** Sign-in without a second factor is accepted for launch. Neon Auth offers no
