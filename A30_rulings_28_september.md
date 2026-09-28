@@ -1,0 +1,56 @@
+# Action 30. Four rulings, 28 September 2026
+
+The owner ruled on four open questions on 28 September 2026. Each was blocking code, and
+each is recorded here so that the code can cite a document rather than a conversation.
+
+## 30.1 Deleting an account
+
+**Ruling.** A deletion closes the account at once and anonymises it after a grace period of
+thirty days.
+
+- **At the request.** Sign-in stops working for the account at once. Every connected shop is
+  disconnected, and its TikTok tokens are marked revoked. The account is marked for
+  deletion with the date the grace period ends.
+- **During the thirty days.** The seller can cancel the deletion, and nothing has yet been
+  erased.
+- **When the thirty days end.** The account's name and email are erased, the stored TikTok
+  tokens are erased, and every file under the account's prefixes in the file store is
+  deleted (A10.8 as amended). The ledger rows stay, attached to no person, for the
+  retention period, because the ledger is append-only and financial records carry a
+  retention duty. They are deleted when that period ends.
+- **What the seller is told.** Exactly the above. Emergent AI's version told the seller the
+  deletion "includes" their orders, ledger and costs while erasing nothing, and that is the
+  mistake this ruling exists to prevent.
+
+**Open.** The length of the retention period for the anonymised ledger is not ruled here.
+A10 records six years for the TikTok fee invoices. Whether the same period applies to the
+ledger needs the Data Protection document, and until it is ruled the anonymised rows are
+kept and nothing deletes them.
+
+## 30.2 Checking a returned item
+
+**Ruling.** The owner accepted all four proposals. `checkReturnItem` writes to the ledger
+by these rules:
+
+1. A write-off or return postage attaches to the order line of the variant that was
+   returned, not to the order's first line.
+2. A write-off uses the cost in force when the unit sold.
+3. The entries carry the date of the check.
+4. A check takes the checked units off `coming_back`.
+
+## 30.3 The tax set-aside estimate
+
+**Ruling.** The set-aside shows a simple estimate for a sole trader: income tax and Class 4
+National Insurance on profit to date, at the bands in force, read from reference rules and
+labelled as an estimate. A limited company sees no figure.
+
+**Unverified.** The bands and rates must come from gov.uk. This session could not reach
+gov.uk on 28 September, because the environment's network policy blocks it, so no band is
+loaded until someone checks it against its source.
+
+## 30.4 Single-factor sign-in
+
+**Ruling.** Sign-in without a second factor is accepted for launch. Neon Auth offers no
+second factor and none can be added (A14.7). The risk is accepted knowingly: an account is
+protected by the seller's own sign-in with Google, GitHub or Microsoft, which the provider
+page offers, and by nothing further of ours.

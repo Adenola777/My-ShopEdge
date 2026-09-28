@@ -96,7 +96,7 @@ The honest summary is that the thinking is done and the building has started.
 
 ## The documents
 
-`A2` to `A29` are the rulings, one file per action. A29 holds the dashboard rules and the
+`A2` to `A30` are the rulings, one file per action. A29 holds the dashboard rules and the
 rule that Python owns every financial and business rule. **A29.11 sets which document wins:
 the product rulings and the contract govern the master engineering skill, and a provider's
 documentation governs only facts about that provider.** A29.12 states why MyShopEdge exists. They are decisions rather than notes, so
@@ -284,15 +284,13 @@ file inside this repository. `.gitignore` already excludes `.env` and its varian
 | The literal column labels on a settlement export | The same shop authorisation |
 | The remaining 20 Figma screens | The Figma Starter plan call limit |
 | Where the Python service runs long term | A28.4 decided a long-lived container in London. For the MVP the owner chose Render in Frankfurt on 24 September, with the move to a UK host later |
-| Whether single factor authentication is acceptable at launch | A commercial and risk decision. Neon Auth offers no second factor and none can be added |
 | Rotating the encryption key for `tiktok_connections.access_token_enc`, `refresh_token_enc` and `shop_cipher_enc` | The key itself is `TIKTOK_TOKEN_KEY` on Render, made by the owner in his own terminal (the runbook, step 3). Rotation is not built: nothing can hold two keys at once, so `key_version` is always written as 1, and changing the key makes every stored token unreadable |
 | Whether `authorization_expires_at` is the refresh token's expiry | One real TikTok authorisation. The contract serves the field and `tiktok_connections.refresh_expires_at` looks like the same instant. Nobody has checked, so 0020 adds no column for it |
 | Refreshing an access token before it lapses | Building it. The service now runs on Render, which gives the refresh a process to run in. The access token lives seven days (A23.4), so a connection stops being readable a week after it is made |
 | Cost uploads working for a seller | A bucket. The six cost upload operations are served since 28 September on a private S3 bucket in London (A10.8 as amended), and have run only against a local stand-in for S3. Until the owner creates the bucket and sets `S3_BUCKET` on Render (`RUNBOOK_file_storage.md`), each answers 503 `storage_unconfigured` |
 | `createExport` and `requestAccountExport` | A worker, because both answer 202 and build the file later. The store they write to is now decided |
-| `checkReturnItem` | Four rulings, because it writes to the append-only ledger. A4 says what a check does, and not: (1) which order line a write-off or return postage attaches to, since the ledger requires one and the test ingest uses the order's first line rather than the returned variant's; (2) whether a write-off uses the cost in force today or when the unit sold; (3) which date the entries carry, the check or the refund; (4) whether a check takes units off `coming_back`, which nothing yet adds to. `returns.py` says so |
+| `checkReturnItem` | Nothing now. The four rulings were made on 28 September (A30.2) |
 | `getExpectedPayouts` | A source for TikTok's unsettled orders. The contract says it is read from that endpoint, nothing ingests it, and the ledger holds the week a sale happened, not the week TikTok will pay |
-| Profit figures for past months after a cost changes | A ruling. The figure queries read only a variant's current cost, so a new cost changes past months too. The contract says they should not. `costs.py` records it |
 
 ## What is next in the code
 

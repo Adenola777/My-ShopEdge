@@ -229,3 +229,10 @@ S7 shows the refund under Gone this month rather than Coming back, with the labe
 | Wireframes and Workflows | Return Loss line added to S6, S10 and S11. Refund-only labelling added to S7 and S22. |
 
 The requirement count moves from 73 to 82. The Must count moves from 64 to 73. Test cases move from 84 to 107, counting the ten added in Action 2.
+
+## Settled 28 September 2026
+
+The four points A4 left open about checking a returned item are ruled in A30.2: the entries
+attach to the returned variant's own order line, a write-off uses the cost in force when the
+unit sold, the entries carry the date of the check, and a check takes the units off
+`coming_back`.
