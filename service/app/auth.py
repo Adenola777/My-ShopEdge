@@ -74,7 +74,7 @@ from uuid import UUID
 import jwt
 from fastapi import Request
 
-from .db import create_account_id, lookup_identity, resolve_account_id
+from .db import account_of_subject, create_account_id, lookup_identity, resolve_account_id
 from .problems import Problem
 
 _log = logging.getLogger("myshopedge.auth")
@@ -101,6 +101,7 @@ class Account:
     email: str
     name: str | None
     subject: str
+    status: str = "active"
 
 
 def _origin_of(url: str) -> str:
@@ -229,7 +230,32 @@ def verify(token: str) -> dict:
 
 
 def require_account(request: Request) -> Account:
-    """The dependency every authenticated endpoint takes."""
+    """The dependency every authenticated endpoint takes. It admits an active account only.
+
+    A30.1 rules that sign-in stops working the moment a seller asks for their account to be
+    deleted. `resolve_account` has returned active accounts only since 0017, but a closed
+    account then fell through to `create_account`, whose conflict clause handed back the
+    existing id, so until 28 September a closed or suspended account was let in. Every
+    endpoint now refuses it here.
+    """
+    account = require_signed_in(request)
+    if account.status == "deleted":
+        raise Problem(
+            403, "account_closing",
+            "This account is being deleted. You can cancel the deletion from the sign-in page.",
+        )
+    if account.status != "active":
+        raise Problem(403, "account_suspended", "This account is suspended.")
+    return account
+
+
+def require_signed_in(request: Request) -> Account:
+    """A verified seller with an account, whatever its status.
+
+    Only two operations take this directly: getMe, so the front end can tell a closing
+    account what is happening, and cancelAccountDeletion, which is the one thing a closing
+    account may do. Everything else takes `require_account`.
+    """
     header = request.headers.get("authorization", "")
     scheme, _, token = header.partition(" ")
     if scheme.lower() != "bearer" or not token:
@@ -257,6 +283,14 @@ def require_account(request: Request) -> Account:
             if identity:
                 email, name = identity[0] or "", identity[1] or name
         return Account(id=account_id, email=email, name=name, subject=subject)
+
+    # resolve_account finds active accounts only. A closing or suspended account is found
+    # here, before the first sign-in path below, which needs an email address the token may
+    # not carry. require_account then refuses it, and getMe and the cancellation admit it.
+    other = account_of_subject(subject)
+    if other is not None:
+        return Account(id=other[0], email=claims.get("email") or "", name=claims.get("name"),
+                       subject=subject, status=other[1])
 
     # A seller can hold a valid token and have no account row, because the provider and this
     # database are separate systems. Ruled 22 September 2026: create the account on the

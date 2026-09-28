@@ -65,7 +65,7 @@ These are standing instructions from the owner. They hold until he changes them.
 
 ## The contract is the source of truth
 
-`api/openapi.yaml` holds 58 operations across 53 paths. Rule 1 of A13 says the service
+`api/openapi.yaml` holds 59 operations across 54 paths. Rule 1 of A13 says the service
 implements the contract and never the other way round. A test enforces it:
 
 ```
@@ -83,12 +83,12 @@ The specification is close to complete. The application is not. As of 23 Septemb
 | Layer | State |
 |---|---|
 | Rulings, terminology, screens, data model, API contract | Done |
-| Schema | Through 0024 on all three branches, 25 migrations recorded on each, and the three schema fingerprints match exactly (checked 24 September). 0022, 0023 and 0024 were applied on 24 September with the owner's authority through the Neon connection, which runs as `mse_migrator`, rather than through `migrate.py`, so that no connection string entered the session. Each migration and its `schema_migrations` row went in one transaction with the file's SHA-256, as the runner does, so `migrate.py --status` reads them as applied. The notes inside 0022 and 0023 saying "not yet applied" are stale and stay, because an applied migration is never edited. See the Data API section below for 0024 |
-| Backend | 27 of 53 contract paths. Added on 24 September: me, shops, a variant's cost, cost coverage, resolving a discrepancy, a stock adjustment, Needs you, sync status, the returns list, return metrics, and listing and updating notifications. Cost uploads, exports and expected payouts are not served, for the reasons in the blocked table below |
+| Schema | Through 0024 on all three branches. **0025, account deletion, is written and applied to the local copy only**, and goes on the Neon branches with the owner's authority. Before 0025, 25 migrations recorded on each, and the three schema fingerprints match exactly (checked 24 September). 0022, 0023 and 0024 were applied on 24 September with the owner's authority through the Neon connection, which runs as `mse_migrator`, rather than through `migrate.py`, so that no connection string entered the session. Each migration and its `schema_migrations` row went in one transaction with the file's SHA-256, as the runner does, so `migrate.py --status` reads them as applied. The notes inside 0022 and 0023 saying "not yet applied" are stale and stay, because an applied migration is never edited. See the Data API section below for 0024 |
+| Backend | 48 of 54 contract paths and 53 of 59 operations, counted from the generated schema on 28 September. The six operations not served are `requestAccountExport`, `createExport`, `getExport`, `getExpectedPayouts`, `getInsights` and `getTrends`. `checkReturnItem`, `deleteMe` and `cancelAccountDeletion` were added on 28 September; the last was added to the contract with it, because A30.1 allows a cancellation the contract had no operation for. Each was driven in a browser against the local copy of development |
 | Authentication | **Verified by a real sign-in on 24 September.** ES256 verified against the provider's fetched JWKS, email read from `users_sync`, 15 tests passing. The first real token logged `iss` `https://api.stack-auth.com/api/v1/projects/f1762e29-4750-42f6-80e1-c94b040a72e8` and `aud` `f1762e29-4750-42f6-80e1-c94b040a72e8`, and both are set on Render as `NEON_AUTH_ISSUER` and `NEON_AUTH_AUDIENCE`. The next request created the first production account at 15:17:21 UTC |
 | Billing | Screens built. The three products and prices exist in the live Stripe account as of 23 September. Nothing is wired to them yet |
 | TikTok integration | Authorisation is built end to end. `app/connections.py` holds both endpoints, the signing algorithm, AES-256-GCM token storage and the state store in migration 0021. Fourteen smoke cases cover it. Since 24 September S1 on `/shops` starts a connection and `/connections/tiktok/callback` on the site receives the seller back, so TikTok's callback URL is the site's, not the service's. `_sign` has never made a live call, so the first real request is its test. **Nothing reads orders, returns or statements yet, and nothing refreshes the token.** `RUNBOOK_tiktok_connection.md` has the steps. See A23, A27 and A28 |
-| Front end | 14 screens of 36 built: S1, S6, S7, S9, S10, S11, S14 with its actions, S17, S21, S22, S25, S26, S33 and S34, plus `/shops`, which takes a seller to their shop, `/handler`, Stack's own sign-in pages, and the TikTok return page. `web/src/lib/api.js` attaches the signed in seller's token to every request, and a real sign-in on 24 September proved it. Stack's pages need `StackTheme` inside `StackProvider`, because without it the sign-up page crashed on a missing `TooltipProvider`. S17 lacks the privacy notice and terms links A14 requires, because neither page exists. `SCREENS.md` is the register |
+| Front end | 26 screens of 36 built: S1, S2, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S21, S22, S24, S25, S26, S27, S28, S29, S30, S32, S33 and S34, plus the closing page A30.1 needs, `/shops`, which takes a seller to their shop, `/handler`, Stack's own sign-in pages, and the TikTok return page. `web/src/lib/api.js` attaches the signed in seller's token to every request, and a real sign-in on 24 September proved it. Stack's pages need `StackTheme` inside `StackProvider`, because without it the sign-up page crashed on a missing `TooltipProvider`. S17 lacks the privacy notice and terms links A14 requires, because neither page exists. `SCREENS.md` is the register |
 | Figma | Unreadable. The Starter plan call limit refuses every read of the file, on 22 and 24 September. It holds frames that predate A15, so it is out of date whatever it holds. `SCREENS.md` explains. The wireframes are committed at `design/wireframes/` |
 | Deployment | The front end is live on Vercel production and redeploys on every merge to `main`. The service runs on Render as `My-ShopEdge-1` at `https://my-shopedge-1.onrender.com`, Frankfurt, free plan, and redeploys on every merge to `main`. The owner chose Render for the MVP on 24 September, with a move to a UK host later. Vercel reaches it through `NEXT_PUBLIC_API_BASE_URL` |
 
@@ -96,7 +96,7 @@ The honest summary is that the thinking is done and the building has started.
 
 ## The documents
 
-`A2` to `A29` are the rulings, one file per action. A29 holds the dashboard rules and the
+`A2` to `A30` are the rulings, one file per action. A29 holds the dashboard rules and the
 rule that Python owns every financial and business rule. **A29.11 sets which document wins:
 the product rulings and the contract govern the master engineering skill, and a provider's
 documentation governs only facts about that provider.** A29.12 states why MyShopEdge exists. They are decisions rather than notes, so
@@ -284,14 +284,16 @@ file inside this repository. `.gitignore` already excludes `.env` and its varian
 | The literal column labels on a settlement export | The same shop authorisation |
 | The remaining 20 Figma screens | The Figma Starter plan call limit |
 | Where the Python service runs long term | A28.4 decided a long-lived container in London. For the MVP the owner chose Render in Frankfurt on 24 September, with the move to a UK host later |
-| Whether single factor authentication is acceptable at launch | A commercial and risk decision. Neon Auth offers no second factor and none can be added |
 | Rotating the encryption key for `tiktok_connections.access_token_enc`, `refresh_token_enc` and `shop_cipher_enc` | The key itself is `TIKTOK_TOKEN_KEY` on Render, made by the owner in his own terminal (the runbook, step 3). Rotation is not built: nothing can hold two keys at once, so `key_version` is always written as 1, and changing the key makes every stored token unreadable |
 | Whether `authorization_expires_at` is the refresh token's expiry | One real TikTok authorisation. The contract serves the field and `tiktok_connections.refresh_expires_at` looks like the same instant. Nobody has checked, so 0020 adds no column for it |
 | Refreshing an access token before it lapses | Building it. The service now runs on Render, which gives the refresh a process to run in. The access token lives seven days (A23.4), so a connection stops being readable a week after it is made |
-| The four cost upload operations and `createExport` | How a file reaches Vercel Blob (A10.8). Vercel documents signed upload URLs only for its JavaScript SDK (`issueSignedToken`, `presignUrl`), not as an HTTP call or a signing scheme a Python service can follow. The parser and matcher are built and tested in `cost_files.py`. `createExport` also needs a worker, because it answers 202 |
-| `checkReturnItem` | Four rulings, because it writes to the append-only ledger. A4 says what a check does, and not: (1) which order line a write-off or return postage attaches to, since the ledger requires one and the test ingest uses the order's first line rather than the returned variant's; (2) whether a write-off uses the cost in force today or when the unit sold; (3) which date the entries carry, the check or the refund; (4) whether a check takes units off `coming_back`, which nothing yet adds to. `returns.py` says so |
+| Cost uploads working for a seller | A bucket. The six cost upload operations are served since 28 September on a private S3 bucket in London (A10.8 as amended), and have run only against a local stand-in for S3. Until the owner creates the bucket and sets `S3_BUCKET` on Render (`RUNBOOK_file_storage.md`), each answers 503 `storage_unconfigured` |
+| `createExport` and `requestAccountExport` | A worker, because both answer 202 and build the file later. The store they write to is now decided |
+| `checkReturnItem` | Nothing now. The four rulings were made on 28 September (A30.2) |
+| Erasing closed accounts on day thirty | A scheduler. `service/scripts/erase_accounts.py` does the erasure A30.1 rules and has run against the local copy and a local stand-in for S3. Nothing runs it daily until the owner creates a Render cron job, and migration 0025 has to be on the branch first |
+| Any tax figure on S12 | Reference rules. Production's `reference_rules` held 0 rows when queried on 28 September, so the VAT monitor, the set-aside and the tax dates all show that nothing is loaded. The set-aside method of A30.3 is built and tested on made-up values, and uses a rule only once its `reviewed_at` is set. The figures have to be read from gov.uk, which this session's network policy refuses, and loaded with their `source_url` |
+| What a deletion does to a paid plan | A ruling. A30.1 does not cover billing, so a seller who deletes the account keeps being charged by Stripe until it is ruled and built |
 | `getExpectedPayouts` | A source for TikTok's unsettled orders. The contract says it is read from that endpoint, nothing ingests it, and the ledger holds the week a sale happened, not the week TikTok will pay |
-| Profit figures for past months after a cost changes | A ruling. The figure queries read only a variant's current cost, so a new cost changes past months too. The contract says they should not. `costs.py` records it |
 
 ## What is next in the code
 
@@ -304,3 +306,82 @@ that does not exist. A write follows `stock.create_stock_adjustment`: the Idempo
 through `idempotency.py`, the write and its key in one transaction, and a smoke case that
 replays the key. Every write is checked on the development branch as `mse_app` inside a
 transaction that ends in a rollback.
+
+<!-- BEGIN AWS Agent Toolkit rules -->
+# AWS Guidance for the new AWS experience
+
+This user has signed up for the new AWS experience. This experience lets you sign into AWS using a social provider and requires the following additional context.
+
+Where this guidance conflicts with the project's own instructions, the project's instructions take precedence.
+
+## Context
+
+### Terminology:
+
+- Say "project" instead of "account" — a project contains an AWS account and settings for sharing with other collaborators
+- Say "team member" instead of "IAM user" — users are invited by email, not created or federated in IAM
+- Say "AWS Settings" when referring to management tasks at [settings.aws.com](https://settings.aws.com/) (project management, billing, team members, spend limits). Users view their actual AWS resources in the AWS Management Console.
+- Say "selected Region" when referring to the user's Region — not "home Region"
+- The user has a managed IAM experience. This includes a managed service control policies (SCP) and resource control policies (RCP) that govern the use of AWS. They will still need to use IAM to create policies to let services work with each other. If there are questions about the SCPs or RCPs, go to the documentation at https://docs.aws.amazon.com/accounts/latest/reference/scps-and-rcps-for-projects.html
+
+### Constraints:
+
+- All projects share a single AWS Region determined by the user's contact address. Resources cannot be created in other Regions
+- When developing:
+  - MUST create all Regional resources in the project's assigned Region
+  - You CAN create AWS WAF and Cloudwatch Logs resources in us-east-1 when there are global resources (like a global WAF instance) that require a connection to dependencies in us-east-1. You should not use these for any other reason, because resources in the selected Region will provide lower cost (due to no cross-Region traffic), increased availability (due to no cross-Region traffic), and easier manageability (due to not needing to look in another Region). When you need to do an inventory of resources, you need to look in both the selected Region and us-east-1 for Cloudwatch Logs or WAF resources.
+  - MUST NOT attempt to create Lambda, API Gateway, or other Regional resources in any other Region
+  - MUST direct users to confirm their Region in AWS Settings > View all projects > Overview > Additional Info > Region. If the user cannot confirm their Region, check in ~/.aws/config
+  - MUST NOT use Lambda@Edge — excluded from both Lambda and CloudFront
+  - MUST NOT use CloudFormation StackSets — no multi-account or multi-Region deployments
+  - MUST NOT attempt cross-Region actions — no cross-Region replication for DynamoDB/S3/RDS, no multi-Region KMS keys
+  - MUST NOT use Route 53 cross-Region routing — geolocation, latency-based, and failover routing policies are not available
+  - CloudFront is a global service and its actions ARE allowed in `us-east-1`. A user can create a CloudFront distribution pointing to their project-region Lambda function URL or API Gateway. However, Lambda and API Gateway themselves MUST NOT be created in `us-east-1` — they must be in the project Region.
+  - Reduced availability in `eu-north-1` specifically: Amazon Rekognition, Amazon Textract, Amazon Personalize, AWS App Runner are not available in that Region.
+- IAM permissions for human access are managed by AWS. Don't assign roles to team members unless absolutely necessary
+- The user may have a spend limit if they are on the paid plan. The limit that pauses their project if it's exceeded. If resources suddenly become inaccessible, ask if they have a spend limit configured. Only project owners can modify a spend limit.
+- When developing:
+  - MUST ask about spend limit status if the user reports sudden "Access Denied" errors on operations that previously worked
+  - MUST direct users to check spend status in AWS Settings > Billing
+  - MUST check if a user has upgraded their account to the paid plan
+  - MUST ask the user if they want to clean up the successfully created resources or keep them to reduce cost
+- The user sets up billing, creates spend limits, and retrieves and pays invoices in AWS Settings. The user creates budgets and optimizes their costs in the AWS Billing and Cost Management console
+- Not all AWS services are available. If a service isn't working, do the following:
+  1. Run the command `aws freetier get-account-plan-state`
+  2. If accountPlanType": "FREE", check the [Free Tier supported services list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#supported-services-free-tier) next,
+  3. If accountPlanType": "PAID", check the [Paid Tier supported services list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#supported-services-paid-plan).
+  4. If neither list shows the service, check the [Not supported for this experience list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#unsupported-services). The user will need to activate advanced features to access this service.
+- Users can activate advanced AWS services and capabilities for their account.
+- Before starting a task, check whether a relevant AWS skill is available. Load the skill with retrieve_skill and prefer its guidance over general knowledge.
+
+### Help level
+
+- help_level (required): LOW, MEDIUM, or HIGH. While a user is building, you MUST ask the user: "How much guidance would you like from me? Low (I only flag security risks), medium (I ask a couple of clarifying questions if something seems off), or high (I explain what I'm doing, suggest alternatives, and flag best practices)."
+
+You CAN update this rule file to save a user's help_level.
+
+**Saved help_level: MEDIUM** (chosen by the owner on 28 September 2026).
+
+Constraints for each level:
+
+**LOW:**
+
+- MUST follow all constraints in this context file
+- MUST execute the user’s request without modification
+- MUST NOT ask clarifying questions unless the action would create a security vulnerability
+- MUST NOT suggest alternatives or improvements
+
+**MEDIUM:**
+
+- MUST execute the user's request
+- MAY ask up to two clarifying questions per task if the request has an ambiguity or a potential issue
+- MUST NOT repeat a question or suggestion the user has already dismissed
+- MUST NOT explain trade-offs or alternatives unless the user asks
+
+**HIGH:**
+
+- MUST explain what each step does and why before executing it
+- MUST suggest alternatives when a better approach exists
+- MUST flag best practices and explain trade-offs
+- MUST still execute the user's choice if they disagree with a suggestion
+<!-- END AWS Agent Toolkit rules -->

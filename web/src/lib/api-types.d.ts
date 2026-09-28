@@ -21,15 +21,48 @@ export interface paths {
         post?: never;
         /**
          * Delete the account and its data
-         * @description Traces ACC-4. Deletion is asynchronous and irreversible. It removes the account's
-         *     rows and every object under its prefixes in the file store.
+         * @description Traces ACC-4 and A30.1. The account closes at once and is erased thirty days later.
          *
-         *     The response states what will be deleted and when, so the seller has a record of
-         *     what they asked for. `invoices_retained_until` is present when the account holds
-         *     TikTok fee invoices, which are kept for six years from the end of the VAT period
-         *     rather than deleted with the account.
+         *     At the request, sign-in stops working for every operation except getMe and
+         *     cancelAccountDeletion, every connected shop is disconnected and its TikTok tokens
+         *     are marked revoked. When the thirty days end, the name and email are erased, the
+         *     stored TikTok tokens are erased, and every object under the account's prefixes in
+         *     the file store is deleted. The ledger rows stay, attached to no person, for the
+         *     retention period that financial records carry. Until `cancel_by` the seller can
+         *     cancel.
+         *
+         *     The response states what will happen and when, so the seller has a record of what
+         *     they asked for. A repeat request while the account is closing returns the same
+         *     dates. `invoices_retained_until` is present when the account holds TikTok fee
+         *     invoices, which are kept for six years from the end of the VAT period.
          */
         delete: operations["deleteMe"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/deletion/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a requested account deletion
+         * @description A30.1 rules that a seller can cancel a deletion during its thirty days. The account
+         *     becomes active again. Its shops stay disconnected, because their TikTok tokens were
+         *     revoked at the request, so the seller connects them again. After the thirty days
+         *     the account is erased and there is nothing to cancel.
+         *
+         *     Added 28 September 2026 with deleteMe. The ruling allowed cancelling and the
+         *     contract had no operation for it.
+         */
+        post: operations["cancelAccountDeletion"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1451,6 +1484,13 @@ export interface components {
             created_at: string;
             tax_profile_completed?: boolean;
             shop_count?: number;
+            /**
+             * Format: date-time
+             * @description Present while the account is closing under A30.1: the moment its name, email,
+             *     TikTok tokens and files are erased. Until then the seller can cancel the
+             *     deletion with cancelAccountDeletion. Null for an account that is not closing.
+             */
+            deletion_scheduled_at?: string | null;
         };
         Shop: {
             /** Format: uuid */
@@ -2036,6 +2076,14 @@ export interface components {
             refund_completed_at?: string | null;
             items_awaiting_check?: number;
             return_cost?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+            /**
+             * @description The return's items, so S8 can check each one by its id. Added 28 September
+             *     2026, because checkReturnItem takes an item id and no operation returned one.
+             */
+            items?: (components["schemas"]["ReturnItem"] & {
+                product_title?: string | null;
+                variant_label?: string | null;
+            })[];
         };
         ReturnItem: {
             /** Format: uuid */
@@ -2382,6 +2430,44 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    cancelAccountDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deletion cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        account_id: string;
+                        /** @enum {string} */
+                        status: "active";
+                        /** @description Shops that need connecting again. */
+                        shops_disconnected: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description The account has no deletion to cancel */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             429: components["responses"]["RateLimited"];
         };
     };

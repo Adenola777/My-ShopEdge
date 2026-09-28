@@ -35,9 +35,45 @@ one of which is `date.today()` in `rules.py` against the London business date ru
 ## Verdict on every change
 
 The owner approved on 28 September bringing Emergent's useful work into this repository.
-Each change was read in full and judged as follows. **Nothing has been brought across yet**:
-the step that copies the files was refused by this session's safety check, and the owner
-decides how to proceed.
+Each change was read in full and judged as follows. The first attempt to copy the files was
+refused by this session's safety check. The owner then instructed the copy of every item
+under "Worth taking", and on 28 September those items were written into this repository by
+hand, file by file, with a note in each file naming Emergent's commit. The Disconnect and
+Alert settings screens came with them, because their only dependencies are items on this
+list. **None of the ported code was run before it was committed.** The session's shell was
+unavailable, so the commit was made through GitHub directly, and this repository's CI on
+that commit is the first run of lint, the contract test and the type check against it. The
+local QA suites have not been run against it.
+
+These faults were corrected on the way in:
+
+| File | Correction |
+|---|---|
+| `rules.py` | `business_today()` replaces `date.today()` |
+| `alert_settings.py` | `now_utc()` replaces a naive `datetime.now()` that a `noqa` hid |
+| `money_view.py` | The unused `Problem` import is removed. Where it went counted the payout section as a deduction, and now skips it |
+| `other_sales.py` | A figure in a currency other than the shop's is refused with a 422 |
+| `SettingsForms.jsx` | Pounds convert to pence through `parsePounds`, not through a float. Missing style classes are replaced and the props are typed. The delete and export forms are left out |
+| Tax screen | `chip--good` replaces `chip--ok`, which the stylesheet lacks |
+| Glossary screen | An amount is formatted by `formatMoney`, and the empty state uses a card, because the stylesheet has no `state` class |
+| Both reference rule seeds | Each is marked as not re-verified. The VAT seed's `reviewed_at` of 26 June 2026 is Emergent's wrong date and stays flagged until checked against gov.uk |
+
+The five items under "Worth taking once fixed" were taken on 28 September at the owner's
+instruction, each with its fault fixed, and each was checked by running it: the service
+tests and a rolled-back transaction on the local copy of development for the cost change,
+and a browser against the local service for the screens.
+
+| Change | What was fixed |
+|---|---|
+| Cost at the period's end | `created_at desc` breaks the tie between two costs entered on one day, so the correction wins. A cost entered on 28 September left August's figures unchanged |
+| S28 Connection problem | It handles the contract's `needs_reconnect`, `disconnected` and `pending`, and reconnects with the same button as S1 |
+| S2 First sync | Rewritten. Plain words replace status codes, the chips are ones the stylesheet has, times are London time, and the type check passes |
+| Navigation | Tax is the fifth tab. Settings sits in the top bar, as sheet 09 draws it |
+| S15 Settings and data | Redrawn to sheet 09 from served values. The data card with export, download and deletion is left out |
+
+Exports, cost uploads and the data download wait on the file store. The owner chose Neon
+object storage on 28 September. A10.8 records that Neon offered no object storage in the
+London region, and that has not yet been checked again.
 
 ### Worth taking
 

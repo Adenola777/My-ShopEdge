@@ -21,9 +21,11 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { api, formatMoney } from "@/lib/api";
 
-const stripePromise = loadStripe(
-  /** @type {string} */ (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
-);
+// Read on 28 September 2026: the Vercel project holds no NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+// Without it the button below used to create the subscription at Stripe and only then fail
+// to show the card form, leaving a trial with no card. With no key nothing is started.
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 
 /**
  * @param {{ plans: Plan[], trialDays: number }} props
@@ -70,6 +72,15 @@ export function PaymentForm({ plans, trialDays }) {
     }
   }, [slug, idempotencyKey]);
 
+  if (!stripePromise) {
+    return (
+      <section className="card-step" data-testid="billing-unconfigured">
+        <h2>Card payments are not set up yet.</h2>
+        <p>Nothing has been started and nobody has been charged.</p>
+      </section>
+    );
+  }
+
   if (phase === "done") {
     return (
       <section className="card-step" aria-live="polite">
@@ -105,13 +116,13 @@ export function PaymentForm({ plans, trialDays }) {
       </fieldset>
 
       {error ? (
-        <p className="error" role="alert">
+        <p className="form-error" role="alert">
           {error}
         </p>
       ) : null}
 
       {phase === "choosing" ? (
-        <button type="button" className="primary" onClick={start} disabled={busy}>
+        <button type="button" className="btn btn--primary" onClick={start} disabled={busy}>
           {busy ? "One moment" : "Continue to card details"}
         </button>
       ) : null}
@@ -174,11 +185,11 @@ function ConfirmCard({ planName, trialDays, onDone }) {
       </p>
       <PaymentElement options={{ layout: "tabs" }} />
       {error ? (
-        <p className="error" role="alert">
+        <p className="form-error" role="alert">
           {error}
         </p>
       ) : null}
-      <button type="submit" className="primary" disabled={!stripe || busy}>
+      <button type="submit" className="btn btn--primary" disabled={!stripe || busy}>
         {busy ? "Confirming with your bank" : `Start ${planName} free for ${trialDays} days`}
       </button>
     </form>

@@ -2,9 +2,10 @@
 
 /**
  * The shop's tabs (WFW 1.1): at the bottom on a phone, a left rail on a larger screen
- * (WFW 7). The wireframes carry five: Today, Stock, Products, Money and Tax. Tax is left
- * out, because VAT is out of scope (A29.8) and a tab to a screen that does not exist is a
- * promise the product cannot keep.
+ * (WFW 7). The wireframes carry five: Today, Stock, Products, Money and Tax. Tax was left
+ * out until 28 September because its screen did not exist. It exists now, as a threshold
+ * monitor and a list of dates rather than a VAT filing feature (A29.8), so the fifth tab is
+ * back. Settings is not a tab: it is reached from the top bar, as sheet 09 draws it.
  *
  * The icons are simple line drawings, so each tab is named by its word and the icon only
  * helps the eye find it.
@@ -38,6 +39,11 @@ const ICON = {
       <path d="M16.5 6.5a4 4 0 0 0-7 2.5v9.5M7 18.5h10M7 13h7" />
     </svg>
   ),
+  tax: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" />
+    </svg>
+  ),
 };
 
 /** @type {[string, string][]} */
@@ -46,6 +52,7 @@ const TABS = [
   ["stock", "Stock"],
   ["products", "Products"],
   ["money", "Money"],
+  ["tax", "Tax"],
 ];
 
 /** @param {{ shopId: string }} props */
@@ -59,6 +66,9 @@ export function ShopNav({ shopId }) {
         const current = path === href || path.startsWith(`${href}/`)
           // Records and discrepancies are opened from Money and Today, so they keep their tab lit.
           || (slug === "money" && path.startsWith(`${base}/records`))
+          || (slug === "stock" && path.startsWith(`${base}/returns`))
+          // Other-channel sales exist only to complete the VAT monitor's turnover.
+          || (slug === "tax" && path.startsWith(`${base}/other-sales`))
           || (slug === "today" && (path.startsWith(`${base}/discrepancies`) || path.startsWith(`${base}/notifications`)));
         return (
           <Link key={slug} href={href} aria-current={current ? "page" : undefined}>

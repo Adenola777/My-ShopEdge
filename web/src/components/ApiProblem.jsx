@@ -11,6 +11,8 @@
  * the seller's data.
  */
 
+import { redirect } from "next/navigation";
+
 /**
  * @param {import("@/lib/api").ApiResult} result
  * @param {{ what: string, notFound?: string }} copy
@@ -40,6 +42,11 @@ export function apiProblem(result, { what, notFound }) {
         signIn
       />
     );
+  }
+  if (result.status === 403 && String(result.data?.type ?? "").endsWith("/account_closing")) {
+    // A30.1: a closing account can do one thing, which is to cancel. Every screen that
+    // meets the refusal sends the seller to the page that offers it.
+    redirect("/account/closing");
   }
   if (result.status === 403) {
     return (

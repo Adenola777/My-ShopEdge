@@ -11,13 +11,13 @@ stamped `superseded_at` and a new row is inserted, inside one transaction. The u
 `product_costs_current_idx` allows one current cost per variant, so two concurrent writes
 cannot both leave a current row: the second fails rather than doubling the cost.
 
-**A known gap, not fixed here.** The contract also says a figure calculated last month
-still reconciles against the cost in force at the time. The figure queries in
-`products.py` read only the current cost (`superseded_at is null`) for every period, so a
-new cost changes past months' gross profit too. Checked on 24 September by reading
-`products.SQL` and the product detail query. Fixing it means choosing the cost by
-`effective_from` against each sale's date, which changes every profit figure and needs its
-own approval.
+The contract also says a figure calculated last month still reconciles against the cost in
+force at the time. Until 28 September the figure queries in `products.py` read only the
+current cost, so a new cost changed past months' gross profit too. On 28 September the
+owner approved taking Emergent AI's change (commit d87f6a0): the figures and coverage read
+the cost in force at the period's end, by `effective_from`, with `created_at` as the
+tie-break for two rows on one day. It is the cost at the end of the period, not at each
+sale's date, so a cost that changes inside a month applies to the whole of that month.
 
 A cost in a currency other than the shop's is refused. `cost_minor` is summed with sales
 in the shop's currency, and adding pence to cents would be a wrong figure presented as a
@@ -161,7 +161,8 @@ with sold as (
 ),
 costed as (
   select sold.*, exists (select 1 from product_costs pc
-                          where pc.sku_id = sold.sku_id and pc.superseded_at is null) as has_cost
+                          where pc.sku_id = sold.sku_id
+                            and pc.effective_from <= %(to)s) as has_cost
     from sold
 )
 select c.sku_id, p.title as product_title, c.units, c.gross_minor, c.has_cost,

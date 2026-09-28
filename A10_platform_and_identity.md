@@ -123,6 +123,18 @@ resolve the British Summer Time boundary correctly, with 23:30 UTC on 30 June fa
 
 ## A10.8 Object storage
 
+**Superseded on 28 September 2026 by the owner.** The file store is a private S3 bucket in
+London, `eu-west-2`, not Vercel Blob. Vercel documents signed Blob URLs only for its
+JavaScript SDK, so the Python service could not issue the signed upload and download URLs
+the contract requires, and every file operation stayed blocked. The owner first chose Neon
+object storage, and Neon answered `platform branchable-storage is not available in this
+region` for project `super-mouse-64697125`, which confirms the finding below. S3 signs URLs
+from Python, keeps the files in London, and offers Object Lock for the six-year invoice store.
+The key convention and the fifteen-minute signed URLs below still hold.
+`RUNBOOK_file_storage.md` sets the bucket up. The Vercel Blob store described below is no
+longer used.
+
+
 Neon does not offer object storage in the London region, so the file store is separate from
 the database. It is **Vercel Blob in `lhr1`**, which is London.
 

@@ -2,6 +2,9 @@
  * The top bar on every screen (WFW 1.1): the logo on the left, and inside a shop the
  * Updated stamp and the notification bell on the right.
  *
+ * Settings sits here rather than among the tabs, as wireframe sheet 09 places it, so the
+ * five tabs stay the five the wireframes carry.
+ *
  * The logo is `mse-logo-horizontal-notagline.svg` from `brand/`, drawn at 48 px high, which
  * makes it 129 px wide. A7.6 allows the lockup without the tagline from 110 px wide, and
  * forbids setting the wordmark in a font or setting the tagline on its own, which is what
@@ -74,6 +77,17 @@ export async function AppBar({ shopId }) {
                 <circle cx="16" cy="22.5" r="1.7" fill="currentColor" />
               </svg>
               {unread ? <span className="bell__dot">{unread > 9 ? "9+" : unread}</span> : null}
+            </a>
+            <a
+              className="bell"
+              href={`/shops/${encodeURIComponent(shopId)}/settings`}
+              aria-label="Settings and data"
+              data-testid="appbar-settings"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" />
+              </svg>
             </a>
           </div>
         )}

@@ -123,7 +123,10 @@ export default async function TikTokCallbackPage({ searchParams }) {
         statements is not switched on yet, so no figures appear until it is.
       </p>
       <p>
-        <Link className="btn btn--primary" href="/shops">Go to your shop</Link>
+        {/* A14.2: the step after connecting is S2 First sync, not Today. */}
+        <Link className="btn btn--primary" href={shop?.id ? `/shops/${shop.id}/sync` : "/shops"}>
+          See your shop being read
+        </Link>
       </p>
     </section>
   );

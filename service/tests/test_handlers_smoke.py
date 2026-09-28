@@ -33,7 +33,7 @@ os.environ.setdefault("NEON_AUTH_ISSUER", "https://test.invalid")
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.auth import Account, require_account
+from app.auth import Account, require_account, require_signed_in
 from app import discrepancies, products, records, settlements, shops, stock
 
 ACCOUNT = Account(
@@ -87,6 +87,7 @@ def check(name, fn):
 
 
 app.dependency_overrides[require_account] = lambda: ACCOUNT
+app.dependency_overrides[require_signed_in] = lambda: ACCOUNT
 app.dependency_overrides[shops.require_shop] = lambda: SHOP
 client = TestClient(app)
 
@@ -840,12 +841,12 @@ from app import me
 
 def me_and_shops():
     acct = (ACCOUNT.id, "owner@synthetic-uk-shop.test", "Synthetic UK Shop Ltd", "en-GB",
-            "Europe/London", "active", NOW, 1)
+            "Europe/London", "active", NOW, None, 1)
     shop = (SHOP, "tiktok_shop", "7495000000000000001", None, "Synthetic UK Shop", "GB",
             None, "GBP", "connected", None, None)
     me.tenant = with_conn(me, [
         ("from accounts a", Result(["id","email","display_name","locale","timezone","status",
-                                    "created_at","shop_count"], [acct])),
+                                    "created_at","deletion_scheduled_at","shop_count"], [acct])),
         ("from shops where connection_status", Result(["id","platform","tiktok_shop_id",
             "tiktok_shop_code","shop_name","region","seller_type","currency",
             "connection_status","first_synced_at","last_synced_at"], [shop])),
@@ -1052,11 +1053,16 @@ def returns_list():
     rets.tenant = with_conn(rets, [
         ("from returns r join return_reconciliation", Result(RET_COLS, rows)),
         ("from return_items where shop_id", Result(["c"], [(3,)])),
+        ("from return_items ri left join skus", Result(
+            ["id","return_id","sku_id","quantity","seller_check_status","checked_at","return_postage_minor","title","variant_label"],
+            [(UUID(int=99), UUID(int=16), SKU, 1, "pending", None, None, "Desk", "Black")])),
     ])
     r = client.get(f"/v1/shops/{SHOP}/returns?limit=1")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
     b = r.json()
     _assert(b["awaiting_check_count"] == 3 and b["next_cursor"], b)
+    _assert(b["returns"][0]["items"][0]["id"] == str(UUID(int=99)) and b["returns"][0]["items"][0]["product_title"] == "Desk",
+            "each return carries its items, so S8 can check them by id")
     _assert(b["returns"][0]["return_cost"]["amount_minor"] == 5100, "return costs are the amount lost (A4.2)")
     _assert(b["returns"][0]["refund"]["amount_minor"] == -12000, "the refund keeps its sign")
     b2 = client.get(f"/v1/shops/{SHOP}/returns").json()
@@ -1118,6 +1124,172 @@ def notifications_rules():
     notes.tenant = with_conn(notes, [("for update", Result(["status"], []))])
     _assert(client.patch(f"/v1/notifications/{UUID(int=5)}", json={"status": "read"}).status_code == 404)
 check("Notifications list with an unread count, and move one way only", notifications_rules)
+
+
+# --- cost uploads (CST-2). The store is replaced by a dictionary, because CI has no bucket.
+from app import cost_uploads as cu, storage as store
+
+UPLOAD = UUID("44444444-4444-4444-8444-444444444444")
+UP_KEY = f"uploads/{SHOP}/{UPLOAD}/nonce/costs.csv"
+UP_COLS = ["id", "filename", "storage_key", "status", "column_mapping", "rows_total",
+           "rows_matched", "rows_unmatched", "rows_duplicate", "confirmed_at", "created_at"]
+
+
+def upload_row(status, mapping=None):
+    return (UPLOAD, "costs.csv", UP_KEY, status, mapping, None, None, None, None, None, NOW)
+
+
+def uploads_without_a_bucket():
+    os.environ.pop("S3_BUCKET", None)
+    # No canned answer at all: an insert reached before the refusal would raise KeyError.
+    cu.tenant = with_conn(cu, [])
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads",
+                    json={"filename": "costs.csv", "content_type": "text/csv", "size_bytes": 10})
+    _assert(r.status_code == 503 and r.json()["code"] == "storage_unconfigured", r.text)
+check("A cost upload without a bucket answers 503 and writes nothing", uploads_without_a_bucket)
+
+
+def uploads_map_match_apply():
+    files = {UP_KEY: b"Seller SKU,Unit cost\nHAIR-BLUE,3.50\nNOPE,1.00\n"}
+    store.size_of = lambda k: len(files[k]) if k in files else (_ for _ in ()).throw(store.NotStored(k))
+    store.get_bytes = lambda k: files[k] if k in files else (_ for _ in ()).throw(store.NotStored(k))
+    store.put_bytes = lambda k, d, t: files.__setitem__(k, d)
+    mapping = {"match_on": "seller_sku", "key_column": "Seller SKU", "cost_column": "Unit cost",
+               "packing_column": None, "postage_column": None, "currency": "GBP"}
+    cu.tenant = with_conn(cu, [
+        ("from cost_uploads where id", Result(UP_COLS, [upload_row("mapped", mapping)])),
+        ("from shops where id", Result(["c"], [("GBP",)])),
+        ("update cost_uploads set column_mapping", Result([], [])),
+    ])
+    r = client.put(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/mapping", json=mapping)
+    _assert(r.status_code == 200 and r.json()["detected_columns"] == ["Seller SKU", "Unit cost"], r.text)
+    r = client.put(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/mapping", json={**mapping, "currency": "USD"})
+    _assert(r.status_code == 422, "a mapping in another currency is refused")
+    cu.tenant = with_conn(cu, [
+        ("from cost_uploads where id", Result(UP_COLS, [upload_row("mapped", mapping)])),
+        ("from skus where shop_id", Result(["id", "seller_sku", "tiktok_sku_id"], [(SKU, "HAIR-BLUE", "1729")])),
+        ("update cost_uploads set status = 'confirmed'", Result([], [])),
+    ])
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/match")
+    _assert(r.status_code == 200, r.text)
+    m = r.json()
+    _assert((m["rows_total"], m["rows_matched"], m["rows_unmatched"]) == (2, 1, 1), m)
+    _assert(UP_KEY.rsplit("/", 1)[0] + "/rows.json" in files, "the match is stored beside the file")
+    hit = [x["row_id"] for x in m["rows"] if x["outcome"] == "matched"]
+    miss = [x["row_id"] for x in m["rows"] if x["outcome"] == "unmatched"]
+    writes = []
+    class Recording(Conn):
+        def execute(self, sql, args=None):
+            if "product_costs" in sql: writes.append(" ".join(sql.split())[:30])
+            return super().execute(sql, args)
+    import contextlib
+    @contextlib.contextmanager
+    def rec(_a):
+        yield Recording([
+            ("from cost_uploads where id", Result(UP_COLS, [upload_row("confirmed", mapping)])),
+            ("from shops where id", Result(["c"], [("GBP",)])),
+            ("update product_costs", Result([], [])),
+            ("insert into product_costs", Result([], [])),
+            ("update cost_uploads set status = 'applied'", Result([], [])),
+        ])
+    cu.tenant = rec
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/apply", json={"apply_row_ids": miss})
+    _assert(r.status_code == 422 and not writes, "an unmatched row is refused before anything is written")
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/apply", json={"apply_row_ids": hit})
+    _assert(r.status_code == 200 and r.json()["rows_total"] == 2, "every row stays visible after apply")
+    _assert([w.split(" product_costs")[0] for w in writes] == ["update", "insert into"], writes)
+check("A cost upload maps, matches and applies only the confirmed matched rows", uploads_map_match_apply)
+
+
+# --- checkReturnItem (RET-3, RET-4, A30.2)
+
+ITEM = UUID("55555555-5555-4555-8555-555555555555")
+RET = UUID("66666666-6666-4666-8666-666666666666")
+ORDER = UUID("77777777-7777-4777-8777-777777777777")
+LINE = UUID("88888888-8888-4888-8888-888888888888")
+ITEM_COLS = ["id", "return_id", "sku_id", "quantity", "seller_check_status", "order_id", "currency"]
+
+
+def return_check():
+    import contextlib
+    writes = []
+    class Rec(Conn):
+        def execute(self, sql, args=None):
+            flat = " ".join(sql.split())
+            if flat.startswith(("insert", "update")): writes.append(flat[:40])
+            return super().execute(sql, args)
+    def make(status):
+        @contextlib.contextmanager
+        def fake(_a):
+            yield Rec([
+                ("from return_items ri join returns", Result(ITEM_COLS, [(ITEM, RET, SKU, 1, status, ORDER, "GBP")])),
+                ("from order_lines ol join orders", Result(["id", "d"], [(LINE, date(2026, 8, 3))])),
+                ("from product_costs", Result(["cost_minor"], [(324,)])),
+                ("insert into ledger_entries", Result([], [])),
+                ("insert into stock_movements", Result([], [])),
+                ("update stock_positions", Result([], [])),
+                ("update return_items", Result(["id", "return_id", "sku_id", "quantity", "seller_check_status", "checked_at", "return_postage_minor"],
+                                               [(ITEM, RET, SKU, 1, "unsellable", NOW, 285)])),
+            ])
+        return fake
+    url = f"/v1/shops/{SHOP}/return-items/{ITEM}/check"
+    rets.tenant = make("pending")
+    r = client.post(url, json={"seller_check_status": "unsellable", "return_postage": {"amount_minor": 285, "currency": "GBP"}})
+    _assert(r.status_code == 200, r.text)
+    _assert(r.json()["write_off"]["amount_minor"] == 324 and r.json()["stock_movements_created"] == 0, r.json())
+    _assert(sum(w.startswith("insert into ledger_entries") for w in writes) == 2, writes)
+    _assert(not any(w.startswith("insert into stock_movements") for w in writes), "unsellable makes no movement")
+    writes.clear()
+    rets.tenant = make("resellable")
+    r = client.post(url, json={"seller_check_status": "resellable"})
+    _assert(r.status_code == 409 and not writes, "a checked item is refused before anything is written")
+    r = client.post(url, json={"seller_check_status": "not_applicable", "return_postage": {"amount_minor": 1, "currency": "GBP"}})
+    _assert(r.status_code == 422, "postage on nothing-came-back is refused")
+check("checkReturnItem writes a write-off and postage, and refuses a second check", return_check)
+
+
+# --- account deletion (A30.1)
+from app import account_deletion as deletion
+
+def delete_and_cancel():
+    writes = []
+    def make(status):
+        import contextlib
+        @contextlib.contextmanager
+        def fake(_a):
+            class C(Conn):
+                def execute(self, sql, args=None):
+                    flat = " ".join(sql.split())
+                    if flat.startswith("update"): writes.append(flat[:40])
+                    return super().execute(sql, args)
+            yield C([
+                ("from accounts where id", Result(["email", "status", "deleted_at"], [(ACCOUNT.email, status, NOW)])),
+                ("update accounts set status = 'deleted'", Result(["deleted_at"], [(NOW,)])),
+                ("update tiktok_connections", Result([], [])),
+                ("update shops", Result([], [])),
+                ("from tiktok_invoices", Result(["m"], [(date(2026, 6, 30),)])),
+                ("update accounts set status = 'active'", Result(["id"], [(ACCOUNT.id,)] if status == "deleted" else [])),
+                ("select count(*) from shops", Result(["n"], [(1,)])),
+            ])
+        return fake
+    deletion.tenant = make("active")
+    r = client.request("DELETE", "/v1/me", json={"confirm_email": "someone@else.test"})
+    _assert(r.status_code == 422 and not writes, "a wrong email is refused before anything is written")
+    r = client.request("DELETE", "/v1/me", json={"confirm_email": ACCOUNT.email.upper()})
+    _assert(r.status_code == 202, r.text)
+    b = r.json()
+    _assert(b["scheduled_at"].startswith("2026-09-14") and b["cancel_by"] == b["scheduled_at"], b)
+    _assert(b["invoices_retained_until"] == "2032-06-30" and len(b["includes"]) == 5, b)
+    _assert(len(writes) == 3, writes)
+    writes.clear()
+    deletion.tenant = make("deleted")
+    r = client.request("DELETE", "/v1/me", json={"confirm_email": ACCOUNT.email})
+    _assert(r.status_code == 202 and not writes, "a repeat keeps the first dates and writes nothing")
+    r = client.post("/v1/me/deletion/cancel")
+    _assert(r.status_code == 200 and r.json()["shops_disconnected"] == 1, r.text)
+    deletion.tenant = make("active")
+    _assert(client.post("/v1/me/deletion/cancel").status_code == 409, "nothing to cancel")
+check("deleteMe closes the account with dates, and cancelAccountDeletion reopens it", delete_and_cancel)
 
 
 print()
