@@ -10,6 +10,12 @@
 !**/.env.example
 *.pem
 *.key
+# Added 28 September 2026 from Emergent AI's copy (Adenola777/MYSHOPEDGE).
+*.env
+credentials.json
+.credentials
+.pgdata/
+**/server.log
 node_modules/
 __pycache__/
 .DS_Store
