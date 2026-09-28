@@ -1,0 +1,72 @@
+/**
+ * S8 Return check, drawn to wireframe sheet 05. Built 28 September 2026 on checkReturnItem.
+ *
+ * It lists the returns with an item still to check, from listReturns with
+ * `awaiting_check=true`, and gives each waiting item the check form. The sheet shows one
+ * return; a seller with several sees each in turn on one page, so none is hidden behind
+ * another. Checked items are not listed, because a check is one way.
+ */
+
+import Link from "next/link";
+import { fetchShop, formatDate } from "@/lib/api";
+import { apiProblem } from "@/components/ApiProblem";
+import { Figure } from "@/components/Figure";
+import { ReturnCheckForm } from "@/components/ReturnCheckForm";
+
+export const metadata = { title: "Check returns" };
+
+/** @param {{ params: Promise<{ shopId: string }> }} props */
+export default async function ReturnsPage({ params }) {
+  const { shopId } = await params;
+  const result = await fetchShop(shopId, "/returns", { awaiting_check: "true" });
+  const problem = apiProblem(result, { what: "your returns" });
+  if (problem) return problem;
+
+  /** @type {import("@/lib/api-types").components["schemas"]["ReturnSummary"][]} */
+  const returns = result.data.returns ?? [];
+
+  return (
+    <section data-testid="returns-screen">
+      <header className="page-head">
+        <p className="crumb"><Link href={`/shops/${shopId}/stock`}>Stock</Link></p>
+        <h1>Check your returns</h1>
+        <p>Say whether each returned item can be sold again. Stock updates once.</p>
+      </header>
+
+      {returns.length === 0 ? (
+        <div className="card">
+          <p className="muted">There are no returns waiting for a check.</p>
+        </div>
+      ) : (
+        <div className="stack">
+          {returns.map((r) => {
+            const waiting = (r.items ?? []).filter((i) => i.seller_check_status === "pending");
+            return waiting.map((item) => (
+              <div className="card stack" key={item.id} data-testid="return-to-check">
+                <div>
+                  <h2>Order {r.tiktok_order_id}</h2>
+                  <ul className="rows">
+                    <li>
+                      <span>Product</span>
+                      <strong>
+                        {[item.product_title, item.variant_label].filter(Boolean).join(", ") || "A product TikTok did not name"}
+                        {`, ${item.quantity} ${item.quantity === 1 ? "unit" : "units"}`}
+                      </strong>
+                    </li>
+                    <li>
+                      <span>TikTok refund</span>
+                      <Figure amount={r.refund} reason="Not refunded yet" />
+                    </li>
+                    {r.requested_at && <li><span>Requested</span><strong>{formatDate(r.requested_at)}</strong></li>}
+                  </ul>
+                </div>
+                <ReturnCheckForm shopId={shopId} itemId={item.id} quantity={item.quantity}
+                                 currency={r.refund?.currency ?? "GBP"} />
+              </div>
+            ));
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

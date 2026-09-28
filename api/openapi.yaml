@@ -4595,6 +4595,26 @@ components:
           - 'null'
           allOf:
           - $ref: '#/components/schemas/Money'
+        items:
+          type: array
+          description: 'The return''s items, so S8 can check each one by its id. Added 28 September
+
+            2026, because checkReturnItem takes an item id and no operation returned one.
+
+            '
+          items:
+            allOf:
+            - $ref: '#/components/schemas/ReturnItem'
+            - type: object
+              properties:
+                product_title:
+                  type:
+                  - string
+                  - 'null'
+                variant_label:
+                  type:
+                  - string
+                  - 'null'
     ReturnItem:
       type: object
       required:

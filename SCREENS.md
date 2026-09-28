@@ -22,7 +22,7 @@ Five things were checked, and each is named against the line it produced:
 | Cut by a later ruling | **2** | S18 and S19, both cut by A15 |
 | **Live screens** | **36** | This is the number that matters |
 | Wireframed | 15 | S1 to S15 only |
-| Built in code | 14 | S1, S6, S7, S9, S10, S11, S14, S17, S21, S22, S25, S26, S33, S34. Sign-in works on the live site since 24 September. No screen has shown a real shop's figures, because no shop is connected and nothing reads TikTok's data yet |
+| Built in code | 25 | S1, S2, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S21, S22, S24, S25, S26, S27, S28, S29, S32, S33 and S34, counted from this register on 28 September. Sign-in works on the live site since 24 September. No screen has shown a real shop's figures, because no shop is connected and nothing reads TikTok's data yet |
 
 **`CLAUDE.md` and `README_v0.2.md` both said "39 screens". That number is wrong twice.**
 No ruling defines an S39. The only place S39 appears in the whole repository is
@@ -51,7 +51,7 @@ by side, except the last, which carries S15 alone.
 | S5 | Tax profile | Onboarding | Wireframes | 04 | |
 | S6 | Today | Core | Wireframes, amended A15.5 | 04 | `shops/[shopId]/today` |
 | S7 | Stock | Core | Wireframes | 05 | `shops/[shopId]/stock` |
-| S8 | Return check | Core | Wireframes | 05 | |
+| S8 | Return check | Core | Wireframes | 05 | `shops/[shopId]/returns`, from a link on Stock (28 September). Several waiting items show on one page, one card each, and the "This will" card names the write-off rule rather than a figure, because the service values it |
 | S9 | Products | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products` |
 | S10 | Product detail | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products/[productId]` |
 | S11 | Money | Core | Wireframes, revised A18 | 07 | `shops/[shopId]/money` |

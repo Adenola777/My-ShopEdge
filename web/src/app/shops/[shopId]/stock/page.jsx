@@ -52,6 +52,7 @@ export default async function StockPage({ params, searchParams }) {
       <header className="page-head">
         <h1>Stock</h1>
         <p>What you have, as TikTok last reported it with your adjustments. Counted {formatDate(as_of, { time: true })}.</p>
+        <p><Link href={`/shops/${shopId}/returns`} data-testid="returns-link">Check returned items</Link></p>
       </header>
 
       <nav className="switch" aria-label="Show">

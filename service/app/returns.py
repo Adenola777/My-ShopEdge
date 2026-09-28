@@ -1,9 +1,7 @@
 """Returns. `listReturns` and `getReturnMetrics`, tracing RET-1 and RET-6.
 
-`checkReturnItem` is not served. A4 rules what a check does (a resellable unit makes one
-stock movement, an unsellable unit a write-off, a refund-only item neither), but four things
-it must write to the append-only ledger are not ruled, and a wrong entry there cannot be
-removed. CLAUDE.md lists the four questions.
+`checkReturnItem` is served since 28 September 2026, on the four rules the owner accepted
+that day (A30.2). It is at the end of this file.
 
 LISTING
 
@@ -39,12 +37,14 @@ from datetime import date, datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Path, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .auth import Account, require_account
-from .dates import business_today
+from .dates import business_today, now_utc
 from .db import tenant
+from .idempotency import record, replay, request_hash
 from .money import Money, money
 from .problems import Problem
 from .settlements import MAX_LIMIT, decode_cursor, encode_cursor
@@ -53,6 +53,19 @@ from .shops import require_shop
 router = APIRouter(tags=["Returns"])
 
 LONDON_DAY = "((coalesce(r.refund_completed_at, r.requested_at)) at time zone 'Europe/London')::date"
+
+
+class ListedItem(BaseModel):
+    """A return item as S8 needs it: its id to check, and which product it is."""
+    id: UUID
+    return_id: UUID
+    sku_id: UUID | None = None
+    quantity: int = Field(ge=1)
+    seller_check_status: Literal["pending", "resellable", "unsellable", "not_applicable"]
+    checked_at: datetime | None = None
+    return_postage: Money | None = None
+    product_title: str | None = None
+    variant_label: str | None = None
 
 
 class ReturnSummary(BaseModel):
@@ -68,6 +81,7 @@ class ReturnSummary(BaseModel):
     refund_completed_at: datetime | None = None
     items_awaiting_check: int = Field(default=0, ge=0)
     return_cost: Money | None = None
+    items: list[ListedItem] = []
 
 
 class ReturnPage(BaseModel):
@@ -123,6 +137,19 @@ def list_returns(
             "and seller_check_status = 'pending'",
             (str(shop_id),),
         ).fetchone()
+        # The page's items in one query, so S8 can check each by its id.
+        ids = [str(r["id"]) for r in rows[:limit]]
+        item_rows = conn.execute(
+            "select ri.id, ri.return_id, ri.sku_id, ri.quantity, ri.seller_check_status, "
+            "ri.checked_at, ri.return_postage_minor, p.title, k.variant_label "
+            "from return_items ri left join skus k on k.id = ri.sku_id "
+            "left join products p on p.id = k.product_id "
+            "where ri.return_id = any(%s::uuid[]) order by ri.created_at, ri.id",
+            (ids,),
+        ).fetchall() if ids else []
+    by_return: dict[str, list] = {}
+    for it in item_rows:
+        by_return.setdefault(str(it[1]), []).append(it)
 
     next_cursor = None
     if len(rows) > limit:
@@ -142,6 +169,15 @@ def list_returns(
             requested_at=r["requested_at"], refund_completed_at=r["refund_completed_at"],
             items_awaiting_check=int(r["items_awaiting_check"] or 0),
             return_cost=money(lost, cur_code) if int(r["cost_entries"]) > 0 else None,
+            items=[
+                ListedItem(
+                    id=it[0], return_id=it[1], sku_id=it[2], quantity=it[3],
+                    seller_check_status=it[4], checked_at=it[5],
+                    return_postage=money(int(it[6]), cur_code) if it[6] is not None else None,
+                    product_title=it[7], variant_label=it[8],
+                )
+                for it in by_return.get(str(r["id"]), [])
+            ],
         ))
     return ReturnPage(returns=out, awaiting_check_count=int(waiting[0]) if waiting else 0,
                       next_cursor=next_cursor)
@@ -245,3 +281,171 @@ def get_return_metrics(
             for r in products[:5]
         ],
     )
+
+
+# --- checkReturnItem, RET-3 and RET-4 ------------------------------------------------------
+#
+# The seller says whether a returned item came back usable. What each answer writes, from
+# the contract, A4 and the owner's four rulings of 28 September 2026 (A30.2):
+#
+#   resellable      one stock movement of type return_resellable, and the units added to
+#                   the seller's adjustment, because TikTok does not move stock on a return
+#                   (A4, STK-8). No write-off.
+#   unsellable      a write-off at the cost in force when the unit sold, and no stock
+#                   movement, as the contract states. The units are counted in written_off.
+#   not_applicable  nothing came back: no movement, no write-off, and no postage (A4.3).
+#
+# For all three, the checked units come off coming_back (A30.2 rule 4), never below zero.
+# Return postage, where given, is a return_cost entry. Every entry attaches to the order
+# line of the returned variant (rule 1) and carries the date of the check (rule 3). A check
+# is one way, so a second one answers 409.
+#
+# **Refused rather than guessed.** A write-off needs a cost. Where the variant had no cost
+# in force when it sold, the check is refused with a reason, because a zero write-off would
+# understate what the seller lost. Where the order holds no line for the returned variant,
+# the check is refused too, because rule 1 has nothing to attach to.
+
+
+class CheckIn(BaseModel):
+    seller_check_status: Literal["resellable", "unsellable", "not_applicable"]
+    return_postage: Money | None = None
+
+
+class ReturnItemOut(BaseModel):
+    id: UUID
+    return_id: UUID
+    sku_id: UUID | None = None
+    quantity: int = Field(ge=1)
+    seller_check_status: Literal["pending", "resellable", "unsellable", "not_applicable"]
+    checked_at: datetime | None = None
+    return_postage: Money | None = None
+
+
+class CheckOut(BaseModel):
+    item: ReturnItemOut
+    stock_movements_created: int = Field(ge=0, le=1)
+    write_off: Money | None = None
+
+
+@router.post("/shops/{shopId}/return-items/{returnItemId}/check", response_model=CheckOut)
+def check_return_item(
+    body: CheckIn,
+    account: Annotated[Account, Depends(require_account)],
+    shop_id: Annotated[UUID, Depends(require_shop)],
+    item_id: Annotated[UUID, Path(alias="returnItemId")],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+):
+    status = body.seller_check_status
+    postage = body.return_postage
+    if postage is not None and postage.amount_minor < 0:
+        raise Problem(422, "validation_failed", "Return postage cannot be negative.")
+    if status == "not_applicable" and postage is not None and postage.amount_minor > 0:
+        raise Problem(422, "validation_failed", "Nothing came back, so no return postage was paid.")
+
+    op = "checkReturnItem"
+    digest = request_hash(str(shop_id), str(item_id), status,
+                          postage.amount_minor if postage else None)
+    with tenant(account.id) as conn:
+        again = replay(conn, account.id, op, idempotency_key, digest)
+        if again:
+            return JSONResponse(status_code=again[0], content=again[1])
+
+        row = conn.execute(
+            "select ri.id, ri.return_id, ri.sku_id, ri.quantity, ri.seller_check_status, "
+            "r.order_id, trim(s.currency) "
+            "from return_items ri join returns r on r.id = ri.return_id "
+            "join shops s on s.id = ri.shop_id "
+            "where ri.id = %s and ri.shop_id = %s for update of ri",
+            (str(item_id), str(shop_id)),
+        ).fetchone()
+        if row is None:
+            # The same answer for another account's item, for the reason in shops.py.
+            raise Problem(404, "return_item_not_found", "That returned item was not found.")
+        _, return_id, sku_id, quantity, current, order_id, currency = row
+        currency = currency or "GBP"
+        if current != "pending":
+            raise Problem(409, "already_checked", "This item has already been checked. Checking is one way.")
+        if postage is not None and postage.currency != currency:
+            raise Problem(422, "validation_failed",
+                          f"The postage is in {postage.currency} and this shop sells in {currency}.")
+
+        writes_ledger = status == "unsellable" or (postage is not None and postage.amount_minor > 0)
+        line = None
+        if writes_ledger:
+            line = conn.execute(
+                "select ol.id, (o.order_created_at at time zone 'Europe/London')::date "
+                "from order_lines ol join orders o on o.id = ol.order_id "
+                "where ol.order_id = %s and ol.sku_id = %s order by ol.id limit 1",
+                (str(order_id), str(sku_id) if sku_id else None),
+            ).fetchone()
+            if line is None:
+                raise Problem(422, "no_order_line",
+                              "The order holds no line for this variant, so nothing can be recorded against it.")
+
+        write_off_minor = None
+        if status == "unsellable":
+            cost = conn.execute(
+                "select cost_minor from product_costs where shop_id = %s and sku_id = %s "
+                "and effective_from <= %s order by effective_from desc, created_at desc limit 1",
+                (str(shop_id), str(sku_id), line[1]),
+            ).fetchone()
+            if cost is None:
+                raise Problem(422, "no_cost",
+                              "This variant had no cost when it sold, so the write-off cannot be worked out. "
+                              "Add its cost, then check the item again.")
+            write_off_minor = int(cost[0]) * int(quantity)
+
+        now = now_utc()
+        month = business_today(now).replace(day=1)
+        ref = f"return_item:{item_id}"
+
+        def post(entry_type: str, category: str, amount: int) -> None:
+            conn.execute(
+                "insert into ledger_entries (shop_id, order_id, return_id, order_line_id, sku_id, "
+                "entry_type, category, amount_minor, currency, occurred_at, basis_month, source, "
+                "source_ref, attribution) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                "'seller', %s, 'direct')",
+                (str(shop_id), str(order_id), str(return_id), str(line[0]), str(sku_id),
+                 entry_type, category, -amount, currency, now, month, ref),
+            )
+
+        if write_off_minor:
+            post("write_off", "stock_written_off", write_off_minor)
+        if postage is not None and postage.amount_minor > 0:
+            post("return_cost", "return_shipping", postage.amount_minor)
+
+        movements = 0
+        if status == "resellable" and sku_id is not None:
+            conn.execute(
+                "insert into stock_movements (shop_id, sku_id, movement_type, quantity, "
+                "return_id, return_item_id, created_by) values (%s, %s, 'return_resellable', %s, %s, %s, %s)",
+                (str(shop_id), str(sku_id), int(quantity), str(return_id), str(item_id), str(account.id)),
+            )
+            movements = 1
+        if sku_id is not None:
+            conn.execute(
+                "update stock_positions set "
+                "coming_back = greatest(coming_back - %(q)s, 0), "
+                "adjusted_delta = adjusted_delta + case when %(st)s = 'resellable' then %(q)s else 0 end, "
+                "written_off = written_off + case when %(st)s = 'unsellable' then %(q)s else 0 end "
+                "where shop_id = %(shop)s and sku_id = %(sku)s",
+                {"q": int(quantity), "st": status, "shop": str(shop_id), "sku": str(sku_id)},
+            )
+
+        updated = conn.execute(
+            "update return_items set seller_check_status = %s, checked_at = %s, checked_by = %s, "
+            "return_postage_minor = %s where id = %s "
+            "returning id, return_id, sku_id, quantity, seller_check_status, checked_at, return_postage_minor",
+            (status, now, str(account.id), postage.amount_minor if postage else None, str(item_id)),
+        ).fetchone()
+        out = CheckOut(
+            item=ReturnItemOut(
+                id=updated[0], return_id=updated[1], sku_id=updated[2], quantity=updated[3],
+                seller_check_status=updated[4], checked_at=updated[5],
+                return_postage=money(int(updated[6]), currency) if updated[6] is not None else None,
+            ),
+            stock_movements_created=movements,
+            write_off=money(write_off_minor, currency) if write_off_minor else None,
+        )
+        record(conn, account.id, op, idempotency_key, digest, 200, out.model_dump(mode="json"))
+    return out

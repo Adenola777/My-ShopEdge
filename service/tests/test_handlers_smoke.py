@@ -1052,11 +1052,16 @@ def returns_list():
     rets.tenant = with_conn(rets, [
         ("from returns r join return_reconciliation", Result(RET_COLS, rows)),
         ("from return_items where shop_id", Result(["c"], [(3,)])),
+        ("from return_items ri left join skus", Result(
+            ["id","return_id","sku_id","quantity","seller_check_status","checked_at","return_postage_minor","title","variant_label"],
+            [(UUID(int=99), UUID(int=16), SKU, 1, "pending", None, None, "Desk", "Black")])),
     ])
     r = client.get(f"/v1/shops/{SHOP}/returns?limit=1")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
     b = r.json()
     _assert(b["awaiting_check_count"] == 3 and b["next_cursor"], b)
+    _assert(b["returns"][0]["items"][0]["id"] == str(UUID(int=99)) and b["returns"][0]["items"][0]["product_title"] == "Desk",
+            "each return carries its items, so S8 can check them by id")
     _assert(b["returns"][0]["return_cost"]["amount_minor"] == 5100, "return costs are the amount lost (A4.2)")
     _assert(b["returns"][0]["refund"]["amount_minor"] == -12000, "the refund keeps its sign")
     b2 = client.get(f"/v1/shops/{SHOP}/returns").json()
@@ -1193,6 +1198,53 @@ def uploads_map_match_apply():
     _assert(r.status_code == 200 and r.json()["rows_total"] == 2, "every row stays visible after apply")
     _assert([w.split(" product_costs")[0] for w in writes] == ["update", "insert into"], writes)
 check("A cost upload maps, matches and applies only the confirmed matched rows", uploads_map_match_apply)
+
+
+# --- checkReturnItem (RET-3, RET-4, A30.2)
+
+ITEM = UUID("55555555-5555-4555-8555-555555555555")
+RET = UUID("66666666-6666-4666-8666-666666666666")
+ORDER = UUID("77777777-7777-4777-8777-777777777777")
+LINE = UUID("88888888-8888-4888-8888-888888888888")
+ITEM_COLS = ["id", "return_id", "sku_id", "quantity", "seller_check_status", "order_id", "currency"]
+
+
+def return_check():
+    import contextlib
+    writes = []
+    class Rec(Conn):
+        def execute(self, sql, args=None):
+            flat = " ".join(sql.split())
+            if flat.startswith(("insert", "update")): writes.append(flat[:40])
+            return super().execute(sql, args)
+    def make(status):
+        @contextlib.contextmanager
+        def fake(_a):
+            yield Rec([
+                ("from return_items ri join returns", Result(ITEM_COLS, [(ITEM, RET, SKU, 1, status, ORDER, "GBP")])),
+                ("from order_lines ol join orders", Result(["id", "d"], [(LINE, date(2026, 8, 3))])),
+                ("from product_costs", Result(["cost_minor"], [(324,)])),
+                ("insert into ledger_entries", Result([], [])),
+                ("insert into stock_movements", Result([], [])),
+                ("update stock_positions", Result([], [])),
+                ("update return_items", Result(["id", "return_id", "sku_id", "quantity", "seller_check_status", "checked_at", "return_postage_minor"],
+                                               [(ITEM, RET, SKU, 1, "unsellable", NOW, 285)])),
+            ])
+        return fake
+    url = f"/v1/shops/{SHOP}/return-items/{ITEM}/check"
+    rets.tenant = make("pending")
+    r = client.post(url, json={"seller_check_status": "unsellable", "return_postage": {"amount_minor": 285, "currency": "GBP"}})
+    _assert(r.status_code == 200, r.text)
+    _assert(r.json()["write_off"]["amount_minor"] == 324 and r.json()["stock_movements_created"] == 0, r.json())
+    _assert(sum(w.startswith("insert into ledger_entries") for w in writes) == 2, writes)
+    _assert(not any(w.startswith("insert into stock_movements") for w in writes), "unsellable makes no movement")
+    writes.clear()
+    rets.tenant = make("resellable")
+    r = client.post(url, json={"seller_check_status": "resellable"})
+    _assert(r.status_code == 409 and not writes, "a checked item is refused before anything is written")
+    r = client.post(url, json={"seller_check_status": "not_applicable", "return_postage": {"amount_minor": 1, "currency": "GBP"}})
+    _assert(r.status_code == 422, "postage on nothing-came-back is refused")
+check("checkReturnItem writes a write-off and postage, and refuses a second check", return_check)
 
 
 print()

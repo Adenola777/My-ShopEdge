@@ -2036,6 +2036,14 @@ export interface components {
             refund_completed_at?: string | null;
             items_awaiting_check?: number;
             return_cost?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+            /**
+             * @description The return's items, so S8 can check each one by its id. Added 28 September
+             *     2026, because checkReturnItem takes an item id and no operation returned one.
+             */
+            items?: (components["schemas"]["ReturnItem"] & {
+                product_title?: string | null;
+                variant_label?: string | null;
+            })[];
         };
         ReturnItem: {
             /** Format: uuid */

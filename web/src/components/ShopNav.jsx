@@ -66,6 +66,7 @@ export function ShopNav({ shopId }) {
         const current = path === href || path.startsWith(`${href}/`)
           // Records and discrepancies are opened from Money and Today, so they keep their tab lit.
           || (slug === "money" && path.startsWith(`${base}/records`))
+          || (slug === "stock" && path.startsWith(`${base}/returns`))
           // Other-channel sales exist only to complete the VAT monitor's turnover.
           || (slug === "tax" && path.startsWith(`${base}/other-sales`))
           || (slug === "today" && (path.startsWith(`${base}/discrepancies`) || path.startsWith(`${base}/notifications`)));
