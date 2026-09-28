@@ -1120,6 +1120,81 @@ def notifications_rules():
 check("Notifications list with an unread count, and move one way only", notifications_rules)
 
 
+# --- cost uploads (CST-2). The store is replaced by a dictionary, because CI has no bucket.
+from app import cost_uploads as cu, storage as store
+
+UPLOAD = UUID("44444444-4444-4444-8444-444444444444")
+UP_KEY = f"uploads/{SHOP}/{UPLOAD}/nonce/costs.csv"
+UP_COLS = ["id", "filename", "storage_key", "status", "column_mapping", "rows_total",
+           "rows_matched", "rows_unmatched", "rows_duplicate", "confirmed_at", "created_at"]
+
+
+def upload_row(status, mapping=None):
+    return (UPLOAD, "costs.csv", UP_KEY, status, mapping, None, None, None, None, None, NOW)
+
+
+def uploads_without_a_bucket():
+    os.environ.pop("S3_BUCKET", None)
+    # No canned answer at all: an insert reached before the refusal would raise KeyError.
+    cu.tenant = with_conn(cu, [])
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads",
+                    json={"filename": "costs.csv", "content_type": "text/csv", "size_bytes": 10})
+    _assert(r.status_code == 503 and r.json()["code"] == "storage_unconfigured", r.text)
+check("A cost upload without a bucket answers 503 and writes nothing", uploads_without_a_bucket)
+
+
+def uploads_map_match_apply():
+    files = {UP_KEY: b"Seller SKU,Unit cost\nHAIR-BLUE,3.50\nNOPE,1.00\n"}
+    store.size_of = lambda k: len(files[k]) if k in files else (_ for _ in ()).throw(store.NotStored(k))
+    store.get_bytes = lambda k: files[k] if k in files else (_ for _ in ()).throw(store.NotStored(k))
+    store.put_bytes = lambda k, d, t: files.__setitem__(k, d)
+    mapping = {"match_on": "seller_sku", "key_column": "Seller SKU", "cost_column": "Unit cost",
+               "packing_column": None, "postage_column": None, "currency": "GBP"}
+    cu.tenant = with_conn(cu, [
+        ("from cost_uploads where id", Result(UP_COLS, [upload_row("mapped", mapping)])),
+        ("from shops where id", Result(["c"], [("GBP",)])),
+        ("update cost_uploads set column_mapping", Result([], [])),
+    ])
+    r = client.put(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/mapping", json=mapping)
+    _assert(r.status_code == 200 and r.json()["detected_columns"] == ["Seller SKU", "Unit cost"], r.text)
+    r = client.put(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/mapping", json={**mapping, "currency": "USD"})
+    _assert(r.status_code == 422, "a mapping in another currency is refused")
+    cu.tenant = with_conn(cu, [
+        ("from cost_uploads where id", Result(UP_COLS, [upload_row("mapped", mapping)])),
+        ("from skus where shop_id", Result(["id", "seller_sku", "tiktok_sku_id"], [(SKU, "HAIR-BLUE", "1729")])),
+        ("update cost_uploads set status = 'confirmed'", Result([], [])),
+    ])
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/match")
+    _assert(r.status_code == 200, r.text)
+    m = r.json()
+    _assert((m["rows_total"], m["rows_matched"], m["rows_unmatched"]) == (2, 1, 1), m)
+    _assert(UP_KEY.rsplit("/", 1)[0] + "/rows.json" in files, "the match is stored beside the file")
+    hit = [x["row_id"] for x in m["rows"] if x["outcome"] == "matched"]
+    miss = [x["row_id"] for x in m["rows"] if x["outcome"] == "unmatched"]
+    writes = []
+    class Recording(Conn):
+        def execute(self, sql, args=None):
+            if "product_costs" in sql: writes.append(" ".join(sql.split())[:30])
+            return super().execute(sql, args)
+    import contextlib
+    @contextlib.contextmanager
+    def rec(_a):
+        yield Recording([
+            ("from cost_uploads where id", Result(UP_COLS, [upload_row("confirmed", mapping)])),
+            ("from shops where id", Result(["c"], [("GBP",)])),
+            ("update product_costs", Result([], [])),
+            ("insert into product_costs", Result([], [])),
+            ("update cost_uploads set status = 'applied'", Result([], [])),
+        ])
+    cu.tenant = rec
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/apply", json={"apply_row_ids": miss})
+    _assert(r.status_code == 422 and not writes, "an unmatched row is refused before anything is written")
+    r = client.post(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/apply", json={"apply_row_ids": hit})
+    _assert(r.status_code == 200 and r.json()["rows_total"] == 2, "every row stays visible after apply")
+    _assert([w.split(" product_costs")[0] for w in writes] == ["update", "insert into"], writes)
+check("A cost upload maps, matches and applies only the confirmed matched rows", uploads_map_match_apply)
+
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")

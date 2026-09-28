@@ -14,3 +14,5 @@ cryptography>=42.0
 # the file through defusedxml when it is installed, which refuses entity expansion attacks.
 openpyxl>=3.1
 defusedxml>=0.7
+# The file store (storage.py): a private S3 bucket in eu-west-2, owner's choice of 28 September.
+boto3>=1.35
