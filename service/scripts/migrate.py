@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -48,6 +49,24 @@ create table if not exists schema_migrations (
   backfilled boolean     not null default false
 )
 """
+
+
+# Building from empty, fixed 29 September 2026 after the QA of 25 September found that it
+# could not be done (audit/QA_end_to_end_25_september.md, faults 4 and 5).
+#
+# The base file already holds migrations 0001 to 0009, each marked by a line such as
+# `-- ---------- 0001_roles_and_grants.sql`, and 0002 fails when run a second time. When the
+# base file is applied, the migrations it names are recorded as backfilled rather than run,
+# which is how the Neon branches were recorded. The names are read from the file itself.
+INCLUDED = re.compile(r"^-- ---------- (\d{4}_[a-z0-9_]+\.sql)\s*$", re.MULTILINE)
+
+# 0011 reads neon_auth.users_sync, which only 0016 creates on a branch Neon Auth does not
+# reach. 0016 does nothing where the table exists, so running it first is safe.
+RUN_FIRST = {"0011_identity_bridge.sql": "0016_neon_auth_standin.sql"}
+
+
+def included_in_base(base: Path) -> list[str]:
+    return INCLUDED.findall(base.read_text())
 
 
 def migration_files() -> list[Path]:
@@ -106,21 +125,52 @@ def main() -> int:
         print(f"Up to date. {len(applied)} migrations applied.")
         return 0
 
+    by_name = {p.name: p for p in files}
+    done: set[str] = set()
+    count = 0
     for path in pending:
-        sql = path.read_text()
-        print(f"applying {path.name} ... ", end="", flush=True)
-        # Rule 3: the migration and its ledger row share one transaction.
-        with psycopg.connect(url) as conn:
-            with conn.transaction():
-                conn.execute(sql)
-                conn.execute(
-                    "insert into schema_migrations (filename, checksum) values (%s, %s)",
-                    (path.name, checksum(path)),
-                )
-        print("done")
+        if path.name in done:
+            continue
+        first = RUN_FIRST.get(path.name)
+        if first and first in by_name and first not in applied and first not in done:
+            with psycopg.connect(url) as conn:
+                table = conn.execute("select to_regclass('neon_auth.users_sync')").fetchone()[0]
+            if table is None:
+                count += _apply(url, by_name[first], note=f" (before {path.name}, which needs it)")
+                done.add(first)
+        count += _apply(url, path)
+        done.add(path.name)
+        if path.name == BASE:
+            for name in included_in_base(path):
+                if name in by_name and name not in applied:
+                    _record_backfilled(url, by_name[name])
+                    done.add(name)
 
-    print(f"\n{len(pending)} applied.")
+    print(f"\n{count} applied.")
     return 0
+
+
+def _apply(url: str, path: Path, note: str = "") -> int:
+    print(f"applying {path.name}{note} ... ", end="", flush=True)
+    # Rule 3: the migration and its ledger row share one transaction.
+    with psycopg.connect(url) as conn:
+        with conn.transaction():
+            conn.execute(path.read_text())
+            conn.execute(
+                "insert into schema_migrations (filename, checksum) values (%s, %s)",
+                (path.name, checksum(path)),
+            )
+    print("done")
+    return 1
+
+
+def _record_backfilled(url: str, path: Path) -> None:
+    print(f"recording {path.name} as backfilled, because {BASE} contains it")
+    with psycopg.connect(url) as conn:
+        conn.execute(
+            "insert into schema_migrations (filename, checksum, backfilled) values (%s, %s, true)",
+            (path.name, checksum(path)),
+        )
 
 
 if __name__ == "__main__":
