@@ -564,6 +564,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/export/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A data download's status and signed link
+         * @description requestAccountExport says "Poll the job", and the contract had no operation to poll
+         *     it with, so this one was added on 29 September 2026 when the export was built.
+         *     `download_url` is present only while the status is `ready`, and lives fifteen
+         *     minutes. The archive itself lives seven days, after which the status reads
+         *     `expired` and a new download can be requested.
+         */
+        get: operations["getAccountExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shopId}/exports": {
         parameters: {
             query?: never;
@@ -3280,6 +3304,30 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["ForbiddenShop"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getAccountExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
         };
     };
     createExport: {

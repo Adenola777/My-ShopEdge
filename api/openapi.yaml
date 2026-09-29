@@ -1199,6 +1199,36 @@ paths:
           $ref: '#/components/responses/ForbiddenShop'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /me/export/{exportId}:
+    get:
+      tags:
+      - Account
+      summary: A data download's status and signed link
+      description: |
+        requestAccountExport says "Poll the job", and the contract had no operation to poll
+        it with, so this one was added on 29 September 2026 when the export was built.
+        `download_url` is present only while the status is `ready`, and lives fifteen
+        minutes. The archive itself lives seven days, after which the status reads
+        `expired` and a new download can be requested.
+      operationId: getAccountExport
+      parameters:
+      - name: exportId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /shops/{shopId}/exports:
     post:
       tags:

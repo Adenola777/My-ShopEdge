@@ -20,6 +20,7 @@ from . import (
     cost_uploads,
     costs,
     discrepancies,
+    exports,
     insights,
     me,
     notifications,
@@ -91,6 +92,7 @@ app.include_router(connections.router, prefix="/v1")
 app.include_router(cost_uploads.router, prefix="/v1")
 app.include_router(costs.router, prefix="/v1")
 app.include_router(discrepancies.router, prefix="/v1")
+app.include_router(exports.router, prefix="/v1")
 app.include_router(insights.router, prefix="/v1")
 app.include_router(me.router, prefix="/v1")
 app.include_router(notifications.router, prefix="/v1")
