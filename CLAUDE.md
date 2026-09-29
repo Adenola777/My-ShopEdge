@@ -140,6 +140,19 @@ across on 28 September. The copy step was refused by that session's safety check
 not happened. Treat Emergent's claims of passing tests as claims: its code fails this
 repository's contract test and lint.
 
+## The demo shop, set up 29 September 2026
+
+TikTok's review blocks a real connection (A24), so the owner chose on 29 September to walk
+the dashboard on made-up data. Nothing in it touches production data.
+
+| Piece | Value |
+|---|---|
+| Service | Render `My-ShopEdge-demo`, `srv-datltbflot8c7383bnf0`, `https://my-shopedge-demo.onrender.com`, free plan, Frankfurt, deploys branch `claude/gifted-ride-rmmuc6` |
+| Database | The development branch. `DATABASE_URL` is set by the owner in Render, never in this session |
+| Data | `testdata/load_demo.py` gives `inspirecraftglobal@gmail.com` a shop named "Demo shop (sample data)" from the year dataset, with costs from 1 January 2025 and a Growth trial whose customer id begins `demo_`. It runs before the service starts and adds nothing once the shop exists |
+| Site | The Vercel preview of `claude/gifted-ride-rmmuc6`, whose `NEXT_PUBLIC_API_BASE_URL` is set for that branch alone to the demo service. Its address is on the sign-in allow-list of the production branch |
+| Schema | 0026 and 0027 were applied to the development branch on 29 September, each in one transaction with its record and checksum. Neither is on staging or production |
+
 ## The database rules that are easy to break
 
 Four hand rolled roles exist: `mse_owner`, `mse_app`, `mse_analytics`, `mse_migrator`.
