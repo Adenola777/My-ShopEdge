@@ -132,3 +132,10 @@ is the same for both apps (A24.3).
 `services.tiktokshop.com` link, and returns `user_type` 0, is not recorded anywhere in this
 repository. The first connection answers it: `connections.py` refuses any other `user_type`
 with `not_a_seller_account`.
+
+**Answered, 29 September 2026.** The custom app authorised through the same link. At 17:52 UTC
+the callback accepted the shop `7494930319769175829`, named IkonetU, with region `GB` and seller
+type `LOCAL`. TikTok must have returned `user_type` 0, because `connections.py` refuses any other value
+before it stores anything, and the shop and its encrypted tokens were on production when
+queried afterwards. The same authorisation showed that TikTok's `*_expire_in` fields are Unix
+times rather than durations, which is CLAUDE.md fault 11.

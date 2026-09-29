@@ -46,7 +46,7 @@ from uuid import UUID
 import httpx
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from .connections import API_BASE, HTTP_TIMEOUT, REFRESH_URL, _encrypt, _sign
+from .connections import API_BASE, HTTP_TIMEOUT, REFRESH_URL, _encrypt, _sign, expiry
 
 # A19.4. The value each path accepts for `sort_field`. A path absent here takes none.
 SORT_FIELDS = {
@@ -239,8 +239,10 @@ def refresh_connection(conn, shop_id: UUID | str, now: datetime | None = None,
             conn.execute("update shops set connection_status = 'needs_reconnect' where id = %s",
                          (str(shop_id),))
         return "failed"
-    access_expires = now + timedelta(seconds=int(data.get("access_token_expire_in") or 0))
-    refresh_expires = now + timedelta(seconds=int(data.get("refresh_token_expire_in") or 0))
+    # The same fields as the code exchange, read the same way. That the refresh answer also
+    # carries Unix times is UNVERIFIED: no refresh has reached TikTok yet.
+    access_expires = expiry(data, "access_token_expire_in")
+    refresh_expires = expiry(data, "refresh_token_expire_in")
     conn.execute(
         "update tiktok_connections set access_token_enc = %s, refresh_token_enc = %s, "
         "access_expires_at = %s, refresh_expires_at = %s, refresh_attempted_at = %s, "
