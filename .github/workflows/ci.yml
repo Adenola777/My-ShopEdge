@@ -35,6 +35,7 @@ jobs:
       - run: python tests/test_cost_files.py
       - run: python tests/test_set_aside.py
       - run: python tests/test_insights_trends.py
+      - run: python tests/test_tiktok_client.py
 
   web:
     runs-on: ubuntu-latest

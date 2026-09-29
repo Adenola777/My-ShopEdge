@@ -45,3 +45,66 @@ can be corrected.
 - **`listSkuCosts`**, `GET /shops/{shopId}/costs`. A3's S20 lists every variant with its units
   sold in the last 30 days and its cost. `top_missing` stops at ten and the stock list
   carries no cost, so nothing gave that list.
+
+## 31.4 The cost a unit carries, CLAUDE.md fault 10
+
+**The question.** On 28 September the owner approved costing a period at the cost in force
+at its end. The year dataset then showed that a year read that way prices units sold the
+previous October at a cost that took effect in July, so twelve monthly kept figures cannot
+sum to the year and the tax-year set-aside carries today's cost.
+
+**Ruling, 29 September 2026.** Each unit is costed at the cost in force on its sale date, the
+London date of its order. A returned unit takes off the cost of its original sale, dated by
+that order. This replaces the period-end rule for every figure.
+
+**Built.**
+
+- `products.py` costs each sold line and each returned item on its own sale date, by
+  `effective_from` with `created_at` as the tie-break, which is what `checkReturnItem`
+  already did for a write-off. Retained cost per variant is the cost sold less the cost
+  returned, floored at zero. A variant with any unit sold or returned without a cost on its
+  sale date leaves kept unknown. Money, Today, trends, exports and the set-aside read kept
+  through this query, so all of them follow.
+- `costs.py` coverage counts a unit as costed when a cost was in force on its sale date. A
+  variant is listed as missing a cost when any unit it sold in the period had none.
+- `insights.py` takes postage and packing from the row in force on each unit's sale date.
+- The cost shown beside a variant on S20 and on the product detail is still today's cost,
+  because those screens show what the seller would edit rather than a figure.
+
+**Checked, 29 September 2026.** `testdata/year_check.py` passes all 24 checks on a database
+built from empty, including a new one that the monthly kept figures sum to the kept of the
+months read as one span. On the local copy of development, with every cost in force before
+every sale, the old and new product queries returned identical rows on both bases. With a
+cost of 99,999 taking effect on 10 August for one variant, inside a transaction that was
+rolled back, the new query gave that variant's retained cost as 10,200. An independent
+calculation gives the same: two units at 5,100 and one at 99,999, less one returned unit
+at 99,999. The old query gave 199,998. In the same rolled-back transaction, coverage read
+one of that variant's three units as costed, and insights put postage and packing on the
+one unit sold after 10 August and marked the product's postage unknown.
+
+## 31.5 When a live order reaches the ledger
+
+**The question.** The ledger is append-only (LED-1), so no row can be given its statement
+after it is written. TikTok states an order's final fees only when the order settles, and its
+own unsettled endpoint warns that every amount it returns may change before settlement (A22).
+A sale posted when the order arrived could therefore never be linked to its settlement or
+corrected, except by reversing it and posting it again.
+
+**Ruling, 29 September 2026.** Order money enters the ledger once, at settlement, already
+carrying its statement and the London month it settled. Nothing is ever reversed. Unsettled
+orders are held outside the ledger. The owner accepted the consequence: a sale shows on the
+sales basis only once it settles, so recent weeks read low and are marked incomplete.
+
+**Built.** `service/app/tiktok_sync.py`. Orders, products, variants and lines, and returns
+with their items, are written as they arrive and post nothing. Each statement is read once:
+the per-order calculator gives every order's SKU breakdown, and each entry is posted with
+the statement. A statement already posted is never posted again. Holding unsettled orders
+with TikTok's estimate, which getExpectedPayouts needs, is not built yet.
+
+**Checked, 29 September 2026.** `testdata/tiktok_sync_check.py` ran the whole sync, through a
+transport answering from the generated payloads, into a database built from empty. On both
+the two-month and the year datasets, all 36 checks passed. The ledger it wrote equalled the
+settled part of the independent ingester's `rows.json` category by category, every entry
+carried its settlement, a second run wrote nothing, and the refresh stored new tokens
+encrypted and recorded a refused refresh with TikTok's code. None of it has reached TikTok,
+and several request details are unverified and named as such in `tiktok_api.py`.
