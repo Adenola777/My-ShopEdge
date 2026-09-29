@@ -636,16 +636,18 @@ def _callback_with(shop, written):
         "access_token_expire_in": 1791309162, "refresh_token_expire_in": 4912765591,
         "granted_scopes": ["seller.finance"],
     }
-    connections._authorized_shops = lambda token: [shop]
+    connections._authorized_shops = lambda token: shop if isinstance(shop, list) else [shop]
 
     class Writer(Conn):
         def execute(self, sql, args=None):
             flat = " ".join(sql.split())
             if "insert into shops" in flat:
                 written["shop"] = args
+                written.setdefault("shops", []).append(args)
                 return Result(["id"], [(SHOP,)])
             if "insert into tiktok_connections" in flat:
                 written["conn"] = args
+                written.setdefault("conns", []).append(args)
                 return Result([], [])
             return Result([], [])
 
@@ -692,6 +694,25 @@ def callback_lists_but_refuses_an_unsupported_shop():
         _assert(b["rejection_reason"] == reason, b)
         _assert(b["shop"] is not None, "the shop must still be listed")
 check("GET callback stores an unsupported shop but marks it not accepted", callback_lists_but_refuses_an_unsupported_shop)
+
+
+def callback_stores_every_authorised_shop():
+    from app.tiktok_api import decrypt as _decrypt
+    # A31.7: an account holds every shop its authorisation covers.
+    ikonetu = {"id": "7494930319769175829", "code": "GBGBLCUKQTCE", "name": "IkonetU",
+               "region": "GB", "seller_type": "LOCAL", "cipher": "GCP_other"}
+    written = {}
+    r = _callback_with([{**GB_SHOP, "region": "ID"}, ikonetu], written)
+    _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
+    _assert([a[2] for a in written["shops"]] == ["GBGBLCRKQTEX", "GBGBLCUKQTCE"], written["shops"])
+    _assert(len(written["conns"]) == 2, "each shop needs its own connection row")
+    # Same tokens, each shop's own cipher.
+    a, b = written["conns"]
+    _assert(a[4] == b[4] and a[5] == b[5], "both shops carry the same expiry")
+    _assert(_decrypt(a[3]) == "GCP_test" and _decrypt(b[3]) == "GCP_other")
+    # The contract returns one shop: the first accepted one.
+    _assert(r.json()["shop"]["tiktok_shop_code"] == "GBGBLCUKQTCE" and r.json()["accepted"] is True, r.json())
+check("GET callback stores every shop TikTok authorises, each with its own cipher", callback_stores_every_authorised_shop)
 
 
 # --- stock, movements and discrepancies

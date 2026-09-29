@@ -85,6 +85,7 @@ export default async function ShopsPage() {
           ))}
         </ul>
       </div>
+      <p><Link href="/shops/connect">Connect another shop</Link></p>
     </section>
   );
 }

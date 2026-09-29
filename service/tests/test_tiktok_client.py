@@ -129,6 +129,15 @@ def pages_follow_token():
 check("a listing follows next_page_token to the end at 100 a page", pages_follow_token)
 
 
+def returns_page_size():
+    # TikTok refused 100 here on 29 September 2026: "allowed range (10 to 50)".
+    r = Recorder([ok({"return_orders": [], "next_page_token": ""})])
+    c = tiktok_api.Client("tok", "cipher", r)
+    list(c.pages("POST", tiktok_api.RETURN_SEARCH_PATH, {"sort_field": "create_time", "sort_order": "ASC"}, {}))
+    _assert(r.sent[0][2]["page_size"] == "50", r.sent[0][2])
+check("the returns search asks for 50 a page, the most TikTok allows there", returns_page_size)
+
+
 def pages_stop_loop():
     r = Recorder([ok({"next_page_token": "same"}), ok({"next_page_token": "same"})])
     c = tiktok_api.Client("tok", None, r)

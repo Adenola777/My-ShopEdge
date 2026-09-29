@@ -26,6 +26,7 @@ What it checks:
 passed on `payloads` with `rows.json`, and 36 of 36 on `payloads_year` with `rows_year.json`.
 Rerun the same day after the token expiry fault (CLAUDE.md fault 11), with the refresh
 answering Unix times as TikTok does: 36 of 36 on both again.
+Rerun after A31.7, with a second shop sharing the authorisation: 37 of 37 on both.
 """
 
 import base64
@@ -198,10 +199,21 @@ def main():
     check(int(cal["statement_time_ge"]) == int((now - timedelta(days=3)).timestamp()),
           "the incremental run starts three days before the last one ended")
 
-    # The refresh: two days or fewer left.
+    # The refresh: two days or fewer left. A second shop from the same authorisation (A31.7)
+    # shares the tokens and `authorised_at`; it is Indonesian, so the sync never reads it,
+    # and a successful refresh must still hand it the new tokens.
     with psycopg.connect(url) as conn:
         conn.execute("update tiktok_connections set access_expires_at = %s where shop_id = %s",
                      (now + timedelta(days=1), shop))
+        sibling = conn.execute(
+            "insert into shops (account_id, tiktok_shop_id, shop_name, region, seller_type, currency, "
+            "connection_status) values (%s, 'sibling-1', 'Sibling', 'ID', 'LOCAL', 'IDR', 'pending') "
+            "returning id", (account,)).fetchone()[0]
+        conn.execute(
+            "insert into tiktok_connections (shop_id, access_token_enc, refresh_token_enc, shop_cipher_enc, "
+            "access_expires_at, refresh_expires_at, scopes, authorised_at) select %s, access_token_enc, "
+            "refresh_token_enc, %s, access_expires_at, refresh_expires_at, scopes, authorised_at "
+            "from tiktok_connections where shop_id = %s", (sibling, _encrypt("cipher-y"), shop))
     os.environ["_CHECK_REFUSE_REFRESH"] = "1"
     refused = tiktok_sync.run_due(fake, now)
     with psycopg.connect(url) as conn:
@@ -220,6 +232,11 @@ def main():
     check(row[2] == datetime.fromtimestamp(NEW_ACCESS_EXPIRES, timezone.utc) and row[3] is None and row[4] == now,
           "the new expiry is the instant TikTok gave, and the failure is cleared")
     check(b"new-access" not in bytes(row[0]), "the stored token is not the token in the clear")
+    with psycopg.connect(url) as conn:
+        sib = conn.execute("select access_token_enc, shop_cipher_enc, access_expires_at from tiktok_connections "
+                           "where shop_id = %s", (sibling,)).fetchone()
+    check(tiktok_api.decrypt(sib[0]) == "new-access" and tiktok_api.decrypt(sib[1]) == "cipher-y"
+          and sib[2] == row[2], "the refresh hands the new tokens to the shop sharing its authorisation")
 
     print(f"{ok} passed, {bad} failed")
     return 1 if bad else 0
