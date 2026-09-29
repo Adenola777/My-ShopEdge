@@ -40,7 +40,7 @@ export default async function SyncPage({ params }) {
         <SyncProgress shopId={shopId} initial={result.data} />
         <p>
           <Link className="btn btn--primary btn--block" href={afterSync(shopId, status)} data-testid="sync-continue">
-            {status === "none" ? "Continue to your plan" : "Continue to your products"}
+            {status === "none" ? "Continue to your plan" : "Continue to your product costs"}
           </Link>
         </p>
       </div>

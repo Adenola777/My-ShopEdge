@@ -22,7 +22,7 @@ Five things were checked, and each is named against the line it produced:
 | Cut by a later ruling | **2** | S18 and S19, both cut by A15 |
 | **Live screens** | **36** | This is the number that matters |
 | Wireframed | 15 | S1 to S15 only |
-| Built in code | 26 | S1, S2, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S21, S22, S24, S25, S26, S27, S28, S29, S30, S32, S33 and S34, counted from this register on 28 September. Sign-in works on the live site since 24 September. No screen has shown a real shop's figures, because no shop is connected and nothing reads TikTok's data yet |
+| Built in code | 36 | Every live screen, counted from this register on 29 September. Sign-in works on the live site since 24 September. No screen has shown a real shop's figures, because no shop is connected and nothing reads TikTok's data yet |
 
 **`CLAUDE.md` and `README_v0.2.md` both said "39 screens". That number is wrong twice.**
 No ruling defines an S39. The only place S39 appears in the whole repository is
@@ -46,9 +46,9 @@ by side, except the last, which carries S15 alone.
 |---|---|---|---|---|---|
 | S1 | Connect TikTok Shop | Onboarding | Wireframes | 02 | `shops`, while no shop is connected, with the return page at `connections/tiktok/callback`. The step dots and the Settings sentence are left out |
 | S2 | First sync | Onboarding | Wireframes | 02 | `shops/[shopId]/sync` (28 September). No period on the orders row, and the button leads to Products because S3 is not built |
-| S3 | Product costs choice | Onboarding | Wireframes, amended A15.4 | 03 | |
-| S4 | Upload mapping | Onboarding | Wireframes | 03 | |
-| S5 | Tax profile | Onboarding | Wireframes | 04 | |
+| S3 | Product costs choice | Onboarding | Wireframes, amended A15.4 | 03 | `shops/[shopId]/setup/costs` (29 September). Buttons only, as A15.4 ruled, with the footnote kept |
+| S4 | Upload mapping | Onboarding | Wireframes | 03 | `shops/[shopId]/setup/costs/upload` (29 September). The browser PUTs the file to the signed URL, the seller confirms the columns, and only matched rows are applied. Unmatched rows are listed with the service's reason |
+| S5 | Tax profile | Onboarding | Wireframes | 04 | `shops/[shopId]/setup/tax` (29 September). The sheet's sales outside TikTok and last year's income are not asked, because the contract's tax profile holds neither. The first links to S24 |
 | S6 | Today | Core | Wireframes, amended A15.5 | 04 | `shops/[shopId]/today` |
 | S7 | Stock | Core | Wireframes | 05 | `shops/[shopId]/stock` |
 | S8 | Return check | Core | Wireframes | 05 | `shops/[shopId]/returns`, from a link on Stock (28 September). Several waiting items show on one page, one card each, and the "This will" card names the write-off rule rather than a figure, because the service values it |
@@ -63,10 +63,10 @@ by side, except the last, which carries S15 alone.
 | S17 | Start | Account | A3 as Sign up, renamed A14 | | `start`, handing off to Stack's pages at `handler/[...stack]`. No privacy or terms link yet, because neither page exists |
 | ~~S18~~ | ~~Return~~ | | **Cut by A15.3** | | |
 | ~~S19~~ | ~~Sign in~~ | | **Cut by A15.2** | | |
-| S20 | Manual cost entry | Onboarding | A3 | | |
+| S20 | Manual cost entry | Onboarding | A3 | | `shops/[shopId]/setup/costs/manual` (29 September), on `listSkuCosts`, added to the contract for it. A zero cost needs a tick. The coverage line is the service's, for the current month |
 | S21 | Add or edit a product cost | Products | A3 | | Inline on each variant of `shops/[shopId]/products/[productId]` |
 | S22 | Records behind a figure | Money | A3, revised A18 | | `shops/[shopId]/records` |
-| S23 | Export | Money | A3, revised A18 | | |
+| S23 | Export | Money | A3, revised A18 | | `shops/[shopId]/money/export`, from Money (29 September). Three kinds only, per A18.6 |
 | S24 | Other-channel sales | Money | A3 | | `shops/[shopId]/other-sales` (28 September) |
 | S25 | Stock adjustment | Stock | A3, revised A18 | | At the top of `shops/[shopId]/stock/[skuId]` |
 | S26 | Stock movement history | Stock | A3, revised A18 | | `shops/[shopId]/stock/[skuId]`. The heading names the product, variant and seller SKU (25 September) |
@@ -74,14 +74,14 @@ by side, except the last, which carries S15 alone.
 | S28 | Connection problem | Onboarding | A3 | | `shops/[shopId]/connection-problem`, reached from the status on S15 (28 September). Covers the contract's `needs_reconnect`, `disconnected` and `pending` |
 | S29 | Disconnect | Settings | A3 | | `shops/[shopId]/settings/disconnect` (28 September) |
 | S30 | Delete my account | Settings | A3 | | `shops/[shopId]/settings/delete`, from S15 (28 September), with `account/closing` for a closing account. Built to A30.1, which supersedes A3's list of what is deleted. The typed email replaces A3's password, which a seller signing in with Google has not got. No data download is offered, because S31 is not built, and the screen says so |
-| S31 | Download my data | Settings | A3 | | |
+| S31 | Download my data | Settings | A3 | | `shops/[shopId]/settings/data`, from S15 and S30 (29 September). One archive holding JSON and CSV, so A3's format choice is not offered |
 | S32 | Glossary | Reference | A3 | | `shops/[shopId]/glossary` (28 September) |
 | S33 | Plan and card | Onboarding | A14 | | `(site)/billing` |
 | S34 | Payment confirmed | Onboarding | A14 | | `(site)/billing/confirmed` |
-| S35 | Continue setting up | Account | A14 | | |
-| S36 | That email is already in use | Account | A14 | | |
-| S37 | Signed out | Account | A14 | | |
-| S38 | Payment did not go through | Onboarding | A14 | | |
+| S35 | Continue setting up | Account | A14 | | `shops/[shopId]/setup` (29 September). `/shops` sends a seller with a plan and neither a cost nor a tax profile here |
+| S36 | That email is already in use | Account | A14 | | `account/email-in-use` (29 September). Reached from any screen that meets `email_already_linked`. No sign-in method is named, because nothing reports it |
+| S37 | Signed out | Account | A14 | | `signed-out`, with `?reason=expired` for `token_expired` (29 September) |
+| S38 | Payment did not go through | Onboarding | A14 | | `billing/payment-failed`, from `/billing` while past due (29 September). The retry date, the data retention and changing the card are not shown, because nothing holds or does them |
 
 ## Where the artwork lives, and what it is worth
 

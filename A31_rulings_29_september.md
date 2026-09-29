@@ -37,3 +37,11 @@ can be corrected.
 - **"Before the shop connected".** The contract marks such a month incomplete. The history
   TikTok hands over at connection reaches back before the shop row was made, so the first
   month the ledger holds is taken as where the shop's data begins.
+
+## 31.3 Two operations added to the contract while building
+
+- **`getAccountExport`**, `GET /me/export/{exportId}`. requestAccountExport says "Poll the
+  job", and the contract gave no operation to poll it with.
+- **`listSkuCosts`**, `GET /shops/{shopId}/costs`. A3's S20 lists every variant with its units
+  sold in the last 30 days and its cost. `top_missing` stops at ten and the stock list
+  carries no cost, so nothing gave that list.

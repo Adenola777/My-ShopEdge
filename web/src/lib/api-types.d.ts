@@ -475,6 +475,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shopId}/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every variant with its cost
+         * @description Added 29 September 2026 for S20 Manual cost entry, which A3 describes as every
+         *     variant with its units sold in the last 30 days and fields for its cost, packing and
+         *     postage, ordered by units. Nothing in the contract gave that list. Units are counted
+         *     as getCostCoverage counts them, over the 30 London days ending today, and the cost is
+         *     the one in force today. A variant with no cost has `cost` null.
+         */
+        get: operations["listSkuCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shopId}/costs/coverage": {
         parameters: {
             query?: never;
@@ -3153,6 +3177,44 @@ export interface operations {
             403: components["responses"]["ForbiddenShop"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listSkuCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The variants */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        skus: {
+                            /** Format: uuid */
+                            sku_id: string;
+                            seller_sku?: string | null;
+                            tiktok_sku_id?: string | null;
+                            product_title?: string | null;
+                            variant_label?: string | null;
+                            units_30d: number;
+                            cost?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                            packing?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                            postage?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
         };
     };
     getCostCoverage: {

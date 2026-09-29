@@ -25,8 +25,14 @@ export default async function ShopsPage() {
   const only = shops.length === 1 ? shops[0] : undefined;
   if (only) {
     // Resume at the right step of A14.2 rather than always at Today (lib/onboarding.js).
-    const sub = await api("/billing/subscription", { cache: "no-store" });
-    redirect(nextStep(only, sub.ok ? sub.data?.status ?? null : null));
+    const [sub, tax, costs] = await Promise.all([
+      api("/billing/subscription", { cache: "no-store" }),
+      api("/tax-profile", { cache: "no-store" }),
+      api(`/shops/${encodeURIComponent(only.id)}/costs`, { cache: "no-store" }),
+    ]);
+    const setupUntouched = tax.ok && costs.ok && !tax.data?.completed
+      && !(costs.data?.skus ?? []).some((/** @type {any} */ s) => s.cost);
+    redirect(nextStep(only, sub.ok ? sub.data?.status ?? null : null, { setupUntouched }));
   }
 
   if (shops.length === 0) {

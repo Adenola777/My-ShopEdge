@@ -993,6 +993,82 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /shops/{shopId}/costs:
+    get:
+      tags:
+      - Costs
+      summary: Every variant with its cost
+      description: |
+        Added 29 September 2026 for S20 Manual cost entry, which A3 describes as every
+        variant with its units sold in the last 30 days and fields for its cost, packing and
+        postage, ordered by units. Nothing in the contract gave that list. Units are counted
+        as getCostCoverage counts them, over the 30 London days ending today, and the cost is
+        the one in force today. A variant with no cost has `cost` null.
+      operationId: listSkuCosts
+      parameters:
+      - $ref: '#/components/parameters/ShopId'
+      responses:
+        '200':
+          description: The variants
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - skus
+                properties:
+                  skus:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - sku_id
+                      - units_30d
+                      properties:
+                        sku_id:
+                          type: string
+                          format: uuid
+                        seller_sku:
+                          type:
+                          - string
+                          - 'null'
+                        tiktok_sku_id:
+                          type:
+                          - string
+                          - 'null'
+                        product_title:
+                          type:
+                          - string
+                          - 'null'
+                        variant_label:
+                          type:
+                          - string
+                          - 'null'
+                        units_30d:
+                          type: integer
+                          minimum: 0
+                        cost:
+                          type:
+                          - object
+                          - 'null'
+                          allOf:
+                          - $ref: '#/components/schemas/Money'
+                        packing:
+                          type:
+                          - object
+                          - 'null'
+                          allOf:
+                          - $ref: '#/components/schemas/Money'
+                        postage:
+                          type:
+                          - object
+                          - 'null'
+                          allOf:
+                          - $ref: '#/components/schemas/Money'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenShop'
   /shops/{shopId}/costs/coverage:
     get:
       tags:
