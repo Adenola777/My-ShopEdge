@@ -19,4 +19,8 @@ corrected the same day against the records:
 Still open: the footer carries no privacy notice or terms, because neither page exists (A14),
 and the address line reads "Massionette 3" exactly as supplied.
 
-The page is one static file with its images inline. It needs no build.
+The logo is the official artwork from `brand/` (A7): `site/brand/` holds byte-for-byte copies of
+`mse-logo-horizontal-notagline.svg`, `mse-mark-colour.svg` and `mse-favicon.svg`, replacing the
+hand-drawn bag the supplied page carried. The top bar shows it at 48 px, as the app does.
+
+The page is one static file with its other images inline. It needs no build.
