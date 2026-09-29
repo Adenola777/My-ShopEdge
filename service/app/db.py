@@ -55,7 +55,13 @@ def pool() -> ConnectionPool:
             raise RuntimeError("DATABASE_URL is not set.")
         max_size = int(os.environ.get("DB_POOL_MAX", "10"))
         min_size = min(int(os.environ.get("DB_POOL_MIN", "1")), max_size)
-        _pool = ConnectionPool(url, min_size=min_size, max_size=max_size, open=True)
+        # Neon suspends an idle compute and closes its connections. On 29 September a seller
+        # signed in at 00:55, and at 01:05 `/v1/shops` answered 500 with `AdminShutdown`,
+        # because the pool handed out a connection the database had already closed. The
+        # check tests each connection as it is taken from the pool and replaces a dead one,
+        # at the cost of one round trip per request.
+        _pool = ConnectionPool(url, min_size=min_size, max_size=max_size, open=True,
+                               check=ConnectionPool.check_connection)
     return _pool
 
 
