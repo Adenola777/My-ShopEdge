@@ -35,9 +35,15 @@ router = APIRouter(tags=["Billing"])
 # The database wiring below (the subscription row, GET /billing/subscription, and the
 # webhook handlers) was written by Emergent AI in `Adenola777/MYSHOPEDGE` (commit 06faeba,
 # 25 September 2026) and brought into this repository on 28 September at the owner's
-# instruction. See audit/EMERGENT_review_28_september.md. Known gap: a second trial request
-# still creates a second subscription at Stripe, although the database keeps one row per
-# account.
+# instruction. See audit/EMERGENT_review_28_september.md.
+#
+# The gap that review left, a second trial request creating a second subscription at Stripe,
+# was closed on 29 September in `start_trial`: an account whose subscription is live is
+# refused, and one whose trial was started but never confirmed is handed the same
+# subscription again. A cancelled account may start again. Whether that second start
+# should carry a second free trial is not ruled, so it does, as it did before.
+
+LIVE = ("trialing", "active", "past_due")
 
 
 def _stripe() -> stripe.StripeClient:
@@ -127,11 +133,23 @@ def start_trial(
     if not price_id:
         raise Problem(503, "plan_unavailable", "This plan is not configured yet. Nobody has been charged.")
 
+    existing = db.get_subscription_row(account.id)
+    if existing is not None and existing["status"] in LIVE:
+        raise Problem(409, "subscription_exists",
+                      "This account already has a subscription, so nothing new was started.")
+
     client = _stripe()
     key = f"sub:{account.id}:{plan.slug}:{idempotency_key}" if idempotency_key else None
 
     try:
-        customer = _find_or_create_customer(client, account, key)
+        # A trial started earlier and never confirmed is still open at Stripe. Handing it
+        # back lets the seller finish confirming the card without a second subscription.
+        if existing is not None and existing["status"] == "incomplete" and existing["stripe_customer_id"]:
+            open_sub = _open_subscription(client, existing["stripe_customer_id"])
+            if open_sub is not None:
+                return _trial_start(open_sub)
+
+        customer = _find_or_create_customer(client, account, key, existing)
         # The row is written before the Stripe subscription exists, so a webhook that
         # arrives the instant the subscription is created finds a customer to attach to.
         # It carries status 'incomplete' until an event confirms the trial has started.
@@ -164,7 +182,30 @@ def start_trial(
     # the row is moved off 'incomplete' now rather than waiting for the webhook. The webhook
     # remains the authority and repeats this write when it arrives; the write is idempotent.
     _apply_stripe_subscription(subscription)
+    return _trial_start(subscription)
 
+
+def _open_subscription(client: stripe.StripeClient, customer_id: str):
+    """The customer's subscription that is still open at Stripe, or None.
+
+    Open means waiting for a card or already running. The row can read 'incomplete' while
+    Stripe has moved the subscription on, because the webhook is a moment behind, so a
+    running subscription found here is written through and handed back rather than a second
+    one being made. **Unverified against Stripe**, because only the live account is reachable
+    and no test charge can be made (CLAUDE.md); it has run against a stand-in client only.
+    """
+    subs = client.subscriptions.list(
+        params={"customer": customer_id, "status": "all", "limit": 10,
+                "expand": ["data.pending_setup_intent"]},
+    )
+    for sub in subs.data:
+        if sub.status in ("incomplete", *LIVE):
+            _apply_stripe_subscription(sub)
+            return sub
+    return None
+
+
+def _trial_start(subscription) -> TrialStart:
     intent = subscription.pending_setup_intent
     trial_ends = _iso(subscription.trial_end)
 
@@ -266,7 +307,13 @@ async def stripe_webhook(request: Request, stripe_signature: Annotated[str | Non
     return {"received": True}
 
 
-def _find_or_create_customer(client: stripe.StripeClient, account: Account, key: str | None):
+def _find_or_create_customer(client: stripe.StripeClient, account: Account, key: str | None,
+                             existing: dict | None = None):
+    # The customer recorded on the account's row is used when there is one. Stripe's search
+    # is not read-after-write, "in under 1 minute" by its own page, so two quick requests
+    # searching for a customer just created could each make one (audit H2).
+    if existing is not None and existing.get("stripe_customer_id"):
+        return client.customers.retrieve(existing["stripe_customer_id"])
     found = client.customers.search(params={"query": f"metadata['account_id']:'{account.id}'", "limit": 1})
     if found.data:
         return found.data[0]

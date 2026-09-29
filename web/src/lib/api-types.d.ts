@@ -4363,6 +4363,21 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /**
+             * @description The account already has a subscription that is trialing, active or past due,
+             *     so nothing new was started. A trial started earlier and never confirmed is not
+             *     refused: the same subscription is returned, so the seller can finish confirming
+             *     the card. Added 29 September 2026, when a second request was found to start a
+             *     second subscription at Stripe.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             422: components["responses"]["ValidationFailed"];
         };
     };

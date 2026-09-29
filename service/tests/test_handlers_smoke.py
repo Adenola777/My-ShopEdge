@@ -1292,6 +1292,60 @@ def delete_and_cancel():
 check("deleteMe closes the account with dates, and cancelAccountDeletion reopens it", delete_and_cancel)
 
 
+# --- startTrial never makes a second subscription for one account (audit H2)
+from app import billing
+
+def trial_once():
+    from types import SimpleNamespace as NS
+    created = []
+
+    class Subs:
+        def __init__(self, open_subs): self.open_subs = open_subs
+        def list(self, params): return NS(data=self.open_subs)
+        def create(self, params, options=None):
+            created.append(params)
+            return NS(id="sub_new", status="trialing", trial_end=1790000000,
+                      pending_setup_intent=NS(client_secret="seti_new_secret"),
+                      get=lambda k, d=None: {"customer": "cus_1", "id": "sub_new", "status": "trialing"}.get(k, d))
+
+    class Customers:
+        def retrieve(self, cid): return NS(id=cid)
+        def search(self, params): return NS(data=[])
+        def create(self, params, options=None): return NS(id="cus_1")
+
+    def client_with(open_subs):
+        return NS(subscriptions=Subs(open_subs), customers=Customers())
+
+    os.environ["STRIPE_PRICE_STARTER"] = "price_test"
+    saved = (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
+             billing._apply_stripe_subscription)
+    billing.db.create_subscription_row = lambda *a: None
+    billing._apply_stripe_subscription = lambda sub: None
+    try:
+        for status in ("trialing", "active", "past_due"):
+            billing.db.get_subscription_row = lambda _a, s=status: {"status": s, "stripe_customer_id": "cus_1"}
+            billing._stripe = lambda: client_with([])
+            r = client.post("/v1/billing/subscription", json={"plan": "starter"})
+            _assert(r.status_code == 409 and not created, f"{status}: {r.status_code} {r.text[:120]}")
+
+        open_sub = NS(id="sub_old", status="incomplete", trial_end=1790000000,
+                      pending_setup_intent=NS(client_secret="seti_old_secret"))
+        billing.db.get_subscription_row = lambda _a: {"status": "incomplete", "stripe_customer_id": "cus_1"}
+        billing._stripe = lambda: client_with([open_sub])
+        r = client.post("/v1/billing/subscription", json={"plan": "starter"})
+        _assert(r.status_code == 200 and r.json()["subscription_id"] == "sub_old"
+                and r.json()["client_secret"] == "seti_old_secret" and not created, r.text)
+
+        billing.db.get_subscription_row = lambda _a: None
+        billing._stripe = lambda: client_with([])
+        r = client.post("/v1/billing/subscription", json={"plan": "starter"})
+        _assert(r.status_code == 200 and r.json()["subscription_id"] == "sub_new" and len(created) == 1, r.text)
+    finally:
+        (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
+         billing._apply_stripe_subscription) = saved
+check("startTrial refuses a live subscription, reuses an unfinished one, and starts a first", trial_once)
+
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")
