@@ -119,6 +119,7 @@ written to be followed once.
 | GitHub | `Adenola777/My-ShopEdge` is the one Vercel is wired to. `MyShopEdge-` also exists |
 | Vercel | team `coterie448-8267's projects`, project `my-shop-edge`, root `web`, functions in `lhr1` |
 | Stripe | live `acct_1RtsbgKUYBix7r5t`, sandbox `acct_1Rtsby4GHrXoTk1L` |
+| Product website | `site/index.html`, Vercel project `myshopedge-site` (`prj_4eDTaOTCZOZ1WOaoVu97uNbLQIWr`), root `site`, for `myshopedge.inspirecraftglobal.com`. The domain is on Namecheap, so its DNS records are the owner's to add. Its `vercel.app` addresses sit behind Vercel sign-in; the custom domain is public |
 
 **The account split matters.** GitHub and Vercel sit under coterie448@gmail.com. Neon sits
 under adenola.adegbesan@gmail.com. A third Neon project, `holy-glitter-85206770`, was
