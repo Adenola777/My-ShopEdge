@@ -892,16 +892,19 @@ def put_cost_supersedes():
 check("PUT cost supersedes the current cost and refuses a wrong currency", put_cost_supersedes)
 
 def coverage():
-    cols = ["sku_id","product_title","units","gross_minor","has_cost","currency"]
-    rows = [(UUID(int=1), "Desk", 3, 36000, False, "GBP"),
-            (UUID(int=2), "Brush", 7, 14000, True, "GBP")]
-    costs.tenant = with_conn(costs, [("with sold as", Result(cols, rows))])
+    cols = ["sku_id","product_title","units","units_costed","gross_minor","has_cost","currency"]
+    # The third variant's cost took effect partway through the period, so one of its four
+    # units sold with a cost and three without (A31.4). It counts as missing a cost.
+    rows = [(UUID(int=1), "Desk", 3, 0, 36000, False, "GBP"),
+            (UUID(int=3), "Lamp", 4, 1, 8000, False, "GBP"),
+            (UUID(int=2), "Brush", 7, 7, 14000, True, "GBP")]
+    costs.tenant = with_conn(costs, [("with lines as", Result(cols, rows))])
     b = client.get(f"/v1/shops/{SHOP}/costs/coverage?from=2026-07-01&to=2026-08-31").json()
-    _assert(b["units_total"] == 10 and b["units_with_cost"] == 7, b)
-    _assert(abs(b["coverage"] - 0.7) < 1e-9 and b["skus_missing_cost"] == 1)
+    _assert(b["units_total"] == 14 and b["units_with_cost"] == 8, b)
+    _assert(abs(b["coverage"] - 8 / 14) < 1e-9 and b["skus_missing_cost"] == 2)
     _assert(b["top_missing"][0]["gross_sales"]["amount_minor"] == 36000)
     _assert(b["period"]["basis"] == "sales")
-    costs.tenant = with_conn(costs, [("with sold as", Result(cols, []))])
+    costs.tenant = with_conn(costs, [("with lines as", Result(cols, []))])
     _assert(client.get(f"/v1/shops/{SHOP}/costs/coverage").json()["coverage"] == 1.0,
             "with nothing sold, nothing is uncosted")
 check("GET cost coverage is the share of sold units with a cost", coverage)

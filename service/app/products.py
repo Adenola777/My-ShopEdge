@@ -169,18 +169,28 @@ led as (
 ),
 -- Units follow the same period and basis as the money, because a unit counted in one
 -- month and its money in another is how a per-product table stops reconciling.
-sold as (
-  select s.product_id, s.id as sku_id, sum(ol.quantity) as units
+-- Each sold line carries the London date of its order, because a unit is costed at the cost
+-- in force on the day it sold (A31.4, the owner's ruling of 29 September 2026 on fault 10).
+sold_lines as (
+  select s.product_id, s.id as sku_id, ol.quantity,
+         (o.order_created_at at time zone 'Europe/London')::date as sale_day
     from (select distinct order_line_id from scoped where category = 'gross_sales'
            and order_line_id is not null) g
     join order_lines ol on ol.id = g.order_line_id
+    join orders o on o.id = ol.order_id
     join skus s on s.id = ol.sku_id
-   group by s.product_id, s.id
 ),
-returned as (
-  select s.product_id, s.id as sku_id, sum(ri.quantity) as units
+sold as (
+  select product_id, sku_id, sum(quantity) as units from sold_lines group by product_id, sku_id
+),
+-- A returned item is dated by its refund for the period, and costed at the date of the
+-- order it came back from, so a return takes off exactly the cost its sale put on.
+returned_items as (
+  select s.product_id, s.id as sku_id, ri.quantity,
+         (o.order_created_at at time zone 'Europe/London')::date as sale_day
     from return_items ri
     join returns r on r.id = ri.return_id
+    join orders o on o.id = r.order_id
     join skus s on s.id = ri.sku_id
    where ri.shop_id = %(shop)s
      -- The London date, A29.9. A bare ::date gives the database session's date, which is
@@ -188,31 +198,48 @@ returned as (
      -- counted in the previous day. returns.py counts the same way.
      and (coalesce(r.refund_completed_at, r.requested_at) at time zone 'Europe/London')::date >= %(from)s
      and (coalesce(r.refund_completed_at, r.requested_at) at time zone 'Europe/London')::date <= %(to)s
-   group by s.product_id, s.id
 ),
--- The cost in force at the end of the period, so a past month keeps the cost that applied
--- then and a cost entered today does not rewrite it, as the contract requires (CST-4). A
--- cost whose effective_from falls after the period end is not used. Superseded rows are
--- read too, because superseded_at records when a row was replaced, not the business date a
--- cost stopped applying. Two rows can share one effective_from when a seller corrects a
--- cost on the day they entered it, so created_at breaks the tie and the later entry wins.
--- Taken from Emergent AI's commit d87f6a0 on 28 September 2026 with that tie-break added.
-cost as (
-  select distinct on (sku_id) sku_id, cost_minor
-    from product_costs
-   where shop_id = %(shop)s and effective_from <= %(to)s
-   order by sku_id, effective_from desc, created_at desc
+returned as (
+  select product_id, sku_id, sum(quantity) as units from returned_items group by product_id, sku_id
 ),
--- A4: retained cost is cost x (sold - returned), per SKU, floored at zero because more
--- returns than sales in a period is possible at a month boundary and negative cost is not.
+-- The cost in force on each unit's sale date (A31.4). A cost entered today does not rewrite
+-- a past sale, as the contract requires (CST-4), and a month before any cost took effect
+-- stays unknown however long a period it is read in. Superseded rows are read too, because
+-- superseded_at records when a row was replaced, not the business date a cost stopped
+-- applying. Two rows can share one effective_from when a seller corrects a cost on the day
+-- they entered it, so created_at breaks the tie and the later entry wins, as
+-- `returns.check_return_item` does for a write-off.
+sold_cost as (
+  select sl.sku_id, sl.product_id, sum(c.cost_minor * sl.quantity) as cost_minor,
+         bool_or(c.cost_minor is null) as missing
+    from sold_lines sl
+    left join lateral (
+      select pc.cost_minor from product_costs pc
+       where pc.shop_id = %(shop)s and pc.sku_id = sl.sku_id and pc.effective_from <= sl.sale_day
+       order by pc.effective_from desc, pc.created_at desc limit 1) c on true
+   group by sl.sku_id, sl.product_id
+),
+returned_cost as (
+  select ri.sku_id, sum(c.cost_minor * ri.quantity) as cost_minor,
+         bool_or(c.cost_minor is null) as missing
+    from returned_items ri
+    left join lateral (
+      select pc.cost_minor from product_costs pc
+       where pc.shop_id = %(shop)s and pc.sku_id = ri.sku_id and pc.effective_from <= ri.sale_day
+       order by pc.effective_from desc, pc.created_at desc limit 1) c on true
+   group by ri.sku_id
+),
+-- A4: retained cost is the cost of what sold less the cost of what came back, per SKU,
+-- floored at zero because more returns than sales in a period is possible at a month
+-- boundary and negative cost is not. A variant is uncosted when any unit it sold, or any
+-- unit returned against it, had no cost on its sale date.
 retained as (
-  select sd.product_id,
-         sum(c.cost_minor * greatest(sd.units - coalesce(rt.units, 0), 0)) as cost_retained_minor,
-         count(*) filter (where c.cost_minor is null) as skus_without_cost
-    from sold sd
-    left join returned rt on rt.sku_id = sd.sku_id
-    left join cost c on c.sku_id = sd.sku_id
-   group by sd.product_id
+  select sc.product_id,
+         sum(greatest(sc.cost_minor - coalesce(rc.cost_minor, 0), 0)) as cost_retained_minor,
+         count(*) filter (where sc.missing or coalesce(rc.missing, false)) as skus_without_cost
+    from sold_cost sc
+    left join returned_cost rc on rc.sku_id = sc.sku_id
+   group by sc.product_id
 ),
 units as (
   select product_id, sum(units) as units_sold from sold group by product_id

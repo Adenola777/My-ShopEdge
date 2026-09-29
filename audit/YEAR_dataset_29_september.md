@@ -78,3 +78,26 @@ The alternative is the cost in force on the date each unit sold, which is what
 `checkReturnItem` already uses for a write-off (A30.2). With it, a month and a year cannot
 disagree. Changing the rule is a ruling for the owner, so nothing was changed, and the two
 failing checks stay failing until it is made.
+
+## The ruling and the rerun
+
+The owner ruled on 29 September that each unit is costed at the cost in force on its sale
+date (A31.4). The kept checks were rewritten to that rule. Each month's expectation is
+derived from the sale dates of the units it holds, and a check was added that kept is
+additive across the months where it is known. On the cash basis July is now unknown, because
+its statements pay out sales made between 10 and 20 June, before any cost took effect. A
+query of the ledger showed that range. Rerun on a database built from empty:
+
+```
+PASS sales basis: kept is unknown in exactly the 9 months holding a unit sold before any cost
+PASS sales basis: kept is known in the other 2 months with sales
+PASS sales basis kept: 2 known months sum to 27892, the span 2026-07-01 to 2026-08-31 reads 27892
+PASS sales basis: the year's kept is unknown too, rather than a figure that leaves goods out
+PASS cash basis: kept is unknown in exactly the 9 months holding a unit sold before any cost
+PASS cash basis: kept is known in the other 1 months with sales
+PASS cash basis kept: 1 known months sum to 29940, the span 2026-08-01 to 2026-08-31 reads 29940
+PASS cash basis: the year's kept is unknown too, rather than a figure that leaves goods out
+24 passed, 0 failed
+```
+
+The other sixteen checks passed unchanged.

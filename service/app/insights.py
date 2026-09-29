@@ -75,8 +75,8 @@ class InsightsOut(BaseModel):
 # What reached the shop, per product, and what the seller pays to post and pack the units
 # sold. Postage and packing are the seller's own per-unit figures from `product_costs`,
 # entered beside the unit cost, which is where the QA case's "postage and packing £2.51"
-# sits beside "stock £3.20". The row in force at the period's end is used, with the same
-# tie-break as the product figures. A variant sold with neither figure recorded makes the
+# sits beside "stock £3.20". Each unit takes the row in force on its sale date (A31.4),
+# with the same tie-break as the product figures. A variant sold with neither figure recorded makes the
 # product's postage unknown, and no postage insight is given for it.
 EXTRA_SQL = """
 with scoped as (
@@ -89,26 +89,29 @@ ns as (
            as net_sales_minor
     from scoped group by product_id
 ),
-sold as (
-  select s.product_id, s.id as sku_id, sum(ol.quantity) as units
+sold_lines as (
+  select s.product_id, s.id as sku_id, ol.quantity,
+         (o.order_created_at at time zone 'Europe/London')::date as sale_day
     from (select distinct order_line_id from scoped where category = 'gross_sales'
            and order_line_id is not null) g
     join order_lines ol on ol.id = g.order_line_id
+    join orders o on o.id = ol.order_id
     join skus s on s.id = ol.sku_id
-   group by s.product_id, s.id
 ),
-pc as (
-  select distinct on (sku_id) sku_id, packing_minor, postage_minor
-    from product_costs where shop_id = %(shop)s and effective_from <= %(to)s
-   order by sku_id, effective_from desc, created_at desc
+pp_sku as (
+  select sl.product_id, sl.sku_id,
+         sum((coalesce(pc.packing_minor, 0) + coalesce(pc.postage_minor, 0)) * sl.quantity) as pp_minor,
+         bool_or(pc.packing_minor is null and pc.postage_minor is null) as missing
+    from sold_lines sl
+    left join lateral (
+      select c.packing_minor, c.postage_minor from product_costs c
+       where c.shop_id = %(shop)s and c.sku_id = sl.sku_id and c.effective_from <= sl.sale_day
+       order by c.effective_from desc, c.created_at desc limit 1) pc on true
+   group by sl.product_id, sl.sku_id
 ),
 pp as (
-  select sd.product_id,
-         sum((coalesce(pc.packing_minor, 0) + coalesce(pc.postage_minor, 0)) * sd.units) as pp_minor,
-         count(*) filter (where pc.packing_minor is null and pc.postage_minor is null)
-           as skus_without_pp
-    from sold sd left join pc on pc.sku_id = sd.sku_id
-   group by sd.product_id
+  select product_id, sum(pp_minor) as pp_minor, count(*) filter (where missing) as skus_without_pp
+    from pp_sku group by product_id
 )
 select ns.product_id, ns.net_sales_minor, pp.pp_minor, coalesce(pp.skus_without_pp, 1) as skus_without_pp
   from ns left join pp on pp.product_id = ns.product_id
