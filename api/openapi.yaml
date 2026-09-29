@@ -4381,6 +4381,11 @@ components:
               format: uuid
     Trends:
       type: object
+      description: |
+        Amended 29 September 2026. Every point was typed as Money, which cannot carry the
+        `units` measure. A point now carries `value` for a money measure and `count` for
+        `units`. `value` is null where the month's figure is not known, which is `kept` when a
+        product sold that month has no cost, because a bar is never drawn from a guess.
       required:
       - measure
       - basis
@@ -4397,14 +4402,23 @@ components:
             type: object
             required:
             - month
-            - value
             - complete
             properties:
               month:
                 type: string
                 pattern: ^\d{4}-(0[1-9]|1[0-2])$
               value:
-                $ref: '#/components/schemas/Money'
+                type:
+                - object
+                - 'null'
+                allOf:
+                - $ref: '#/components/schemas/Money'
+              count:
+                type:
+                - integer
+                - 'null'
+                minimum: 0
+                description: Units sold in the month, for the `units` measure only.
               complete:
                 type: boolean
                 description: 'False for a month still settling, or one before the shop connected. A bar

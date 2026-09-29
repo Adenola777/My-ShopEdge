@@ -1972,12 +1972,20 @@ export interface components {
                 entity_id?: string | null;
             };
         };
+        /**
+         * @description Amended 29 September 2026. Every point was typed as Money, which cannot carry the
+         *     `units` measure. A point now carries `value` for a money measure and `count` for
+         *     `units`. `value` is null where the month's figure is not known, which is `kept` when a
+         *     product sold that month has no cost, because a bar is never drawn from a guess.
+         */
         Trends: {
             measure: string;
             basis: components["schemas"]["Basis"];
             points: {
                 month: string;
-                value: components["schemas"]["Money"];
+                value?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                /** @description Units sold in the month, for the `units` measure only. */
+                count?: number | null;
                 /**
                  * @description False for a month still settling, or one before the shop connected. A bar
                  *     drawn from a partial month must be marked, not shown as a fall in trade.

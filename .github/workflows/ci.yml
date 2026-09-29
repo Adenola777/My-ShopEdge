@@ -34,6 +34,7 @@ jobs:
       - run: python tests/test_business_date.py
       - run: python tests/test_cost_files.py
       - run: python tests/test_set_aside.py
+      - run: python tests/test_insights_trends.py
 
   web:
     runs-on: ubuntu-latest
