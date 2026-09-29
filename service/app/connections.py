@@ -286,6 +286,22 @@ def _authorized_shops(access_token: str) -> list[dict[str, Any]]:
     return _signed_get(SHOPS_PATH, access_token).get("shops") or []
 
 
+def expiry(data: dict[str, Any], field: str) -> datetime | None:
+    """The instant a token lapses, from TikTok's `*_expire_in` field.
+
+    Despite its name the field is a Unix time in seconds, not a duration. This was read from
+    the first real authorisation, on 29 September 2026: `access_token_expire_in` was
+    1791309162, which is 6 October 2026 17:52:42 UTC, seven days after the callback, and
+    `refresh_token_expire_in` was 4912765591, which is 5 September 2125. Read as seconds from
+    now, as it was until then, the access token appeared to last until 2083, so no refresh
+    would ever have been due. None when TikTok sends no value.
+    """
+    value = data.get(field)
+    if not value:
+        return None
+    return datetime.fromtimestamp(int(value), timezone.utc)
+
+
 def _encrypt(value: str) -> bytes:
     """AES-256-GCM, with the nonce on the front of the ciphertext.
 
@@ -384,9 +400,8 @@ def tiktok_callback(
         rejection_reason = "seller_type_unsupported"
     accepted = rejection_reason is None
 
-    now = datetime.now(timezone.utc)
-    access_expires = now + timedelta(seconds=int(data.get("access_token_expire_in") or 0))
-    refresh_expires = now + timedelta(seconds=int(data.get("refresh_token_expire_in") or 0))
+    access_expires = expiry(data, "access_token_expire_in")
+    refresh_expires = expiry(data, "refresh_token_expire_in")
 
     # Encrypted before the transaction opens, so a missing key fails before anything is
     # written rather than halfway through.

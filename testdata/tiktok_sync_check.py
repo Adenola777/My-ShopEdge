@@ -24,6 +24,8 @@ What it checks:
 
 **Run on 29 September 2026** against databases built from empty by `migrate.py`: 36 of 36
 passed on `payloads` with `rows.json`, and 36 of 36 on `payloads_year` with `rows_year.json`.
+Rerun the same day after the token expiry fault (CLAUDE.md fault 11), with the refresh
+answering Unix times as TikTok does: 36 of 36 on both again.
 """
 
 import base64
@@ -78,6 +80,9 @@ def answer(data):
     return {"code": 0, "message": "Success", "data": data}
 
 
+NEW_ACCESS_EXPIRES = 1791309162
+
+
 def fake(method, url, params, headers, body):
     """Answers as TikTok would, from the payload files. Records every request it receives."""
     path = urlparse(url).path
@@ -85,8 +90,9 @@ def fake(method, url, params, headers, body):
     if url == tiktok_api.REFRESH_URL:
         if os.environ.get("_CHECK_REFUSE_REFRESH"):
             return {"code": 36004001, "message": "refresh token invalid", "data": None}
-        return answer({"access_token": "new-access", "access_token_expire_in": 604800,
-                       "refresh_token": "new-refresh", "refresh_token_expire_in": 31536000})
+        # Unix times, as the first real authorisation returned them on 29 September 2026.
+        return answer({"access_token": "new-access", "access_token_expire_in": NEW_ACCESS_EXPIRES,
+                       "refresh_token": "new-refresh", "refresh_token_expire_in": 4912765591})
     if path == tiktok_api.STATEMENTS_PATH:
         ge, lt = int(params["statement_time_ge"]), int(params["statement_time_lt"])
         return answer({"statements": [s for s in STATEMENTS if ge <= s["statement_time"] < lt],
@@ -211,8 +217,8 @@ def main():
     check(refreshed[0].get("refresh") == "refreshed", "a token with one day left is refreshed")
     check(tiktok_api.decrypt(row[0]) == "new-access" and tiktok_api.decrypt(row[1]) == "new-refresh",
           "the new tokens are stored encrypted and decrypt to what TikTok returned")
-    check(row[2] == now + timedelta(seconds=604800) and row[3] is None and row[4] == now,
-          "the new expiry is seven days on, and the failure is cleared")
+    check(row[2] == datetime.fromtimestamp(NEW_ACCESS_EXPIRES, timezone.utc) and row[3] is None and row[4] == now,
+          "the new expiry is the instant TikTok gave, and the failure is cleared")
     check(b"new-access" not in bytes(row[0]), "the stored token is not the token in the clear")
 
     print(f"{ok} passed, {bad} failed")

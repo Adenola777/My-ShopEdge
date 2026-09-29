@@ -632,7 +632,8 @@ def _callback_with(shop, written):
     )
     connections._exchange_code = lambda code: {
         "access_token": "act.tok", "refresh_token": "rft.tok", "user_type": 0,
-        "access_token_expire_in": 604800, "refresh_token_expire_in": 2592000,
+        # The values the first real authorisation returned, 29 September 2026. Unix times.
+        "access_token_expire_in": 1791309162, "refresh_token_expire_in": 4912765591,
         "granted_scopes": ["seller.finance"],
     }
     connections._authorized_shops = lambda token: [shop]
@@ -672,6 +673,10 @@ def callback_connects_a_gb_shop():
     _assert(b"act.tok" not in enc_access, "the access token was stored in the clear")
     _assert(b"rft.tok" not in enc_refresh, "the refresh token was stored in the clear")
     _assert(b"GCP_test" not in enc_cipher, "the shop cipher was stored in the clear")
+    # TikTok's *_expire_in fields are Unix times. Read as durations, the access token
+    # lasted until 2083 and was never refreshed.
+    _assert(written["conn"][4] == datetime(2026, 10, 6, 17, 52, 42, tzinfo=timezone.utc), written["conn"][4])
+    _assert(written["conn"][5] == datetime(2125, 9, 5, 17, 6, 31, tzinfo=timezone.utc), written["conn"][5])
 check("GET callback connects a GB shop and stores nothing readable", callback_connects_a_gb_shop)
 
 

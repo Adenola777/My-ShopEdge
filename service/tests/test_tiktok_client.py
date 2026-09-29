@@ -20,6 +20,7 @@ os.environ["TIKTOK_APP_SECRET"] = "test-secret"
 os.environ["TIKTOK_TOKEN_KEY"] = base64.b64encode(secrets.token_bytes(32)).decode()
 
 from app import tiktok_api  # noqa: E402
+from app import connections  # noqa: E402
 from app.connections import _encrypt, _sign  # noqa: E402
 from app.tiktok_sync import allocate, pence  # noqa: E402
 
@@ -147,6 +148,14 @@ def refresh_window():
     _assert(tiktok_api.refresh_due(now - timedelta(hours=1), now))
     _assert(tiktok_api.refresh_due(None, now))
 check("a refresh is due once fewer than two days are left", refresh_window)
+
+
+def expiry_is_a_unix_time():
+    # The first real authorisation, 29 September 2026, answered 1791309162 at 17:52:43 UTC.
+    got = connections.expiry({"access_token_expire_in": 1791309162}, "access_token_expire_in")
+    _assert(got == datetime(2026, 10, 6, 17, 52, 42, tzinfo=timezone.utc), got)
+    _assert(connections.expiry({}, "access_token_expire_in") is None)
+check("TikTok's expire_in fields are read as Unix times, not durations", expiry_is_a_unix_time)
 
 
 def refresh_request():

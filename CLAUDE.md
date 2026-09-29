@@ -234,6 +234,16 @@ Each of these was found by running something, and each survived reading.
    today's cost. The owner ruled the same day that each unit is costed on its sale date, and
    a return at its original sale's date (A31.4). Built and rerun: the year check passes all
    24 of its checks.
+11. **TikTok's token expiry was read as a duration.** Found 29 September by the first real
+   authorisation of the shop `7494930319769175829` (IkonetU, GB, LOCAL). TikTok answered
+   `access_token_expire_in` 1791309162 and `refresh_token_expire_in` 4912765591, which are
+   Unix times: 6 October 2026 17:52:42 UTC, seven days on, and 5 September 2125. The code
+   added them to now, so production stored the access token's expiry as 2083 and no
+   refresh would ever have fallen due. The test data had been written as durations, the
+   same assumption, so every test passed. `connections.expiry` now reads both as Unix times,
+   the tests carry the real values, and `tiktok_sync_check.py` passes 36 of 36 on both
+   datasets. That the refresh answer also carries Unix times is unverified until the first
+   refresh reaches TikTok.
 
 ## Commercial rulings worth knowing before touching billing
 
