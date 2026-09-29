@@ -165,3 +165,10 @@ which holds one app key, would need to hold two.
 `page_size` of 100, code 98001004, allowed range 10 to 50. Orders and statements accepted 100.
 The returns search now asks for 50. The same run read 0 orders and 0 statements for IkonetU
 over two years, and whether that is the shop's real history is not known.
+
+**Answered, 29 September 2026, 21:32 UTC.** One approval of the custom app lists one shop. The
+second connection logged "tiktok callback stored 1 shop(s): GBGBLCRKQTEX My ShopEdge GB LOCAL",
+so each shop came from its own approval and holds its own tokens, and no second app or second
+app key is needed. IkonetU's tokens still worked after the app was approved for My ShopEdge:
+the sync at 21:34 UTC read IkonetU's orders, returns and statements without an error, and found
+none. The same run read My ShopEdge's one order and one statement (CLAUDE.md, TikTok row).
