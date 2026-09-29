@@ -96,6 +96,12 @@ export default async function SettingsPage({ params }) {
             <li>
               <span><Link href={`${base}/sync`}>What has been read</Link></span>
             </li>
+            <li>
+              <span><Link href="/shops/connect">Connect another shop</Link></span>
+            </li>
+            <li>
+              <span><Link href="/shops">All your shops</Link></span>
+            </li>
           </ul>
         </div>
 
