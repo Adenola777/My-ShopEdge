@@ -139,3 +139,29 @@ type `LOCAL`. TikTok must have returned `user_type` 0, because `connections.py` 
 before it stores anything, and the shop and its encrypted tokens were on production when
 queried afterwards. The same authorisation showed that TikTok's `*_expire_in` fields are Unix
 times rather than durations, which is CLAUDE.md fault 11.
+
+**Corrected, 29 September 2026.** The shop that connected is not the one this ruling names.
+Production holds shop code `GBGBLCUKQTCE`, IkonetU, TikTok shop id `7494930319769175829`. The
+owner's Seller Center shows `GBGBLCRKQTEX`. Both are the owner's, and he wants both (31.7).
+
+## 31.7 An account holds every shop its authorisation covers
+
+**Ruling, 29 September 2026.** The owner wants both IkonetU (`GBGBLCUKQTCE`) and
+`GBGBLCRKQTEX` connected to his account. This replaces A12.7's one shop per account.
+
+**Built.** The callback stores every shop TikTok's Get Authorized Shops returns, each with its
+own row, its own cipher and the same tokens, written in one transaction so they share
+`authorised_at`. A refresh writes the new tokens to every unrevoked connection with that
+`authorised_at`, because whether TikTok voids the old refresh token is unverified. The callback
+logs each shop's code, name, region and seller type, and never a token. The contract still
+returns one shop, the first accepted one. Nothing in the schema limited an account to one shop.
+
+**Unverified.** Whether one authorisation of the custom app lists both shops. The first
+authorisation returned IkonetU, and how many shops its list held was not logged. If the next
+connection stores only IkonetU, `GBGBLCRKQTEX` needs a custom app of its own, and the service,
+which holds one app key, would need to hold two.
+
+**Also found by the first sync, 29 September 2026.** TikTok's returns search refuses a
+`page_size` of 100, code 98001004, allowed range 10 to 50. Orders and statements accepted 100.
+The returns search now asks for 50. The same run read 0 orders and 0 statements for IkonetU
+over two years, and whether that is the shop's real history is not known.

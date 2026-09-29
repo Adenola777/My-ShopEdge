@@ -36,6 +36,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 import time
@@ -54,6 +55,9 @@ from .db import tenant, unscoped
 from .idempotency import record, replay, request_hash
 from .problems import Problem
 from .shops import require_shop
+
+# Nothing configures logging, so only WARNING and above reach Render's log.
+log = logging.getLogger("myshopedge.connections")
 
 router = APIRouter(tags=["Connection"])
 
@@ -384,76 +388,85 @@ def tiktok_callback(
             "That TikTok account has no shop authorised for MyShopEdge.",
         )
 
-    # The first shop. TikTok's own description of LOCAL is a seller with exactly one shop,
-    # so for every seller the MVP supports this list has one entry. A CROSS_BORDER seller
-    # can have several and is refused below whichever one is taken, so the choice cannot
-    # change an outcome. A12.7 rules one shop per account.
-    shop = shops[0]
-
-    region = shop.get("region")
-    seller_type = shop.get("seller_type")
-
-    rejection_reason = None
-    if region != SUPPORTED_REGION:
-        rejection_reason = "region_unsupported"
-    elif seller_type != SUPPORTED_SELLER_TYPE:
-        rejection_reason = "seller_type_unsupported"
-    accepted = rejection_reason is None
-
+    # Every shop TikTok lists is stored. A12.7 ruled one shop per account; on 29 September
+    # 2026 the owner ruled that an account holds every shop its authorisation covers (A31.7),
+    # because his authorisation of the custom app returned IkonetU when he also wanted
+    # GBGBLCRKQTEX. How many shops that first list held was not logged, so whether one
+    # authorisation can list both is UNVERIFIED until the next connection.
     access_expires = expiry(data, "access_token_expire_in")
     refresh_expires = expiry(data, "refresh_token_expire_in")
 
     # Encrypted before the transaction opens, so a missing key fails before anything is
-    # written rather than halfway through.
+    # written rather than halfway through. Every shop from one authorisation carries the
+    # same tokens and its own cipher.
     enc_access = _encrypt(data["access_token"])
     enc_refresh = _encrypt(data.get("refresh_token") or "")
-    enc_cipher = _encrypt(shop["cipher"]) if shop.get("cipher") else None
+    ciphers = [_encrypt(s["cipher"]) if s.get("cipher") else None for s in shops]
 
-    # The shop row and its tokens are written together. A shop without its connection is a
-    # shop that cannot be read from, and a connection without its shop has nothing to hang
-    # on, so neither may exist alone.
+    results = []
+    # The shop rows and their tokens are written together. A shop without its connection is
+    # a shop that cannot be read from, and a connection without its shop has nothing to hang
+    # on, so neither may exist alone. One statement's now() gives every connection from this
+    # authorisation the same `authorised_at`, which is how a refresh finds its siblings.
     with tenant(account_id) as conn:
-        row = conn.execute(
-            "insert into shops (account_id, platform, tiktok_shop_id, tiktok_shop_code, "
-            "  shop_name, region, seller_type, currency, connection_status) "
-            "values (%s, 'tiktok_shop', %s, %s, %s, %s, %s, 'GBP', 'pending') "
-            "on conflict (platform, tiktok_shop_id) do update set "
-            "  tiktok_shop_code = excluded.tiktok_shop_code, shop_name = excluded.shop_name, "
-            "  region = excluded.region, seller_type = excluded.seller_type, "
-            "  connection_status = 'pending' "
-            "returning id",
-            (str(account_id), shop["id"], shop.get("code"), shop.get("name"),
-             region, seller_type),
-        ).fetchone()
+        for shop, enc_cipher in zip(shops, ciphers, strict=True):
+            region = shop.get("region")
+            seller_type = shop.get("seller_type")
+            rejection_reason = None
+            if region != SUPPORTED_REGION:
+                rejection_reason = "region_unsupported"
+            elif seller_type != SUPPORTED_SELLER_TYPE:
+                rejection_reason = "seller_type_unsupported"
 
-        if row is None:
-            # The conflict clause updates rather than doing nothing, so a null here means
-            # the row belongs to another account and row level security hid it. That is the
-            # UNIQUE (platform, tiktok_shop_id) guard doing its job.
-            raise Problem(
-                409, "shop_already_connected",
-                "That shop is already connected to another MyShopEdge account.",
+            row = conn.execute(
+                "insert into shops (account_id, platform, tiktok_shop_id, tiktok_shop_code, "
+                "  shop_name, region, seller_type, currency, connection_status) "
+                "values (%s, 'tiktok_shop', %s, %s, %s, %s, %s, 'GBP', 'pending') "
+                "on conflict (platform, tiktok_shop_id) do update set "
+                "  tiktok_shop_code = excluded.tiktok_shop_code, shop_name = excluded.shop_name, "
+                "  region = excluded.region, seller_type = excluded.seller_type, "
+                "  connection_status = 'pending' "
+                "returning id",
+                (str(account_id), shop["id"], shop.get("code"), shop.get("name"),
+                 region, seller_type),
+            ).fetchone()
+
+            if row is None:
+                # The conflict clause updates rather than doing nothing, so a null here means
+                # the row belongs to another account and row level security hid it. That is
+                # the UNIQUE (platform, tiktok_shop_id) guard doing its job.
+                raise Problem(
+                    409, "shop_already_connected",
+                    "That shop is already connected to another MyShopEdge account.",
+                )
+            shop_id = row[0]
+
+            conn.execute(
+                "insert into tiktok_connections (shop_id, access_token_enc, refresh_token_enc, "
+                "  shop_cipher_enc, access_expires_at, refresh_expires_at, scopes, key_version, "
+                "  authorised_at) values (%s, %s, %s, %s, %s, %s, %s, %s, now()) "
+                "on conflict (shop_id) do update set "
+                "  access_token_enc = excluded.access_token_enc, "
+                "  refresh_token_enc = excluded.refresh_token_enc, "
+                "  shop_cipher_enc = excluded.shop_cipher_enc, "
+                "  access_expires_at = excluded.access_expires_at, "
+                "  refresh_expires_at = excluded.refresh_expires_at, "
+                "  scopes = excluded.scopes, key_version = excluded.key_version, "
+                "  authorised_at = now(), revoked_at = null",
+                (str(shop_id), enc_access, enc_refresh, enc_cipher, access_expires,
+                 refresh_expires, data.get("granted_scopes") or [], KEY_VERSION),
             )
-        shop_id = row[0]
-
-        conn.execute(
-            "insert into tiktok_connections (shop_id, access_token_enc, refresh_token_enc, "
-            "  shop_cipher_enc, access_expires_at, refresh_expires_at, scopes, key_version, "
-            "  authorised_at) values (%s, %s, %s, %s, %s, %s, %s, %s, now()) "
-            "on conflict (shop_id) do update set "
-            "  access_token_enc = excluded.access_token_enc, "
-            "  refresh_token_enc = excluded.refresh_token_enc, "
-            "  shop_cipher_enc = excluded.shop_cipher_enc, "
-            "  access_expires_at = excluded.access_expires_at, "
-            "  refresh_expires_at = excluded.refresh_expires_at, "
-            "  scopes = excluded.scopes, key_version = excluded.key_version, "
-            "  authorised_at = now(), revoked_at = null",
-            (str(shop_id), enc_access, enc_refresh, enc_cipher, access_expires,
-             refresh_expires, data.get("granted_scopes") or [], KEY_VERSION),
-        )
+            results.append((shop, shop_id, region, seller_type, rejection_reason))
 
         conn.execute("select sweep_tiktok_auth_state()")
 
+    # Names and codes only, never a token or a cipher, so the log says which shops came back.
+    log.warning("tiktok callback stored %d shop(s): %s", len(results),
+             ", ".join(f"{s.get('code')} {s.get('name')} {r} {t}" for s, _, r, t, _ in results))
+
+    # The contract returns one shop. It is the first accepted one, or the first if none is.
+    shop, shop_id, region, seller_type, rejection_reason = next(
+        (r for r in results if r[4] is None), results[0])
     return ConnectionResultOut(
         shop={
             "id": str(shop_id),
@@ -466,7 +479,7 @@ def tiktok_callback(
             "currency": "GBP",
             "connection_status": "pending",
         },
-        accepted=accepted,
+        accepted=rejection_reason is None,
         rejection_reason=rejection_reason,
         return_to=return_to,
     )

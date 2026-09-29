@@ -244,6 +244,11 @@ Each of these was found by running something, and each survived reading.
    the tests carry the real values, and `tiktok_sync_check.py` passes 36 of 36 on both
    datasets. That the refresh answer also carries Unix times is unverified until the first
    refresh reaches TikTok.
+12. **The returns search refused a page of 100.** Found 29 September by the first live sync.
+   A11.4 said `page_size` 1 to 100 for every listing. Orders and statements accepted 100, and
+   the returns search answered code 98001004, "allowed range (10 to 50)". It now asks for 50.
+   The same run's summary said "0 with an error", because it counts exceptions and not a
+   step recorded as failed; `sync_runs` held the failure with TikTok's message.
 
 ## Commercial rulings worth knowing before touching billing
 

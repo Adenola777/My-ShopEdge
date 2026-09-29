@@ -64,7 +64,10 @@ ORDER_SEARCH_PATH = "/order/202309/orders/search"                               
 ORDER_DETAIL_PATH = "/order/202309/orders"                                       # A11.4
 RETURN_SEARCH_PATH = "/return_refund/202309/returns/search"                      # A11.4
 
-PAGE_SIZE = 100                  # A11.4: 1 to 100
+PAGE_SIZE = 100                  # A11.4: 1 to 100. Orders and statements took 100 on 29 September
+# TikTok refused 100 on the returns search on 29 September 2026, code 98001004: "`page_size`
+# exceeds the allowed range (10 to 50)". The first live sync found it.
+PAGE_SIZES = {RETURN_SEARCH_PATH: 50}
 PAGE_TOKEN_PARAM = "page_token"  # UNVERIFIED
 ORDER_DETAIL_IDS_PARAM = "ids"   # UNVERIFIED
 ORDER_DETAIL_MAX_IDS = 50        # UNVERIFIED
@@ -177,7 +180,7 @@ class Client:
         token = None
         seen: set[str] = set()
         while True:
-            q = dict(query, page_size=str(PAGE_SIZE))
+            q = dict(query, page_size=str(PAGE_SIZES.get(path, PAGE_SIZE)))
             if token:
                 q[PAGE_TOKEN_PARAM] = token
             data = self.call(method, path, q, body)
@@ -243,13 +246,18 @@ def refresh_connection(conn, shop_id: UUID | str, now: datetime | None = None,
     # carries Unix times is UNVERIFIED: no refresh has reached TikTok yet.
     access_expires = expiry(data, "access_token_expire_in")
     refresh_expires = expiry(data, "refresh_token_expire_in")
+    # Every shop stored from the same authorisation holds the same tokens (A31.7), and they
+    # share `authorised_at`, so the new tokens go to all of them. Whether TikTok voids the old
+    # refresh token when it issues a new one is UNVERIFIED; writing to every sibling means
+    # none is left holding a token that may have been voided.
     conn.execute(
         "update tiktok_connections set access_token_enc = %s, refresh_token_enc = %s, "
         "access_expires_at = %s, refresh_expires_at = %s, refresh_attempted_at = %s, "
         "refresh_succeeded_at = %s, refresh_failure_code = null, refresh_failure_reason = null "
-        "where shop_id = %s",
+        "where shop_id = %s or (revoked_at is null and authorised_at = "
+        "(select authorised_at from tiktok_connections where shop_id = %s))",
         (_encrypt(data["access_token"]), _encrypt(data.get("refresh_token") or ""),
-         access_expires, refresh_expires, now, now, str(shop_id)))
+         access_expires, refresh_expires, now, now, str(shop_id), str(shop_id)))
     conn.execute("update shops set connection_status = 'connected' "
                  "where id = %s and connection_status = 'needs_reconnect'", (str(shop_id),))
     return "refreshed"
