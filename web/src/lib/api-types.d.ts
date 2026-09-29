@@ -475,6 +475,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shopId}/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every variant with its cost
+         * @description Added 29 September 2026 for S20 Manual cost entry, which A3 describes as every
+         *     variant with its units sold in the last 30 days and fields for its cost, packing and
+         *     postage, ordered by units. Nothing in the contract gave that list. Units are counted
+         *     as getCostCoverage counts them, over the 30 London days ending today, and the cost is
+         *     the one in force today. A variant with no cost has `cost` null.
+         */
+        get: operations["listSkuCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shopId}/costs/coverage": {
         parameters: {
             query?: never;
@@ -557,6 +581,30 @@ export interface paths {
          *     make the ledger disagree with TikTok.
          */
         put: operations["putOtherChannelSales"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/export/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A data download's status and signed link
+         * @description requestAccountExport says "Poll the job", and the contract had no operation to poll
+         *     it with, so this one was added on 29 September 2026 when the export was built.
+         *     `download_url` is present only while the status is `ready`, and lives fifteen
+         *     minutes. The archive itself lives seven days, after which the status reads
+         *     `expired` and a new download can be requested.
+         */
+        get: operations["getAccountExport"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1972,12 +2020,20 @@ export interface components {
                 entity_id?: string | null;
             };
         };
+        /**
+         * @description Amended 29 September 2026. Every point was typed as Money, which cannot carry the
+         *     `units` measure. A point now carries `value` for a money measure and `count` for
+         *     `units`. `value` is null where the month's figure is not known, which is `kept` when a
+         *     product sold that month has no cost, because a bar is never drawn from a guess.
+         */
         Trends: {
             measure: string;
             basis: components["schemas"]["Basis"];
             points: {
                 month: string;
-                value: components["schemas"]["Money"];
+                value?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                /** @description Units sold in the month, for the `units` measure only. */
+                count?: number | null;
                 /**
                  * @description False for a month still settling, or one before the shop connected. A bar
                  *     drawn from a partial month must be marked, not shown as a fall in trade.
@@ -3123,6 +3179,44 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    listSkuCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The variants */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        skus: {
+                            /** Format: uuid */
+                            sku_id: string;
+                            seller_sku?: string | null;
+                            tiktok_sku_id?: string | null;
+                            product_title?: string | null;
+                            variant_label?: string | null;
+                            units_30d: number;
+                            cost?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                            packing?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                            postage?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
+        };
+    };
     getCostCoverage: {
         parameters: {
             query?: {
@@ -3272,6 +3366,30 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["ForbiddenShop"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getAccountExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
         };
     };
     createExport: {
@@ -4356,6 +4474,21 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             /** @description The card was declined */
             402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description The account already has a subscription that is trialing, active or past due,
+             *     so nothing new was started. A trial started earlier and never confirmed is not
+             *     refused: the same subscription is returned, so the seller can finish confirming
+             *     the card. Added 29 September 2026, when a second request was found to start a
+             *     second subscription at Stripe.
+             */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

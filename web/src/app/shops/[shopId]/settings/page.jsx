@@ -132,6 +132,11 @@ export default async function SettingsPage({ params }) {
         </p>
         <p className="footnote">Disconnecting stops updates. Nothing you already have is deleted.</p>
         <p>
+          <Link className="btn btn--quiet btn--block" href={`${base}/settings/data`} data-testid="settings-data">
+            Download my data
+          </Link>
+        </p>
+        <p>
           <Link className="btn btn--quiet btn--block" href={`${base}/settings/delete`} data-testid="settings-delete">
             Delete my account
           </Link>

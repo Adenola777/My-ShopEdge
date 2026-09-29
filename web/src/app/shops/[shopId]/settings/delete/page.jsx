@@ -7,10 +7,8 @@
  * password as well, and a seller who signs in with Google or GitHub has none, so the
  * contract's typed email address is the confirmation.
  *
- * A3's step 1 offers the data download first. S31 and requestAccountExport are not built,
- * so the screen says the download is not built rather than offering nothing silently.
- * An earlier draft pointed the seller to exports on each screen, and createExport is not
- * built either, so that sentence was removed before it was committed. Step 4's email is not sent, because nothing in the service sends email.
+ * A3's step 1 offers the data download first, and since 29 September it links to S31.
+ * Step 4's email is not sent, because nothing in the service sends email.
  */
 
 import Link from "next/link";
@@ -40,9 +38,9 @@ export default async function DeleteAccountPage({ params }) {
         <div className="card">
           <h2>Take your data first</h2>
           <p className="card__why">
-            A download of your data is not built yet, so MyShopEdge cannot give you a copy
-            before the account closes.
+            A copy of everything MyShopEdge holds about you is ready in a few moments.
           </p>
+          <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/settings/data`} data-testid="take-data">Download my data</Link></p>
         </div>
         <div className="card">
           <h2>What happens</h2>

@@ -1,0 +1,223 @@
+"""Runs the TikTok sync (service/app/tiktok_sync.py) against the generated payloads.
+
+    createdb mse_sync
+    DATABASE_URL=... python3 service/scripts/migrate.py
+    DATABASE_URL=... python3 testdata/tiktok_sync_check.py
+
+Written 29 September 2026 for part 1 of the batch. It needs a database, so it is not in CI.
+The database must be built from empty by `migrate.py` and must be a local copy: the script
+creates an account, a shop and a connection in it.
+
+Nothing here reaches TikTok. A transport answers each request from `testdata/payloads` (or
+the directory in MSE_PAYLOADS), the same files `ingest.py` reads, so the check compares two
+independent readings of one set of payloads: the service's, and the ingester's `rows.json`.
+
+What it checks:
+- Every request is signed, and every listing sends the sort field and order A19.4 requires.
+- The ledger the sync writes equals, category by category, the settled part of `rows.json`,
+  leaving out `cost_of_goods_sold` and `stock_written_off`, which the sync does not post.
+- Every settlement's payout is the negative of its own entries, and the statement count,
+  the order count and the return count match the payloads.
+- A second run over the same window writes nothing.
+- A token with fewer than two days left is refreshed and stored encrypted, and a refused
+  refresh is recorded with TikTok's code without touching the stored token.
+
+**Run on 29 September 2026** against databases built from empty by `migrate.py`: 36 of 36
+passed on `payloads` with `rows.json`, and 36 of 36 on `payloads_year` with `rows_year.json`.
+"""
+
+import base64
+import json
+import os
+import secrets
+import sys
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from urllib.parse import urlparse
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "service"))
+
+os.environ.setdefault("TIKTOK_APP_KEY", "check-app-key")
+os.environ.setdefault("TIKTOK_APP_SECRET", "check-app-secret")
+os.environ.setdefault("TIKTOK_TOKEN_KEY", base64.b64encode(secrets.token_bytes(32)).decode())
+
+import psycopg  # noqa: E402
+
+from app import tiktok_api, tiktok_sync  # noqa: E402
+from app.connections import _encrypt  # noqa: E402
+
+P = HERE / os.environ.get("MSE_PAYLOADS", "payloads")
+ROWS = HERE / os.environ.get("MSE_ROWS", "rows.json")
+
+
+def load(name):
+    return json.load(open(P / name))
+
+
+SHOPS = load("authorization_shops.json")["data"]["shops"]
+ORDERS = load("orders.json")["data"]["orders"]
+STATEMENTS = load("statements.json")["data"]["statements"]
+STMT_TXNS = load("statement_transactions.json")
+ORDER_CALC = load("order_statement_transactions.json")
+RETURNS = load("returns.json")["data"]["return_orders"]
+
+ok = bad = 0
+calls: list[tuple[str, str, dict]] = []
+
+
+def check(cond, what):
+    global ok, bad
+    print(("PASS " if cond else "FAIL ") + what)
+    ok += bool(cond)
+    bad += not cond
+
+
+def answer(data):
+    return {"code": 0, "message": "Success", "data": data}
+
+
+def fake(method, url, params, headers, body):
+    """Answers as TikTok would, from the payload files. Records every request it receives."""
+    path = urlparse(url).path
+    calls.append((method, path, dict(params)))
+    if url == tiktok_api.REFRESH_URL:
+        if os.environ.get("_CHECK_REFUSE_REFRESH"):
+            return {"code": 36004001, "message": "refresh token invalid", "data": None}
+        return answer({"access_token": "new-access", "access_token_expire_in": 604800,
+                       "refresh_token": "new-refresh", "refresh_token_expire_in": 31536000})
+    if path == tiktok_api.STATEMENTS_PATH:
+        ge, lt = int(params["statement_time_ge"]), int(params["statement_time_lt"])
+        return answer({"statements": [s for s in STATEMENTS if ge <= s["statement_time"] < lt],
+                       "next_page_token": ""})
+    if path.startswith("/finance/202501/statements/"):
+        return STMT_TXNS[path.split("/")[4]]
+    if path.startswith("/finance/202501/orders/"):
+        return ORDER_CALC[path.split("/")[4]]
+    if path == tiktok_api.ORDER_SEARCH_PATH:
+        return answer({"orders": ORDERS, "next_page_token": ""})
+    if path == tiktok_api.ORDER_DETAIL_PATH:
+        wanted = set(params[tiktok_api.ORDER_DETAIL_IDS_PARAM].split(","))
+        return answer({"orders": [o for o in ORDERS if o["id"] in wanted]})
+    if path == tiktok_api.RETURN_SEARCH_PATH:
+        # The generated returns carry a private `_skus` list. It is put where the sync reads
+        # items from, which is itself unverified (tiktok_sync's docstring).
+        out = [dict(r, return_line_items=[{"sku_id": s} for s in r["_skus"]]) for r in RETURNS]
+        return answer({"return_orders": out, "next_page_token": ""})
+    return {"code": 404, "message": f"no recorded answer for {method} {path}"}
+
+
+def expected_ledger():
+    rows = json.load(open(ROWS))
+    by_cat = Counter()
+    for e in rows["ledger_entries"]:
+        if e.get("settlement_id") and e["category"] not in ("cost_of_goods_sold", "stock_written_off"):
+            by_cat[e["category"]] += e["amount_minor"]
+    return by_cat
+
+
+def main():
+    url = os.environ["DATABASE_URL"]
+    shop_tt = SHOPS[0]
+    with psycopg.connect(url) as conn:
+        account = conn.execute(
+            "insert into accounts (email, auth_subject, display_name) values "
+            "('sync-check@example.test', 'stack|sync-check', 'Sync check') returning id").fetchone()[0]
+        shop = conn.execute(
+            "insert into shops (account_id, tiktok_shop_id, shop_name, region, seller_type, currency, "
+            "connection_status) values (%s, %s, %s, 'GB', 'LOCAL', 'GBP', 'pending') returning id",
+            (account, shop_tt["id"], shop_tt["name"])).fetchone()[0]
+        conn.execute(
+            "insert into tiktok_connections (shop_id, access_token_enc, refresh_token_enc, shop_cipher_enc, "
+            "access_expires_at, refresh_expires_at, scopes) values (%s, %s, %s, %s, now() + interval '6 days', "
+            "now() + interval '300 days', '{seller.finance.info,seller.order.info}')",
+            (shop, _encrypt("old-access"), _encrypt("old-refresh"), _encrypt("cipher-x")))
+
+    now = datetime(2026, 9, 29, 12, tzinfo=timezone.utc)
+    first = tiktok_sync.run_due(fake, now)
+    print(json.dumps(first, default=str))
+    check(len(first) == 1 and "error" not in first[0], "one shop ran without an error")
+    check(first[0].get("refresh") == "not_due", "a token with six days left is not refreshed")
+    check(all(s == "completed" for s in (first[0].get("sync") or {}).values()),
+          f"orders, returns and finance completed: {first[0].get('sync')}")
+
+    signed = all("sign" in p and "app_key" in p and len(p["timestamp"]) == 10 and p.get("shop_cipher") == "cipher-x"
+                 for m, path, p in calls if path.startswith(("/finance", "/order", "/return")))
+    check(signed, "every shop call is signed, carries a ten digit timestamp and the shop cipher")
+    listings = [p for m, path, p in calls if tiktok_api._template(path) in tiktok_api.SORT_FIELDS]
+    check(listings and all(p.get("sort_field") and p.get("sort_order") in ("ASC", "DESC") for p in listings),
+          f"all {len(listings)} listing calls send sort_field and sort_order")
+
+    with psycopg.connect(url) as conn:
+        got = Counter(dict(conn.execute(
+            "select category, sum(amount_minor)::bigint from ledger_entries where shop_id = %s group by category",
+            (shop,)).fetchall()))
+        want = expected_ledger()
+        for cat in sorted(set(got) | set(want)):
+            check(got.get(cat, 0) == want.get(cat, 0),
+                  f"{cat}: the sync posted {got.get(cat, 0)}, rows.json holds {want.get(cat, 0)} settled")
+        unsettled = conn.execute("select count(*) from ledger_entries where shop_id = %s and settlement_id is null",
+                                 (shop,)).fetchone()[0]
+        check(unsettled == 0, "every entry the sync posted carries its settlement (the owner's ruling)")
+        off = conn.execute(
+            "select s.tiktok_statement_id from settlements s join ledger_entries le on le.settlement_id = s.id "
+            "where s.shop_id = %s group by s.tiktok_statement_id "
+            "having sum(le.amount_minor) filter (where le.entry_type not in ('reserve')) <> 0", (shop,)).fetchall()
+        check(off == [], f"each payout is the negative of its statement's own entries: {off}")
+        n = conn.execute("select (select count(*) from settlements where shop_id = %(s)s), "
+                         "(select count(*) from orders where shop_id = %(s)s), "
+                         "(select count(*) from returns where shop_id = %(s)s), "
+                         "(select count(*) from ledger_entries where shop_id = %(s)s)", {"s": shop}).fetchone()
+        check(n[0] == len(STATEMENTS), f"{n[0]} settlements for {len(STATEMENTS)} statements")
+        check(n[1] == len(ORDERS), f"{n[1]} orders for {len(ORDERS)} in the payload")
+        check(n[2] == len(RETURNS), f"{n[2]} returns for {len(RETURNS)} in the payload")
+        months = conn.execute(
+            "select count(*) from ledger_entries le join settlements s on s.id = le.settlement_id "
+            "where le.shop_id = %s and le.settlement_month <> date_trunc('month', "
+            "s.statement_time at time zone 'Europe/London')::date", (shop,)).fetchone()[0]
+        check(months == 0, "every entry's settlement month is its statement's London month")
+        entries_before = n[3]
+
+    calls.clear()
+    second = tiktok_sync.run_due(fake, now + timedelta(hours=1))
+    with psycopg.connect(url) as conn:
+        after = conn.execute("select count(*) from ledger_entries where shop_id = %s", (shop,)).fetchone()[0]
+        runs = conn.execute("select kind, count(*) from sync_runs where shop_id = %s group by kind order by kind",
+                            (shop,)).fetchall()
+    check(after == entries_before, f"a second run writes no ledger entry: {entries_before} then {after}")
+    check("error" not in second[0], "the second run ran without an error")
+    check(dict(runs) == {"backfill": 3, "incremental": 3}, f"the first run is a backfill, the second incremental: {runs}")
+    cal = [p for m, path, p in calls if path == tiktok_api.STATEMENTS_PATH][0]
+    check(int(cal["statement_time_ge"]) == int((now - timedelta(days=3)).timestamp()),
+          "the incremental run starts three days before the last one ended")
+
+    # The refresh: two days or fewer left.
+    with psycopg.connect(url) as conn:
+        conn.execute("update tiktok_connections set access_expires_at = %s where shop_id = %s",
+                     (now + timedelta(days=1), shop))
+    os.environ["_CHECK_REFUSE_REFRESH"] = "1"
+    refused = tiktok_sync.run_due(fake, now)
+    with psycopg.connect(url) as conn:
+        code, token = conn.execute("select refresh_failure_code, access_token_enc from tiktok_connections "
+                                   "where shop_id = %s", (shop,)).fetchone()
+    check(refused[0].get("refresh") == "failed" and code == "36004001", f"a refused refresh records TikTok's code: {code}")
+    check(tiktok_api.decrypt(token) == "old-access", "a refused refresh leaves the stored token as it was")
+    del os.environ["_CHECK_REFUSE_REFRESH"]
+    refreshed = tiktok_sync.run_due(fake, now)
+    with psycopg.connect(url) as conn:
+        row = conn.execute("select access_token_enc, refresh_token_enc, access_expires_at, refresh_failure_code, "
+                           "refresh_succeeded_at from tiktok_connections where shop_id = %s", (shop,)).fetchone()
+    check(refreshed[0].get("refresh") == "refreshed", "a token with one day left is refreshed")
+    check(tiktok_api.decrypt(row[0]) == "new-access" and tiktok_api.decrypt(row[1]) == "new-refresh",
+          "the new tokens are stored encrypted and decrypt to what TikTok returned")
+    check(row[2] == now + timedelta(seconds=604800) and row[3] is None and row[4] == now,
+          "the new expiry is seven days on, and the failure is cleared")
+    check(b"new-access" not in bytes(row[0]), "the stored token is not the token in the clear")
+
+    print(f"{ok} passed, {bad} failed")
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

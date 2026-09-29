@@ -183,11 +183,11 @@ The specification is nearly complete. The application is not.
 |---|---|
 | Brand, terminology, screen specification, data model, API contract | Done |
 | Schema applied | Through 0024 on all three branches, 25 migrations each, fingerprints identical (24 September). 0024 closed the Neon Data API exposure that CLAUDE.md describes |
-| Backend | 48 of 54 contract paths and 53 of 59 operations on 28 September. See CLAUDE.md |
+| Backend | 55 of 56 contract paths and 60 of 61 operations on 29 September. See CLAUDE.md |
 | Authentication | Verified by a real sign-in on 24 September. Issuer and audience were read from that token and set on Render, and the first production account was created from it |
 | Billing | Screens built. The three products and prices were created in the live Stripe account on 23 September. See CLAUDE.md for the identifiers |
 | TikTok integration | Authorisation is built (`app/connections.py`) and has never made a live call. Ingestion still reads local JSON files |
-| Front end | 26 screens of 36 built on 28 September. S17 Start, Stack's sign-in pages, S1 Connect TikTok Shop and the TikTok return page were added on 24 September. Sign-in works on the live site. No shop is connected yet. See `SCREENS.md` |
+| Front end | All 36 screens built on 29 September. S17 Start, Stack's sign-in pages, S1 Connect TikTok Shop and the TikTok return page were added on 24 September. Sign-in works on the live site. No shop is connected yet. See `SCREENS.md` |
 | Deployment | The front end is live on Vercel production. The Python service runs on Render as `My-ShopEdge-1` in Frankfurt, deploying `main` of this repository, since 24 September |
 | Tests | Five files run in CI: auth, contract conformance, 44 handler smoke cases that call every served route, the London business date, and the cost file rules |
 

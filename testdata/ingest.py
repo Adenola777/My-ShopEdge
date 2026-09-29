@@ -18,7 +18,9 @@ from zoneinfo import ZoneInfo
 from decimal import ROUND_HALF_UP, Decimal
 
 HERE = os.path.dirname(__file__)
-P = os.path.join(HERE, "payloads")
+# MSE_PAYLOADS and MSE_ROWS let the year dataset of 29 September 2026 go through the same
+# mapping. Unset, the ingester reads payloads/ and writes rows.json exactly as before.
+P = os.path.join(HERE, os.environ.get("MSE_PAYLOADS", "payloads"))
 LONDON = ZoneInfo("Europe/London")
 
 def load(n): return json.load(open(os.path.join(P, n)))
@@ -368,4 +370,4 @@ rows["stock_movements"].append(dict(id=uid("sm","cancel"), shop_id=SHOP,
 
 print(json.dumps({k: len(v) for k, v in rows.items() if v}, indent=0))
 print("unmapped TikTok fields seen:", sorted(UNMAPPED))
-json.dump(rows, open(os.path.join(HERE, "rows.json"), "w"), indent=1)
+json.dump(rows, open(os.path.join(HERE, os.environ.get("MSE_ROWS", "rows.json")), "w"), indent=1)

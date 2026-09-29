@@ -993,6 +993,82 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /shops/{shopId}/costs:
+    get:
+      tags:
+      - Costs
+      summary: Every variant with its cost
+      description: |
+        Added 29 September 2026 for S20 Manual cost entry, which A3 describes as every
+        variant with its units sold in the last 30 days and fields for its cost, packing and
+        postage, ordered by units. Nothing in the contract gave that list. Units are counted
+        as getCostCoverage counts them, over the 30 London days ending today, and the cost is
+        the one in force today. A variant with no cost has `cost` null.
+      operationId: listSkuCosts
+      parameters:
+      - $ref: '#/components/parameters/ShopId'
+      responses:
+        '200':
+          description: The variants
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - skus
+                properties:
+                  skus:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - sku_id
+                      - units_30d
+                      properties:
+                        sku_id:
+                          type: string
+                          format: uuid
+                        seller_sku:
+                          type:
+                          - string
+                          - 'null'
+                        tiktok_sku_id:
+                          type:
+                          - string
+                          - 'null'
+                        product_title:
+                          type:
+                          - string
+                          - 'null'
+                        variant_label:
+                          type:
+                          - string
+                          - 'null'
+                        units_30d:
+                          type: integer
+                          minimum: 0
+                        cost:
+                          type:
+                          - object
+                          - 'null'
+                          allOf:
+                          - $ref: '#/components/schemas/Money'
+                        packing:
+                          type:
+                          - object
+                          - 'null'
+                          allOf:
+                          - $ref: '#/components/schemas/Money'
+                        postage:
+                          type:
+                          - object
+                          - 'null'
+                          allOf:
+                          - $ref: '#/components/schemas/Money'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenShop'
   /shops/{shopId}/costs/coverage:
     get:
       tags:
@@ -1199,6 +1275,36 @@ paths:
           $ref: '#/components/responses/ForbiddenShop'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /me/export/{exportId}:
+    get:
+      tags:
+      - Account
+      summary: A data download's status and signed link
+      description: |
+        requestAccountExport says "Poll the job", and the contract had no operation to poll
+        it with, so this one was added on 29 September 2026 when the export was built.
+        `download_url` is present only while the status is `ready`, and lives fifteen
+        minutes. The archive itself lives seven days, after which the status reads
+        `expired` and a new download can be requested.
+      operationId: getAccountExport
+      parameters:
+      - name: exportId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /shops/{shopId}/exports:
     post:
       tags:
@@ -2482,6 +2588,17 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '402':
           description: The card was declined
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: |
+            The account already has a subscription that is trialing, active or past due,
+            so nothing new was started. A trial started earlier and never confirmed is not
+            refused: the same subscription is returned, so the seller can finish confirming
+            the card. Added 29 September 2026, when a second request was found to start a
+            second subscription at Stripe.
           content:
             application/problem+json:
               schema:
@@ -4370,6 +4487,11 @@ components:
               format: uuid
     Trends:
       type: object
+      description: |
+        Amended 29 September 2026. Every point was typed as Money, which cannot carry the
+        `units` measure. A point now carries `value` for a money measure and `count` for
+        `units`. `value` is null where the month's figure is not known, which is `kept` when a
+        product sold that month has no cost, because a bar is never drawn from a guess.
       required:
       - measure
       - basis
@@ -4386,14 +4508,23 @@ components:
             type: object
             required:
             - month
-            - value
             - complete
             properties:
               month:
                 type: string
                 pattern: ^\d{4}-(0[1-9]|1[0-2])$
               value:
-                $ref: '#/components/schemas/Money'
+                type:
+                - object
+                - 'null'
+                allOf:
+                - $ref: '#/components/schemas/Money'
+              count:
+                type:
+                - integer
+                - 'null'
+                minimum: 0
+                description: Units sold in the month, for the `units` measure only.
               complete:
                 type: boolean
                 description: 'False for a month still settling, or one before the shop connected. A bar

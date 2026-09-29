@@ -13,7 +13,12 @@ import json, os, hashlib
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
-OUT = os.path.join(os.path.dirname(__file__), "payloads")
+# Year mode, added 29 September 2026 for CLAUDE.md fault 8: the test data covered July and
+# August 2026 only, so nothing tested behaviour across many months or across a clock change.
+# With MSE_TESTDATA_YEAR=1 the same orders are generated plus YEAR_ORDERS below, and the
+# payloads go to payloads_year/. Without it the output is byte for byte what it was.
+YEAR = os.environ.get("MSE_TESTDATA_YEAR") == "1"
+OUT = os.path.join(os.path.dirname(__file__), "payloads_year" if YEAR else "payloads")
 os.makedirs(OUT, exist_ok=True)
 
 SHOP_ID = "7495000000000000001"
@@ -126,7 +131,28 @@ def build_order(ref, created, items, flags):
         "_ref": ref, "_flags": flags, "_subtotal": subtotal, "_discount": disc,
     }
 
+# Two plain orders a month from October 2025 to July 2026, so twelve London months hold
+# sales together with August and September, and six orders placed where a UTC date and a
+# London date differ. The comment on each gives the London date the ledger must carry.
+YEAR_ORDERS = [
+    (f"Y{y}{m:02d}{d}", f"{y}-{m:02d}-{d}T12:00:00", [(SKUS[(m + d) % 10][0], 1)], {})
+    for y, m in [(2025, 10), (2025, 11), (2025, 12), (2026, 1), (2026, 2), (2026, 3),
+                 (2026, 4), (2026, 5), (2026, 6), (2026, 7)]
+    for d in (10, 20)
+] + [
+    # Clocks go back at 02:00 BST on 26 October 2025.
+    ("YBSTEND1", "2025-10-25T23:30:00", [(SKUS[0][0], 1)], {}),   # 00:30 BST, London 26 October
+    ("YBSTEND2", "2025-10-26T01:30:00", [(SKUS[3][0], 1)], {}),   # 01:30 GMT, London 26 October
+    ("YOCTEND",  "2025-10-31T23:30:00", [(SKUS[5][0], 1)], {}),   # 23:30 GMT, London 31 October
+    # Clocks go forward at 01:00 GMT on 29 March 2026.
+    ("YBSTSTART1", "2026-03-28T23:30:00", [(SKUS[6][0], 1)], {}), # 23:30 GMT, London 28 March
+    ("YBSTSTART2", "2026-03-29T23:30:00", [(SKUS[8][0], 1)], {}), # 00:30 BST, London 30 March
+    ("YMAREND",    "2026-03-31T23:30:00", [(SKUS[9][0], 1)], {}), # 00:30 BST, London 1 April
+]
+
 orders = [build_order(*o) for o in ORDERS]
+if YEAR:
+    orders += [build_order(*o) for o in YEAR_ORDERS]
 
 # --------------------------------------- finance: per-order SKU transactions
 def statement_transactions(o):
@@ -181,10 +207,25 @@ tx = {o["id"]: statement_transactions(o) for o in orders}
 
 # ------------------------------------------------------------- statements
 # Statements are stamped the day AFTER the activity they cover.
-SETTLED = [o for o in orders if not o["_flags"].get("unsettled")]
+SETTLED = [o for o in orders if not o["_flags"].get("unsettled") and not o["_ref"].startswith("Y")]
 GROUPS = [("202608A-0001", "2026-08-21T00:00:00", SETTLED[0:7],  "PAID"),
           ("202608A-0002", "2026-08-22T00:00:00", SETTLED[7:14], "PROCESSING"),
           ("202608A-0003", "2026-08-23T00:00:00", SETTLED[14:],  "PAID")]
+
+if YEAR:
+    # One statement a month for the year orders, stamped on the 5th of the next month. The
+    # March statement is stamped at 23:30 UTC on 31 March, which is 1 April in London, so
+    # its settlement month is April, not March.
+    by_month = {}
+    for o in orders:
+        if o["_ref"].startswith("Y"):
+            key = datetime.fromtimestamp(o["create_time"], tz=timezone.utc).strftime("%Y-%m")
+            by_month.setdefault(key, []).append(o)
+    for key in sorted(by_month):
+        y, m = map(int, key.split("-"))
+        stamp = ("2026-03-31T23:30:00" if key == "2026-03"
+                 else f"{y + (m == 12)}-{m % 12 + 1:02d}-05T00:00:00")
+        GROUPS.append((f"Y{key.replace('-', '')}-0001", stamp, by_month[key], "PAID"))
 
 statements, stmt_tx, STMT_TXNS = [], {}, {}
 for sid, stime, grp, status in GROUPS:

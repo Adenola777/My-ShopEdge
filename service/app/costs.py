@@ -15,9 +15,11 @@ The contract also says a figure calculated last month still reconciles against t
 force at the time. Until 28 September the figure queries in `products.py` read only the
 current cost, so a new cost changed past months' gross profit too. On 28 September the
 owner approved taking Emergent AI's change (commit d87f6a0): the figures and coverage read
-the cost in force at the period's end, by `effective_from`, with `created_at` as the
-tie-break for two rows on one day. It is the cost at the end of the period, not at each
-sale's date, so a cost that changes inside a month applies to the whole of that month.
+the cost in force at the period's end. On 29 September the owner ruled on fault 10 (A31.4)
+that each unit is costed at the cost in force on its sale date, by `effective_from`, with
+`created_at` as the tie-break for two rows on one day. The figures and coverage follow that
+rule, so a cost that changes inside a month applies from its own date onwards. A variant
+counts as missing a cost when any unit it sold in the period had no cost on its sale date.
 
 A cost in a currency other than the shop's is refused. `cost_minor` is summed with sales
 in the shop's currency, and adding pence to cents would be a wrong figure presented as a
@@ -149,23 +151,27 @@ def put_sku_cost(
 
 
 COVERAGE_SQL = """
-with sold as (
-  select ol.sku_id, sum(ol.quantity) as units,
-         sum(ol.quantity * ol.unit_price_minor) as gross_minor
+with lines as (
+  select ol.sku_id, ol.quantity, ol.unit_price_minor,
+         exists (select 1 from product_costs pc
+                  where pc.shop_id = %(shop)s and pc.sku_id = ol.sku_id
+                    and pc.effective_from <= (o.order_created_at at time zone 'Europe/London')::date)
+           as has_cost
     from order_lines ol
     join orders o on o.id = ol.order_id
    where ol.shop_id = %(shop)s
      and o.cancelled_at is null
      and (o.order_created_at at time zone 'Europe/London')::date between %(from)s and %(to)s
-   group by ol.sku_id
 ),
 costed as (
-  select sold.*, exists (select 1 from product_costs pc
-                          where pc.sku_id = sold.sku_id
-                            and pc.effective_from <= %(to)s) as has_cost
-    from sold
+  select sku_id, sum(quantity) as units,
+         sum(quantity) filter (where has_cost) as units_costed,
+         sum(quantity * unit_price_minor) as gross_minor,
+         bool_and(has_cost) as has_cost
+    from lines group by sku_id
 )
-select c.sku_id, p.title as product_title, c.units, c.gross_minor, c.has_cost,
+select c.sku_id, p.title as product_title, c.units, coalesce(c.units_costed, 0) as units_costed,
+       c.gross_minor, c.has_cost,
        (select trim(currency) from shops where id = %(shop)s) as currency
   from costed c
   join skus k on k.id = c.sku_id
@@ -193,7 +199,7 @@ def get_cost_coverage(
         rows = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
 
     units_total = sum(int(r["units"]) for r in rows)
-    units_with_cost = sum(int(r["units"]) for r in rows if r["has_cost"])
+    units_with_cost = sum(int(r["units_costed"]) for r in rows)
     missing = [r for r in rows if not r["has_cost"]]
     # Coverage is a share, not money, so a float is the contract's own type. With no units
     # sold nothing is uncosted, so the gate is open rather than shut.
@@ -213,3 +219,75 @@ def get_cost_coverage(
             for r in missing[:10]
         ],
     )
+
+
+# --- listSkuCosts, for S20 Manual cost entry ---------------------------------------------------
+#
+# A3 S20 lists every variant with its units sold in the last 30 days and fields for its cost,
+# packing and postage, ordered by units so the products that matter most come first. Nothing
+# in the contract gave that list: `top_missing` stops at ten and the stock list carries no
+# cost. This operation was added to the contract on 29 September 2026 with S20. Units are
+# counted exactly as coverage counts them, and the cost is the one in force today, with the
+# same tie-break as the product figures.
+
+class SkuCost(BaseModel):
+    sku_id: UUID
+    seller_sku: str | None = None
+    tiktok_sku_id: str | None = None
+    product_title: str | None = None
+    variant_label: str | None = None
+    units_30d: int = Field(ge=0)
+    cost: Money | None = None
+    packing: Money | None = None
+    postage: Money | None = None
+
+
+class SkuCostList(BaseModel):
+    skus: list[SkuCost]
+
+
+SKU_COSTS_SQL = """
+with sold as (
+  select ol.sku_id, sum(ol.quantity) as units
+    from order_lines ol join orders o on o.id = ol.order_id
+   where ol.shop_id = %(shop)s and o.cancelled_at is null
+     and (o.order_created_at at time zone 'Europe/London')::date between %(from)s and %(to)s
+   group by ol.sku_id
+),
+cost as (
+  select distinct on (sku_id) sku_id, cost_minor, packing_minor, postage_minor
+    from product_costs where shop_id = %(shop)s and effective_from <= %(to)s
+   order by sku_id, effective_from desc, created_at desc
+)
+select k.id, k.seller_sku, k.tiktok_sku_id, p.title, k.variant_label,
+       coalesce(s.units, 0) as units, c.cost_minor, c.packing_minor, c.postage_minor,
+       (select trim(currency) from shops where id = %(shop)s) as currency
+  from skus k
+  left join products p on p.id = k.product_id
+  left join sold s on s.sku_id = k.id
+  left join cost c on c.sku_id = k.id
+ where k.shop_id = %(shop)s
+ order by coalesce(s.units, 0) desc, p.title nulls last, k.variant_label nulls last, k.id
+"""
+
+
+@router.get("/shops/{shopId}/costs", response_model=SkuCostList, summary="Every variant with its cost")
+def list_sku_costs(
+    account: Annotated[Account, Depends(require_account)],
+    shop_id: Annotated[UUID, Depends(require_shop)],
+) -> SkuCostList:
+    from datetime import timedelta
+
+    today = business_today()
+    with tenant(account.id) as conn:
+        rows = conn.execute(SKU_COSTS_SQL, {"shop": str(shop_id), "from": today - timedelta(days=29),
+                                            "to": today}).fetchall()
+
+    def m(v, cur):
+        return money(int(v), cur or "GBP") if v is not None else None
+
+    return SkuCostList(skus=[
+        SkuCost(sku_id=r[0], seller_sku=r[1], tiktok_sku_id=r[2], product_title=r[3], variant_label=r[4],
+                units_30d=int(r[5]), cost=m(r[6], r[9]), packing=m(r[7], r[9]), postage=m(r[8], r[9]))
+        for r in rows
+    ])

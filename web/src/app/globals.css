@@ -554,3 +554,8 @@ a.chip { text-decoration: none; }
 .segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .segmented .segmented__on { background: var(--white); color: var(--navy-900); box-shadow: 0 0 0 1px var(--ink-200); }
 .segmented label:focus-within { outline: 2px solid var(--orange-600); outline-offset: 1px; }
+
+/* Setup forms, 29 September 2026: three money fields side by side, and a tick box with its words. */
+.cost-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.check { display: flex; gap: 8px; align-items: center; }
+details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }

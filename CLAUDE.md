@@ -65,7 +65,7 @@ These are standing instructions from the owner. They hold until he changes them.
 
 ## The contract is the source of truth
 
-`api/openapi.yaml` holds 59 operations across 54 paths. Rule 1 of A13 says the service
+`api/openapi.yaml` holds 61 operations across 56 paths. Rule 1 of A13 says the service
 implements the contract and never the other way round. A test enforces it:
 
 ```
@@ -83,12 +83,12 @@ The specification is close to complete. The application is not. As of 23 Septemb
 | Layer | State |
 |---|---|
 | Rulings, terminology, screens, data model, API contract | Done |
-| Schema | Through 0025 on all three branches, with 26 migrations recorded on each. 0025, account deletion, was applied on 29 September with the owner's authority, development first, then staging, then production, each in one transaction with its `schema_migrations` row and the file's SHA-256. Queried afterwards on all three: the record and checksum match, `accounts.erased_at` exists, both new functions belong to `mse_migrator` and only `mse_app` may call them, and on production neither `authenticated` nor `anonymous` can. The note inside 0025 saying it is not applied to any Neon branch is stale and stays, because an applied migration is never edited. The three schema fingerprints matched exactly when last compared on 24 September, before 0025. 0022, 0023 and 0024 were applied on 24 September with the owner's authority through the Neon connection, which runs as `mse_migrator`, rather than through `migrate.py`, so that no connection string entered the session. Each migration and its `schema_migrations` row went in one transaction with the file's SHA-256, as the runner does, so `migrate.py --status` reads them as applied. The notes inside 0022 and 0023 saying "not yet applied" are stale and stay, because an applied migration is never edited. See the Data API section below for 0024 |
-| Backend | 48 of 54 contract paths and 53 of 59 operations, counted from the generated schema on 28 September. The six operations not served are `requestAccountExport`, `createExport`, `getExport`, `getExpectedPayouts`, `getInsights` and `getTrends`. `checkReturnItem`, `deleteMe` and `cancelAccountDeletion` were added on 28 September; the last was added to the contract with it, because A30.1 allows a cancellation the contract had no operation for. Each was driven in a browser against the local copy of development |
+| Schema | Through 0025 on all three branches, with 26 migrations recorded on each. **0026, the export jobs, and 0027, the list of shops the TikTok sync reads, were applied on 29 September with the owner's authority to development and then production**, each in one transaction with its record and the file's SHA-256. Queried afterwards on production: 28 migrations recorded, `shops_due_for_sync()` belongs to `mse_migrator` and only `mse_app` may call it, `account_exports` forces row level security, and neither `authenticated` nor `anonymous` holds any right on either. Neither is on staging. 0025, account deletion, was applied on 29 September with the owner's authority, development first, then staging, then production, each in one transaction with its `schema_migrations` row and the file's SHA-256. Queried afterwards on all three: the record and checksum match, `accounts.erased_at` exists, both new functions belong to `mse_migrator` and only `mse_app` may call them, and on production neither `authenticated` nor `anonymous` can. The note inside 0025 saying it is not applied to any Neon branch is stale and stays, because an applied migration is never edited. The three schema fingerprints matched exactly when last compared on 24 September, before 0025. 0022, 0023 and 0024 were applied on 24 September with the owner's authority through the Neon connection, which runs as `mse_migrator`, rather than through `migrate.py`, so that no connection string entered the session. Each migration and its `schema_migrations` row went in one transaction with the file's SHA-256, as the runner does, so `migrate.py --status` reads them as applied. The notes inside 0022 and 0023 saying "not yet applied" are stale and stay, because an applied migration is never edited. See the Data API section below for 0024 |
+| Backend | 55 of 56 contract paths and 60 of 61 operations, counted from the generated schema on 29 September. The one operation not served is `getExpectedPayouts`, for the reason in the blocked table. Added on 29 September: `getTrends`, `getInsights` (A31.1), the four export operations and `listSkuCosts`. `getAccountExport` and `listSkuCosts` were added to the contract with them, because a job could not be polled and S20 had no list to read |
 | Authentication | **Verified by a real sign-in on 24 September.** ES256 verified against the provider's fetched JWKS, email read from `users_sync`, 15 tests passing. The first real token logged `iss` `https://api.stack-auth.com/api/v1/projects/f1762e29-4750-42f6-80e1-c94b040a72e8` and `aud` `f1762e29-4750-42f6-80e1-c94b040a72e8`, and both are set on Render as `NEON_AUTH_ISSUER` and `NEON_AUTH_AUDIENCE`. The next request created the first production account at 15:17:21 UTC |
 | Billing | Screens built. The three products and prices exist in the live Stripe account as of 23 September. Nothing is wired to them yet |
-| TikTok integration | Authorisation is built end to end. `app/connections.py` holds both endpoints, the signing algorithm, AES-256-GCM token storage and the state store in migration 0021. Fourteen smoke cases cover it. Since 24 September S1 on `/shops` starts a connection and `/connections/tiktok/callback` on the site receives the seller back, so TikTok's callback URL is the site's, not the service's. `_sign` has never made a live call, so the first real request is its test. **Nothing reads orders, returns or statements yet, and nothing refreshes the token.** `RUNBOOK_tiktok_connection.md` has the steps. See A23, A27 and A28 |
-| Front end | 26 screens of 36 built: S1, S2, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S21, S22, S24, S25, S26, S27, S28, S29, S30, S32, S33 and S34, plus the closing page A30.1 needs, `/shops`, which takes a seller to their shop, `/handler`, Stack's own sign-in pages, and the TikTok return page. `web/src/lib/api.js` attaches the signed in seller's token to every request, and a real sign-in on 24 September proved it. Stack's pages need `StackTheme` inside `StackProvider`, because without it the sign-up page crashed on a missing `TooltipProvider`. S17 lacks the privacy notice and terms links A14 requires, because neither page exists. `SCREENS.md` is the register |
+| TikTok integration | Authorisation is built end to end. `app/connections.py` holds both endpoints, the signing algorithm, AES-256-GCM token storage and the state store in migration 0021. Fourteen smoke cases cover it. Since 24 September S1 on `/shops` starts a connection and `/connections/tiktok/callback` on the site receives the seller back, so TikTok's callback URL is the site's, not the service's. `_sign` has never made a live call, so the first real request is its test. **Reading orders, returns and statements, and refreshing the token, are written but have never reached TikTok** (`app/tiktok_api.py`, `app/tiktok_sync.py`, `scripts/sync_shops.py`, A31.5). They passed all 36 checks of `testdata/tiktok_sync_check.py` against the generated payloads on 29 September. Order money is posted once, at settlement. Nothing schedules the sync until migration 0027 is on Neon and the owner creates a Render cron job. `RUNBOOK_tiktok_connection.md` has the steps. See A23, A27 and A28 |
+| Front end | All 36 screens built. The ten added on 29 September are S3, S4, S5, S20, S23, S31, S35, S36, S37 and S38, each driven in a browser against the local copy of development. The rest are S1, S2, S6 to S17, S21, S22, S24 to S30, S32, S33 and S34, plus the closing page A30.1 needs, because neither page exists. `SCREENS.md` is the register |
 | Figma | Unreadable. The Starter plan call limit refuses every read of the file, on 22 and 24 September. It holds frames that predate A15, so it is out of date whatever it holds. `SCREENS.md` explains. The wireframes are committed at `design/wireframes/` |
 | Deployment | The front end is live on Vercel production and redeploys on every merge to `main`. The service runs on Render as `My-ShopEdge-1` at `https://my-shopedge-1.onrender.com`, Frankfurt, free plan, and redeploys on every merge to `main`. The owner chose Render for the MVP on 24 September, with a move to a UK host later. Vercel reaches it through `NEXT_PUBLIC_API_BASE_URL` |
 
@@ -119,6 +119,7 @@ written to be followed once.
 | GitHub | `Adenola777/My-ShopEdge` is the one Vercel is wired to. `MyShopEdge-` also exists |
 | Vercel | team `coterie448-8267's projects`, project `my-shop-edge`, root `web`, functions in `lhr1` |
 | Stripe | live `acct_1RtsbgKUYBix7r5t`, sandbox `acct_1Rtsby4GHrXoTk1L` |
+| Product website | `site/index.html`, Vercel project `myshopedge-site` (`prj_4eDTaOTCZOZ1WOaoVu97uNbLQIWr`), root `site`, for `myshopedge.inspirecraftglobal.com`. The domain is on Namecheap, so its DNS records are the owner's to add. Its `vercel.app` addresses sit behind Vercel sign-in; the custom domain is public |
 
 **The account split matters.** GitHub and Vercel sit under coterie448@gmail.com. Neon sits
 under adenola.adegbesan@gmail.com. A third Neon project, `holy-glitter-85206770`, was
@@ -139,6 +140,19 @@ worth taking once fixed, or not taken and why. The owner approved bringing the u
 across on 28 September. The copy step was refused by that session's safety check, so it has
 not happened. Treat Emergent's claims of passing tests as claims: its code fails this
 repository's contract test and lint.
+
+## The demo shop, set up 29 September 2026
+
+TikTok's review blocks a real connection (A24), so the owner chose on 29 September to walk
+the dashboard on made-up data. Nothing in it touches production data.
+
+| Piece | Value |
+|---|---|
+| Service | Render `My-ShopEdge-demo`, `srv-datltbflot8c7383bnf0`, `https://my-shopedge-demo.onrender.com`, free plan, Frankfurt, deploys branch `claude/gifted-ride-rmmuc6` |
+| Database | The development branch. `DATABASE_URL` is set by the owner in Render, never in this session |
+| Data | `testdata/load_demo.py` gives `inspirecraftglobal@gmail.com` a shop named "Demo shop (sample data)" from the year dataset, with costs from 1 January 2025 and a Growth trial whose customer id begins `demo_`. It runs before the service starts and adds nothing once the shop exists |
+| Site | The Vercel preview of `claude/gifted-ride-rmmuc6`, whose `NEXT_PUBLIC_API_BASE_URL` is set for that branch alone to the demo service. Its address is on the sign-in allow-list of the production branch |
+| Schema | 0026 and 0027 were applied to the development branch on 29 September, each in one transaction with its record and checksum, and to production the same day |
 
 ## The database rules that are easy to break
 
@@ -203,15 +217,23 @@ Each of these was found by running something, and each survived reading.
    "1.005" it gives 100 where `Decimal` gives 101. All 81 distinct amounts in the payloads give
    the same pence either way, so `rows.json` and every payload regenerated byte for byte after
    the change to `Decimal`.
-8. **The test data covers two months, not twelve.** July and August 2026. Nothing yet tests
-   behaviour across many months or across the British Summer Time boundary.
+8. **The test data covered two months, not twelve.** Closed on 29 September by the year
+   dataset (`audit/YEAR_dataset_29_september.md`). Running it found fault 10.
 9. **The first end to end QA, 24 and 25 September.** The real service ran against a local
    copy of development whose schema fingerprint, ledger and ownership matched Neon exactly,
    and the production build of the front end ran against it. 281 of 283 checks passed.
    The owner ruled on both failures and on the notification gap the same day, and after
    those changes all 305 pass. The four tooling faults remain, among them that
    `migrate.py` cannot build a database from empty and that `testdata/seed.sql` does not
-   load. `audit/QA_end_to_end_25_september.md` has the detail.
+   load. `audit/QA_end_to_end_25_september.md` has the detail. On 29 September `migrate.py`
+   was fixed to build from empty, and `testdata/load_rows.py` loads `rows.json` in place of
+   the seed.
+10. **Kept over a long period used a cost that did not exist when the units sold.** Found
+   29 September by the year dataset. The cost for a period was the one in force at its end,
+   so twelve monthly kept bars could not sum to the year, and the tax-year set-aside carried
+   today's cost. The owner ruled the same day that each unit is costed on its sale date, and
+   a return at its original sale's date (A31.4). Built and rerun: the year check passes all
+   24 of its checks.
 
 ## Commercial rulings worth knowing before touching billing
 
@@ -286,9 +308,9 @@ file inside this repository. `.gitignore` already excludes `.env` and its varian
 | Where the Python service runs long term | A28.4 decided a long-lived container in London. For the MVP the owner chose Render in Frankfurt on 24 September, with the move to a UK host later |
 | Rotating the encryption key for `tiktok_connections.access_token_enc`, `refresh_token_enc` and `shop_cipher_enc` | The key itself is `TIKTOK_TOKEN_KEY` on Render, made by the owner in his own terminal (the runbook, step 3). Rotation is not built: nothing can hold two keys at once, so `key_version` is always written as 1, and changing the key makes every stored token unreadable |
 | Whether `authorization_expires_at` is the refresh token's expiry | One real TikTok authorisation. The contract serves the field and `tiktok_connections.refresh_expires_at` looks like the same instant. Nobody has checked, so 0020 adds no column for it |
-| Refreshing an access token before it lapses | Building it. The service now runs on Render, which gives the refresh a process to run in. The access token lives seven days (A23.4), so a connection stops being readable a week after it is made |
+| Refreshing an access token before it lapses, and syncing a shop | A Render cron job running `scripts/sync_shops.py`. Migration 0027 is on production since 29 September. Both are written and have run only against generated payloads. The access token lives seven days (A23.4), so until the job runs a connection stops being readable a week after it is made |
 | Cost uploads working for a seller | A bucket. The six cost upload operations are served since 28 September on a private S3 bucket in London (A10.8 as amended), and have run only against a local stand-in for S3. Until the owner creates the bucket and sets `S3_BUCKET` on Render (`RUNBOOK_file_storage.md`), each answers 503 `storage_unconfigured` |
-| `createExport` and `requestAccountExport` | A worker, because both answer 202 and build the file later. The store they write to is now decided |
+| `createExport`, `getExport`, `requestAccountExport` and `getAccountExport` | The S3 bucket. Migration 0026 is on production since 29 September. All four are served since 29 September. Each file is built after the 202 in the service's own process, and a job still queued five minutes on is built when it is next read. They have run against the local copy and a local stand-in for S3, where every file's totals equalled the screens |
 | `checkReturnItem` | Nothing now. The four rulings were made on 28 September (A30.2) |
 | Erasing closed accounts on day thirty | A scheduler. `service/scripts/erase_accounts.py` does the erasure A30.1 rules and has run against the local copy and a local stand-in for S3. Nothing runs it daily until the owner creates a Render cron job. Migration 0025, which it needs, is on all three branches since 29 September |
 | Any tax figure on S12 | Reference rules. Production's `reference_rules` held 0 rows when queried on 28 September, so the VAT monitor, the set-aside and the tax dates all show that nothing is loaded. The set-aside method of A30.3 is built and tested on made-up values, and uses a rule only once its `reviewed_at` is set. The figures have to be read from gov.uk, which this session's network policy refuses, and loaded with their `source_url` |

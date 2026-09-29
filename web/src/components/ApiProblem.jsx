@@ -34,6 +34,14 @@ export function apiProblem(result, { what, notFound }) {
       />
     );
   }
+  // S37 (A14): a session that ran out mid onboarding lands on its own screen, not an error.
+  if (result.status === 401 && String(result.data?.type ?? "").endsWith("/token_expired")) {
+    redirect("/signed-out?reason=expired");
+  }
+  // S36 (A14): the address belongs to an account made with a different sign-in method.
+  if (result.status === 409 && String(result.data?.type ?? "").endsWith("/email_already_linked")) {
+    redirect("/account/email-in-use");
+  }
   if (result.status === 401) {
     return (
       <Problem

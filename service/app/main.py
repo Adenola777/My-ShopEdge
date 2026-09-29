@@ -20,6 +20,8 @@ from . import (
     cost_uploads,
     costs,
     discrepancies,
+    exports,
+    insights,
     me,
     notifications,
     money_view,
@@ -33,6 +35,7 @@ from . import (
     sync_status,
     tax,
     today_view,
+    trends,
 )
 from .problems import problem_handler, problem_response
 
@@ -89,6 +92,8 @@ app.include_router(connections.router, prefix="/v1")
 app.include_router(cost_uploads.router, prefix="/v1")
 app.include_router(costs.router, prefix="/v1")
 app.include_router(discrepancies.router, prefix="/v1")
+app.include_router(exports.router, prefix="/v1")
+app.include_router(insights.router, prefix="/v1")
 app.include_router(me.router, prefix="/v1")
 app.include_router(notifications.router, prefix="/v1")
 app.include_router(money_view.router, prefix="/v1")
@@ -102,6 +107,7 @@ app.include_router(stock.router, prefix="/v1")
 app.include_router(sync_status.router, prefix="/v1")
 app.include_router(tax.router, prefix="/v1")
 app.include_router(today_view.router, prefix="/v1")
+app.include_router(trends.router, prefix="/v1")
 
 
 @app.get("/health", include_in_schema=False)

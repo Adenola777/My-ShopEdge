@@ -127,6 +127,7 @@ export default async function MoneyPage({ params, searchParams }) {
         {basis === "sales" ? "Sales basis counts money on the day of the sale." : "Cash basis counts money in the month TikTok settled it."}{" "}
         {m.kept ? BEFORE_OVERHEADS : keptReason(m.kept_reason)}
       </p>
+      <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/money/export`} data-testid="money-export">Export this for your accountant</Link></p>
     </section>
   );
 }

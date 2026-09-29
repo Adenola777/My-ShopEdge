@@ -7,9 +7,10 @@
  * seller who connected a shop was sent straight to Today, S2 was reached by nobody, and
  * nothing anywhere linked to S33, so no seller could start a trial.
  *
- * S3, S4, S5 and S20 are not built, so after the plan the order goes to Today. A14 also
- * describes S35 Continue setting up for a seller who comes back part way; until it is built,
- * this function is what resumes them at the right step.
+ * Since 29 September S3, S4, S5, S20 and S35 are built. After the plan, a seller who has
+ * neither a cost nor a tax profile is sent to S35 Continue setting up, which names what is
+ * left and resumes at the first step. A seller who has either goes to Today, so a seller who
+ * chose to skip is not sent back into setup every time.
  *
  * Unverified in one respect: nothing yet moves a shop from `pending` to `connected`, because
  * nothing reads TikTok. Until ingestion is built, a newly connected shop stays on S2.
@@ -20,9 +21,11 @@
 /**
  * @param {Shop} shop
  * @param {string | null} subscriptionStatus  From getSubscription, or null when unknown.
+ * @param {{ setupUntouched?: boolean }} [setup]  True when the account has no cost and no tax
+ *   profile. Unknown is treated as touched, so a failed read never forces setup on a seller.
  * @returns {string} The path to send the seller to.
  */
-export function nextStep(shop, subscriptionStatus) {
+export function nextStep(shop, subscriptionStatus, setup = {}) {
   const base = `/shops/${shop.id}`;
   if (shop.connection_status === "needs_reconnect" || shop.connection_status === "disconnected") {
     return `${base}/connection-problem`;
@@ -31,6 +34,7 @@ export function nextStep(shop, subscriptionStatus) {
   // An unknown subscription is not treated as none: a failed request must not push a
   // paying seller back to the plans.
   if (subscriptionStatus === "none") return "/billing";
+  if (setup.setupUntouched) return `${base}/setup`;
   return `${base}/today`;
 }
 
@@ -41,5 +45,5 @@ export function nextStep(shop, subscriptionStatus) {
  * @param {string | null} subscriptionStatus
  */
 export function afterSync(shopId, subscriptionStatus) {
-  return subscriptionStatus === "none" ? "/billing" : `/shops/${shopId}/products`;
+  return subscriptionStatus === "none" ? "/billing" : `/shops/${shopId}/setup/costs`;
 }
