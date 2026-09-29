@@ -108,3 +108,27 @@ settled part of the independent ingester's `rows.json` category by category, eve
 carried its settlement, a second run wrote nothing, and the refresh stored new tokens
 encrypted and recorded a refused refresh with TikTok's code. None of it has reached TikTok,
 and several request details are unverified and named as such in `tiktok_api.py`.
+
+## 31.6 The core shop is GBGBLCRKQTEX
+
+**Ruling, 29 September 2026.** The owner's live UK shop, `GBGBLCRKQTEX` ("My ShopEdge" in
+Seller Center), is the core shop for this repository. The Indonesian sandbox shop
+`7495568017912465932`, which the ISV app returned on 23 September (A19.2, A24.2), is not
+used for anything and is kept in A11 and A19 only as history.
+
+**What already held.** Nothing in the code or the databases was tied to the Indonesian shop.
+`connections.py` accepts a shop only when TikTok reports region `GB` and seller type `LOCAL`,
+production held no shops when queried on 29 September, and the development branch holds only
+the synthetic and demo shops. The binding that returned the Indonesian shop lives in Partner
+Center, where that shop is authorised to the ISV app.
+
+**How the core shop connects.** Through a Seller Developer custom app created on the seller
+account that owns `GBGBLCRKQTEX` (A24.3). It binds to that shop alone and needs no marketplace
+review. Its service ID, app key and app secret take the place of the ISV app's values on the
+Render service, and `RUNBOOK_tiktok_connection.md` step 1 is followed with that app. The code
+is the same for both apps (A24.3).
+
+**Unverified.** Whether a Seller Developer custom app authorises through the same
+`services.tiktokshop.com` link, and returns `user_type` 0, is not recorded anywhere in this
+repository. The first connection answers it: `connections.py` refuses any other `user_type`
+with `not_a_seller_account`.

@@ -25,6 +25,12 @@ the shop lookup in `service/app/connections.py`.
 
 ## Step 1. Get the three values from Partner Center
 
+**Which app, since 29 September (A31.6).** The shop to connect is the live UK shop
+`GBGBLCRKQTEX`, through a Seller Developer custom app created on the seller account that owns
+it (A24.3). Take the three values below from that app, not from the ISV app, whose only
+authorised shop is the Indonesian sandbox shop. Whether the custom app's page labels them
+exactly as below is unverified; copy each from its own label.
+
 In Partner Center, open **Manage apps** and select the app. Under **App & Service** the page
 shows three values:
 
