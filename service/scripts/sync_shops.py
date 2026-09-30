@@ -13,6 +13,11 @@ run. Running it twice in a row writes nothing new the second time.
 the two-month and the year datasets. Nothing schedules it yet. Migration 0027 is on no Neon
 branch, and a Render cron job running it is the owner's to create.
 
+Since 30 September 2026 each shop's result also carries `inventory_probe`: TikTok's raw
+answer to Inventory Search for the shop's stored products, printed so the Render log shows
+what a real shop's stock looks like. It writes nothing, and a refusal is recorded rather
+than raised. It is removed when the stock read is built from that answer.
+
 The secrets come from the environment and are never printed. The output names shops by
 MyShopEdge id and gives TikTok's own error code and message when a call is refused.
 """

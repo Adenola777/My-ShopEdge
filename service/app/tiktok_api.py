@@ -63,6 +63,11 @@ ORDER_CALC_PATH = "/finance/202501/orders/{id}/statement_transactions"          
 ORDER_SEARCH_PATH = "/order/202309/orders/search"                                # A11.4
 ORDER_DETAIL_PATH = "/order/202309/orders"                                       # A11.4
 RETURN_SEARCH_PATH = "/return_refund/202309/returns/search"                      # A11.4
+# From TikTok's Inventory Search page, pasted by the owner on 30 September 2026: scope
+# seller.product.basic, body product_ids (at most 100) or sku_ids (at most 600). The page
+# as pasted did not show the HTTP method or what `data` holds. POST is UNVERIFIED.
+INVENTORY_SEARCH_PATH = "/product/202309/inventory/search"
+INVENTORY_MAX_PRODUCTS = 100
 
 PAGE_SIZE = 100                  # A11.4: 1 to 100. Orders and statements took 100 on 29 September
 # TikTok refused 100 on the returns search on 29 September 2026, code 98001004: "`page_size`
