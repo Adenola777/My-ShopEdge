@@ -27,6 +27,8 @@ passed on `payloads` with `rows.json`, and 36 of 36 on `payloads_year` with `row
 Rerun the same day after the token expiry fault (CLAUDE.md fault 11), with the refresh
 answering Unix times as TikTok does: 36 of 36 on both again.
 Rerun after A31.7, with a second shop sharing the authorisation: 37 of 37 on both.
+Rerun on 30 September 2026 with the stock read (A32) and STK-8's cases TC-STK-08 to 11:
+45 of 45 on both datasets.
 """
 
 import base64
@@ -65,6 +67,10 @@ STATEMENTS = load("statements.json")["data"]["statements"]
 STMT_TXNS = load("statement_transactions.json")
 ORDER_CALC = load("order_statement_transactions.json")
 RETURNS = load("returns.json")["data"]["return_orders"]
+INVENTORY = load("inventory.json")["data"]["inventory"]
+LIVE_INVENTORY = json.load(open(HERE / "live" / "inventory_search_my_shopedge_30_september.json"))["data"]
+# The check moves TikTok's count for one variant to test absorption (STK-8).
+STOCK_OVERRIDE: dict[str, int] = {}
 
 ok = bad = 0
 calls: list[tuple[str, str, dict]] = []
@@ -107,6 +113,21 @@ def fake(method, url, params, headers, body):
     if path == tiktok_api.ORDER_DETAIL_PATH:
         wanted = set(params[tiktok_api.ORDER_DETAIL_IDS_PARAM].split(","))
         return answer({"orders": [o for o in ORDERS if o["id"] in wanted]})
+    if path == tiktok_api.INVENTORY_SEARCH_PATH:
+        # The generated inventory.json is flat and predates any real answer. It is put into
+        # the shape TikTok returned for My ShopEdge on 30 September 2026 (A32).
+        wanted = json.loads(body)["product_ids"]
+        grouped: dict[str, list] = {}
+        for row in INVENTORY:
+            if row["product_id"] in wanted:
+                qty = STOCK_OVERRIDE.get(row["sku_id"], row["quantity"])
+                grouped.setdefault(row["product_id"], []).append({
+                    "id": row["sku_id"], "seller_sku": row["seller_sku"],
+                    "total_available_inventory_distribution": {"in_shop_inventory": {"quantity": qty}},
+                    "total_available_quantity": qty, "total_committed_quantity": 0,
+                    "warehouse_inventory": [{"available_quantity": qty, "committed_quantity": 0,
+                                             "warehouse_id": row["warehouse_id"]}]})
+        return answer({"inventory": [{"product_id": k, "skus": v} for k, v in grouped.items()]})
     if path == tiktok_api.RETURN_SEARCH_PATH:
         # The generated returns carry a private `_skus` list. It is put where the sync reads
         # items from, which is itself unverified (tiktok_sync's docstring).
@@ -122,6 +143,57 @@ def expected_ledger():
         if e.get("settlement_id") and e["category"] not in ("cost_of_goods_sold", "stock_written_off"):
             by_cat[e["category"]] += e["amount_minor"]
     return by_cat
+
+
+def position(conn, shop, tiktok_sku):
+    return conn.execute(
+        "select p.tiktok_stock, p.adjusted_delta, p.on_shelf from stock_positions p "
+        "join skus k on k.id = p.sku_id where p.shop_id = %s and k.tiktok_sku_id = %s",
+        (shop, tiktok_sku)).fetchone()
+
+
+def stock_checks(url, shop, now):
+    """STK-8 (A4.1) on real rows: TC-STK-08, 09, 10 and 11."""
+    sku = INVENTORY[0]["sku_id"]
+    base = INVENTORY[0]["quantity"]
+
+    def run(count, adjusted):
+        with psycopg.connect(url) as conn:
+            conn.execute("update stock_positions set adjusted_delta = %s where sku_id = "
+                         "(select id from skus where shop_id = %s and tiktok_sku_id = %s)", (adjusted, shop, sku))
+            before = position(conn, shop, sku)
+        STOCK_OVERRIDE[sku] = count
+        result = tiktok_sync.run_due(fake, now + timedelta(hours=2))
+        with psycopg.connect(url) as conn:
+            return before, position(conn, shop, sku), result
+
+    # TC-STK-08: a resellable return added 1; the seller also puts it back in TikTok.
+    before, after, _ = run(base + 1, 1)
+    with psycopg.connect(url) as conn:
+        moved = conn.execute("select count(*), sum(quantity) from stock_movements where shop_id = %s "
+                             "and movement_type = 'adjustment_absorbed'", (shop,)).fetchone()
+        told = conn.execute("select title, body from notifications where shop_id = %s and type = 'stock_absorbed'",
+                            (shop,)).fetchall()
+    check(after == (base + 1, 0, before[2]) and moved == (1, 1),
+          f"TC-STK-08: a matching rise in TikTok is absorbed and on the shelf stays {before[2]}: {before} to {after}")
+    check(len(told) == 1 and "1 unit" in told[0][0] and str(before[2]) in told[0][1],
+          f"TC-STK-08: the seller is told, naming the product and the count: {told}")
+    # TC-STK-09: a rise of 50 against an adjustment of 3. It is above the tolerance of 20,
+    # so A4 treats it as a restock: nothing is absorbed and a discrepancy is raised.
+    before, after, _ = run(base + 51, 3)
+    with psycopg.connect(url) as conn:
+        raised = conn.execute("select count(*) from discrepancies where shop_id = %s and entity_type = 'sku' "
+                              "and field = 'tiktok_stock' and status = 'open'", (shop,)).fetchone()[0]
+    check(after[1] == 3 and after[2] == base + 54 and raised == 1,
+          f"TC-STK-10: a rise above the tolerance flows through and raises a discrepancy: {after}, {raised}")
+    # A rise of 5 against an adjustment of 3: 3 are absorbed and 2 flow through (TC-STK-09's rule).
+    before, after, _ = run(base + 56, 3)
+    check(after[1] == 0 and after[2] == before[2] + 2,
+          f"TC-STK-09: absorption stops at the adjustment and the rest flows through: {before} to {after}")
+    # TC-STK-11: TikTok's count falls, which is ordinary selling.
+    before, after, _ = run(base + 50, 2)
+    check(after[1] == 2 and after[2] == base + 52, f"TC-STK-11: a fall is never absorbed: {before} to {after}")
+    STOCK_OVERRIDE.clear()
 
 
 def main():
@@ -146,13 +218,16 @@ def main():
     print(json.dumps(first, default=str))
     check(len(first) == 1 and "error" not in first[0], "one shop ran without an error")
     check(first[0].get("refresh") == "not_due", "a token with six days left is not refreshed")
-    probe = first[0].get("inventory_probe") or {}
+    check(all(s == "completed" for s in (first[0].get("sync") or {}).values())
+          and set(first[0].get("sync") or {}) == {"orders", "returns", "finance", "inventory"},
+          f"orders, returns, finance and inventory completed: {first[0].get('sync')}")
     asked = [c for c in calls if c[1] == tiktok_api.INVENTORY_SEARCH_PATH]
-    check(probe.get("asked", 0) > 0 and asked and all(c[0] == "POST" for c in asked)
-          and probe.get("code") == "404",
-          f"the inventory probe asks about stored products, and a refusal is recorded, not raised: {probe}")
-    check(all(s == "completed" for s in (first[0].get("sync") or {}).values()),
-          f"orders, returns and finance completed: {first[0].get('sync')}")
+    check(asked and all(c[0] == "POST" for c in asked), "Inventory Search is asked by POST, as it was live")
+    fake_sku = set(fake("POST", tiktok_api.API_BASE + tiktok_api.INVENTORY_SEARCH_PATH, {}, {},
+                        json.dumps({"product_ids": [INVENTORY[0]["product_id"]]}).encode())
+                   ["data"]["inventory"][0]["skus"][0])
+    live_sku = set(LIVE_INVENTORY["inventory"][0]["skus"][0])
+    check(fake_sku == live_sku, f"the fake answers in the fields TikTok returned live: {sorted(live_sku ^ fake_sku)}")
 
     signed = all("sign" in p and "app_key" in p and len(p["timestamp"]) == 10 and p.get("shop_cipher") == "cipher-x"
                  for m, path, p in calls if path.startswith(("/finance", "/order", "/return")))
@@ -190,6 +265,15 @@ def main():
             "s.statement_time at time zone 'Europe/London')::date", (shop,)).fetchone()[0]
         check(months == 0, "every entry's settlement month is its statement's London month")
         entries_before = n[3]
+        sold = {r[0] for r in conn.execute(
+            "select distinct k.tiktok_sku_id from order_lines l join skus k on k.id = l.sku_id "
+            "where l.shop_id = %s", (shop,)).fetchall()}
+        stock = dict(conn.execute(
+            "select k.tiktok_sku_id, p.tiktok_stock from stock_positions p join skus k on k.id = p.sku_id "
+            "where p.shop_id = %s", (shop,)).fetchall())
+        given = {r["sku_id"]: r["quantity"] for r in INVENTORY}
+        check(set(stock) == sold and all(stock[k] == given[k] for k in stock),
+              f"every variant sold has TikTok's own count, {len(stock)} of {len(sold)}")
 
     calls.clear()
     second = tiktok_sync.run_due(fake, now + timedelta(hours=1))
@@ -199,8 +283,9 @@ def main():
                             (shop,)).fetchall()
     check(after == entries_before, f"a second run writes no ledger entry: {entries_before} then {after}")
     check("error" not in second[0], "the second run ran without an error")
-    check(dict(runs) == {"backfill": 3, "incremental": 3}, f"the first run is a backfill, the second incremental: {runs}")
+    check(dict(runs) == {"backfill": 4, "incremental": 4}, f"the first run is a backfill, the second incremental: {runs}")
     cal = [p for m, path, p in calls if path == tiktok_api.STATEMENTS_PATH][0]
+    stock_checks(url, shop, now)
     check(int(cal["statement_time_ge"]) == int((now - timedelta(days=3)).timestamp()),
           "the incremental run starts three days before the last one ended")
 

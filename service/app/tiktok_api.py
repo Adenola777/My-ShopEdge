@@ -64,8 +64,8 @@ ORDER_SEARCH_PATH = "/order/202309/orders/search"                               
 ORDER_DETAIL_PATH = "/order/202309/orders"                                       # A11.4
 RETURN_SEARCH_PATH = "/return_refund/202309/returns/search"                      # A11.4
 # From TikTok's Inventory Search page, pasted by the owner on 30 September 2026: scope
-# seller.product.basic, body product_ids (at most 100) or sku_ids (at most 600). The page
-# as pasted did not show the HTTP method or what `data` holds. POST is UNVERIFIED.
+# seller.product.basic, body product_ids (at most 100) or sku_ids (at most 600). POST, and
+# the shape of `data`, are from the live answer for My ShopEdge the same day (A32).
 INVENTORY_SEARCH_PATH = "/product/202309/inventory/search"
 INVENTORY_MAX_PRODUCTS = 100
 
