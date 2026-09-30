@@ -78,21 +78,35 @@ export default async function ProductDetailPage({ params, searchParams }) {
           {perUnit.sections.length === 0 ? (
             <p className="muted">Nothing sold in this period, so there is no unit to break down.</p>
           ) : (
-            <ul className="rows">
-              {perUnit.sections.flatMap((s) =>
-                s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
+            <>
+            <ul className="rows" data-testid="per-unit">
+              {perUnit.sections.flatMap((s, n) => [
+                ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
                   <li key={`${s.key}-${l.category}-${i}`}>
                     <span>{l.label}</span>
                     <Figure amount={l.amount} />
                   </li>
                 )),
-              )}
+                <li key={`${s.key}-total`} className="rows__total">
+                  <span>
+                    {s.subtotal_label ?? "Subtotal"}
+                    {n === perUnit.sections.length - 1 ? " per unit" : ""}
+                  </span>
+                  <Figure amount={s.subtotal} />
+                </li>,
+              ])}
             </ul>
+            <p className="rows__sub">
+              Each figure is this period&rsquo;s total divided by {perUnit.units}{" "}
+              {perUnit.units === 1 ? "unit" : "units"} and rounded to the penny, so a line can
+              differ by a penny from the sum above it.
+            </p>
+            </>
           )}
         </div>
 
         <div className="card hero">
-          <p className="hero__label">Gross profit after returns</p>
+          <p className="hero__label">Gross profit after returns, all {p.units} {p.units === 1 ? "unit" : "units"}</p>
           <p className="hero__value"><Figure amount={p.kept} reason={p.kept_reason} /></p>
           <p className="hero__line">{p.kept ? BEFORE_OVERHEADS : p.kept_reason}</p>
         </div>
