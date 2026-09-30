@@ -8,9 +8,10 @@
  * Why the redirect lands here and not on the service. The service answers `tiktokCallback`
  * with JSON, as the contract says, so a browser sent straight to it shows the seller a page
  * of raw data. Landing here keeps the contract as it is and gives the seller a screen. The
- * callback URL registered in TikTok Partner Center must therefore be
- * `https://my-shop-edge.vercel.app/connections/tiktok/callback`. That is the path the
- * runbook named on 23 September before any code existed.
+ * callback URL registered in TikTok Partner Center must therefore be this path on the app's
+ * address: `https://app.myshopedge.inspirecraftglobal.com/connections/tiktok/callback` since
+ * 30 September 2026, when the owner set it, and the `vercel.app` address before that. The
+ * path is the one the runbook named on 23 September before any code existed.
  *
  * The page is not behind sign-in, because `tiktokCallback` carries `security: []`: the
  * state is what binds the result to the seller who started it.

@@ -48,8 +48,11 @@ its own label.
 On the same app page, set **Callback URL** or **Redirect URL** to exactly:
 
 ```
-https://my-shop-edge.vercel.app/connections/tiktok/callback
+https://app.myshopedge.inspirecraftglobal.com/connections/tiktok/callback
 ```
+
+The owner set this on 30 September 2026, when the app moved to its own address. Until then it
+was `https://my-shop-edge.vercel.app/connections/tiktok/callback`.
 
 **This replaces the address set earlier on 24 September**, which pointed at the service on
 Render. The service answers the callback with JSON, so a seller sent there would see raw
@@ -83,7 +86,7 @@ Save. Render redeploys the service, which takes about a minute.
 
 ## Step 4. Connect
 
-1. Sign in at `https://my-shop-edge.vercel.app/start`.
+1. Sign in at `https://app.myshopedge.inspirecraftglobal.com/start`.
 2. `/shops` shows **Connect your TikTok Shop** while no shop is connected. Press
    **Connect with TikTok Shop**.
 3. TikTok's own page opens on `services.tiktokshop.com`, the seller link from A23.1. Sign in

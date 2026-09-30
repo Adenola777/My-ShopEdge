@@ -18,6 +18,8 @@ import "@fontsource-variable/plus-jakarta-sans";
 import "@fontsource-variable/archivo";
 import "./globals.css";
 import { StackProvider, StackTheme } from "@stackframe/stack";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { stackApp } from "@/lib/stack";
 
 export const metadata = {
@@ -79,6 +81,11 @@ export default function RootLayout({ children }) {
         ) : (
           page
         )}
+        {/* Vercel Web Analytics and Speed Insights, added 30 September 2026 at the owner's
+            request, so the time a real seller waits after Get started is measured rather than
+            guessed. They report to Vercel only once each is switched on in the project. */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
