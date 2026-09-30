@@ -275,7 +275,7 @@ export function UploadFlow({ shopId }) {
         <div className="card">
           <label htmlFor="cost-file">Your cost file, Excel or CSV</label>
           <input id="cost-file" type="file" accept=".csv,.xlsx" onChange={pick} disabled={busy} data-testid="cost-file" />
-          <p className="footnote">The file goes to MyShopEdge's private store in London and is kept as the record behind your costs.</p>
+          <p className="footnote">The file goes to MyShopEdge's private file store in the EU and is kept as the record behind your costs. Nobody else can open it.</p>
         </div>
       )}
       {upload && mapping && (

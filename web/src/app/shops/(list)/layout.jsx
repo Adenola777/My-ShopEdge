@@ -10,7 +10,7 @@ import { AppBar } from "@/components/AppBar";
 export default function ShopListLayout({ children }) {
   return (
     <>
-      <AppBar />
+      <AppBar shopsLink />
       <main id="main" className="content">{children}</main>
     </>
   );
