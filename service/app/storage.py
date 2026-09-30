@@ -1,24 +1,29 @@
-"""The file store. A private S3 bucket in London (eu-west-2), chosen by the owner on 28
-September 2026 in place of A10.8's Vercel Blob.
+"""The file store. Any store that speaks the S3 protocol and signs URLs, reached through boto3.
 
-Why S3. The contract has the browser PUT a cost file to a signed URL (createCostUpload) and
-fetch an export from one (getExport). Vercel documents signed Blob URLs only for its
-JavaScript SDK, so a Python service could not issue them, and that blocked every file
-operation. S3 signs URLs from Python natively. Neon's own object storage was the owner's
-first choice and was checked on 28 September: Neon answers `platform branchable-storage is
-not available in this region` for the project, which is in `aws-eu-west-2`.
+Chosen on 28 September 2026 as a private S3 bucket in London (eu-west-2), in place of A10.8's
+Vercel Blob. On 30 September 2026 the owner ruled that AWS is not used for now, and the store
+is a **Cloudflare R2 bucket in the EU jurisdiction** (A10.8 as amended). The code is the same
+for both: R2 offers the S3 API, and only the environment differs.
+
+Why a store that speaks S3. The contract has the browser PUT a cost file to a signed URL
+(createCostUpload) and fetch an export from one (getExport). Vercel documents signed Blob URLs
+only for its JavaScript SDK, so a Python service could not issue them. Neon's own object
+storage answered `platform branchable-storage is not available in this region` for the
+project on 28 September.
 
 WHAT THE ENVIRONMENT CARRIES
 
-    S3_BUCKET            the bucket name
-    AWS_REGION           eu-west-2
-    AWS_ACCESS_KEY_ID    an access key limited to that bucket, created by the owner
+    S3_BUCKET              the bucket name
+    AWS_ENDPOINT_URL_S3    for R2, https://{account id}.eu.r2.cloudflarestorage.com, the EU
+                           jurisdiction's address. Unset, the AWS regional host is used.
+    AWS_REGION             `auto` for R2, `eu-west-2` for AWS
+    AWS_ACCESS_KEY_ID      an access key limited to that bucket, created by the owner
     AWS_SECRET_ACCESS_KEY
 
 No value is held in this repository. Without `S3_BUCKET` every file operation answers 503
 `storage_unconfigured`, so a deployment without a bucket says so rather than failing
-halfway through a seller's upload. `AWS_ENDPOINT_URL_S3` is read by boto3 itself and is
-used only to point the tests at a local stand-in.
+halfway through a seller's upload. The same endpoint variable points `testdata/storage_check.py`
+at a local stand-in.
 
 KEYS
 
@@ -27,8 +32,10 @@ alone are predictable, and a predictable key plus any future misconfiguration is
 cross-tenant access. The bucket is private and blocks public access, so nothing is readable
 without a URL this service signs. Signed URLs live fifteen minutes, as A10.8 sets.
 
-**Unverified against AWS.** This module has run against `moto`, a local stand-in for S3,
-and never against a real bucket, because none exists yet. The first real upload is its test.
+**Unverified against R2 and against AWS.** This module has run against `moto`, a local
+stand-in for S3, including with the region `auto` on 30 September 2026, and never against a
+real bucket. The R2 address, the region `auto` and the checksum setting below come from
+Cloudflare's documentation, not from a call. The first real upload is their test.
 """
 
 from __future__ import annotations
@@ -57,19 +64,25 @@ def _client():
     import boto3
     from botocore.config import Config
 
-    # Signature version 4 is the only one eu-west-2 accepts. Without an explicit endpoint,
-    # boto3 signed URLs for the global host (`{bucket}.s3.amazonaws.com`), which was seen on
-    # 28 September, so the regional host is named here and a signed URL points at London.
-    # AWS_ENDPOINT_URL_S3, when set for the tests, takes its place.
+    # Signature version 4 is the only one eu-west-2 accepts, and R2 signs with it too.
+    # Without an explicit endpoint, boto3 signed URLs for the global AWS host
+    # (`{bucket}.s3.amazonaws.com`), which was seen on 28 September, so the regional host is
+    # named here. AWS_ENDPOINT_URL_S3, set for R2 or for a local stand-in, takes its place.
     region = os.environ.get("AWS_REGION", "eu-west-2")
-    # A local stand-in listens on an address, not a domain, so it takes path-style keys.
-    test_endpoint = os.environ.get("AWS_ENDPOINT_URL_S3")
+    endpoint = os.environ.get("AWS_ENDPOINT_URL_S3")
     return boto3.client(
         "s3", region_name=region,
-        endpoint_url=test_endpoint or f"https://s3.{region}.amazonaws.com",
+        endpoint_url=endpoint or f"https://s3.{region}.amazonaws.com",
         config=Config(
             signature_version="s3v4",
-            s3={"addressing_style": "path" if test_endpoint else "virtual"},
+            # An endpoint named by address takes path-style keys: R2's account host and a
+            # local stand-in both do. AWS's own regional host takes virtual-hosted keys.
+            s3={"addressing_style": "path" if endpoint else "virtual"},
+            # Checksums only where an operation requires them. Recent boto3 adds CRC32
+            # checksums by default, which Cloudflare's documentation says R2 has not always
+            # accepted. AWS accepts either. UNVERIFIED against R2.
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
         ),
     )
 
