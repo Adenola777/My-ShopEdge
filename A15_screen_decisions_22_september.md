@@ -84,6 +84,19 @@ kind of surprise that produces a chargeback. The card carries the price and the 
 the registration threshold and cannot reclaim it. The price they pay is the price with VAT
 on it, and the screen says so rather than assuming a reclaim they cannot make.
 
+### Amended 30 September 2026: no VAT is charged yet
+
+The owner ruled on 30 September that Inspirecraft Global Ltd is not registered for VAT, so no
+VAT is charged. A seller pays £9.99, £24.99 or £49.99 and nothing more. The three live prices
+keep `tax_behavior: "exclusive"`, which is harmless while no tax rate or automatic tax is
+applied: `billing.start_trial` sends neither, so Stripe charges the price as it stands. S33
+does not show "plus VAT", and it must not until the company registers.
+
+When the company registers, three things change together: Stripe Tax is switched on in the
+dashboard, the trial call asks for automatic tax and collects the customer's address, and S33
+shows the price, the words "plus VAT" and the total before the card is confirmed, as this
+section first ruled.
+
 ## 15.7 The copy pass
 
 Ten strings were removed from the frames because they were written for a reviewer rather
