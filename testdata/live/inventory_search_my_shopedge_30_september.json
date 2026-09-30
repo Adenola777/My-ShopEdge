@@ -1,0 +1,30 @@
+{
+  "_source": "The data object TikTok returned to POST /product/202309/inventory/search for the shop My ShopEdge (GBGBLCRKQTEX), asked about product 1729934204026591905, printed by the Render cron job My-ShopEdge-sync at 08:38:04 UTC on 30 September 2026 and copied here from its log.",
+  "data": {
+    "inventory": [
+      {
+        "product_id": "1729934204026591905",
+        "skus": [
+          {
+            "id": "1729934206123809441",
+            "seller_sku": "",
+            "total_available_inventory_distribution": {
+              "in_shop_inventory": {
+                "quantity": 1
+              }
+            },
+            "total_available_quantity": 1,
+            "total_committed_quantity": 0,
+            "warehouse_inventory": [
+              {
+                "available_quantity": 1,
+                "committed_quantity": 0,
+                "warehouse_id": "7688717983985043222"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

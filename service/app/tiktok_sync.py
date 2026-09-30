@@ -63,6 +63,8 @@ from zoneinfo import ZoneInfo
 from psycopg.types.json import Jsonb
 
 from .tiktok_api import (
+    INVENTORY_MAX_PRODUCTS,
+    INVENTORY_SEARCH_PATH,
     ORDER_CALC_PATH,
     ORDER_DETAIL_IDS_PARAM,
     ORDER_DETAIL_MAX_IDS,
@@ -473,12 +475,119 @@ def sync_finance(conn, shop_id: str, client: Client, since: datetime, until: dat
 
 # --- one shop --------------------------------------------------------------------------------
 
-DOMAINS = (("orders", sync_orders), ("returns", sync_returns), ("finance", sync_finance))
+# --- stock -----------------------------------------------------------------------------------
+
+def _absorb(conn, shop_id: str, sku_id: str, title: str, before: int, after: int,
+            adjusted: int, tolerance: int, tally: Tally) -> int:
+    """STK-8 (A4.1). Returns the adjustment left once a rise in TikTok's count is absorbed.
+
+    Nothing writes a stock movement that would explain a rise (a cancellation restoring stock,
+    a purchase), so every rise counts as unexplained. A rise above the seller's tolerance is a
+    restock rather than a duplicate: it flows through and raises a discrepancy instead.
+    """
+    rise = after - before
+    if rise <= 0 or adjusted <= 0:
+        return adjusted
+    if rise > tolerance:
+        conn.execute(
+            "insert into discrepancies (shop_id, kind, entity_type, entity_id, field, "
+            "tiktok_value, seller_value, applied_value, status, note) "
+            "values (%s, 'amount', 'sku', %s, 'tiktok_stock', %s, %s, %s, 'open', %s)",
+            (shop_id, sku_id, str(after), str(before + adjusted), str(after + adjusted),
+             f"TikTok's count rose by {rise}, more than the {tolerance} units taken as a "
+             f"duplicate of your own adjustment of {adjusted}, so it was not absorbed."))
+        tally.notes.append(f"{sku_id}: rise of {rise} above tolerance {tolerance}")
+        return adjusted
+    absorbed = min(rise, adjusted)
+    on_shelf = after + adjusted - absorbed
+    conn.execute(
+        "insert into stock_movements (shop_id, sku_id, movement_type, quantity, reason) "
+        "values (%s, %s, 'adjustment_absorbed', %s, %s)",
+        (shop_id, sku_id, absorbed,
+         f"TikTok's count rose from {before} to {after}; your adjustment falls from "
+         f"{adjusted} to {adjusted - absorbed}"))
+    account = conn.execute("select account_id from shops where id = %s", (shop_id,)).fetchone()[0]
+    unit = "unit" if absorbed == 1 else "units"
+    conn.execute(
+        "insert into notifications (account_id, shop_id, type, severity, title, body, "
+        "entity_type, entity_id, dedupe_key) values (%s, %s, 'stock_absorbed', 'info', %s, %s, "
+        "'sku', %s, %s) on conflict (account_id, dedupe_key) do nothing",
+        (str(account), shop_id,
+         f"You put {absorbed} {unit} of {title} back into TikTok.",
+         f"We had already added {'it' if absorbed == 1 else 'them'}, so we have taken ours "
+         f"off. On the shelf is still {on_shelf}.",
+         sku_id, f"stock_absorbed:{sku_id}:{datetime.now(timezone.utc).date().isoformat()}"))
+    return adjusted - absorbed
+
+
+def sync_inventory(conn, shop_id: str, client: Client, since: datetime, until: datetime) -> Tally:
+    """TikTok's own stock count for every variant MyShopEdge knows, through Inventory Search.
+
+    The shape is the one TikTok returned for My ShopEdge on 30 September 2026 (A32):
+    `data.inventory[].skus[]` with `id`, `total_available_quantity` and
+    `total_committed_quantity`. `tiktok_stock` takes the available quantity, so a sale lowers
+    it as soon as TikTok does. `sold_not_posted` takes the committed quantity, which is
+    **unverified** in meaning: the real answer carried 0, with no open order to test it against.
+
+    Only variants MyShopEdge has already read from an order are asked about, because the
+    product listing that would name the others has not been called. A variant TikTok answers
+    for that is not stored is counted and skipped.
+    """
+    tally = Tally()
+    tolerance = conn.execute(
+        "select coalesce((select absorption_tolerance_units from alert_settings where shop_id = %s), 20)",
+        (shop_id,)).fetchone()[0]
+    products = [r[0] for r in conn.execute(
+        "select tiktok_product_id from products where shop_id = %s order by tiktok_product_id",
+        (shop_id,)).fetchall()]
+    for i in range(0, len(products), INVENTORY_MAX_PRODUCTS):
+        batch = products[i:i + INVENTORY_MAX_PRODUCTS]
+        data = client.call("POST", INVENTORY_SEARCH_PATH, body={"product_ids": batch})
+        for product in data.get("inventory") or []:
+            for sku in product.get("skus") or []:
+                tally.read += 1
+                available = sku.get("total_available_quantity")
+                if available is None:
+                    tally.failed += 1
+                    tally.notes.append(f"{sku.get('id')}: no total_available_quantity")
+                    continue
+                known = conn.execute(
+                    "select k.id, coalesce(nullif(p.title, ''), k.seller_sku, 'this product') "
+                    "from skus k join products p on p.id = k.product_id "
+                    "where k.shop_id = %s and k.tiktok_sku_id = %s",
+                    (shop_id, str(sku.get("id")))).fetchone()
+                if known is None:
+                    tally.notes.append(f"{sku.get('id')}: not a variant MyShopEdge has read")
+                    continue
+                sku_id, title = str(known[0]), known[1]
+                committed = int(sku.get("total_committed_quantity") or 0)
+                row = conn.execute(
+                    "select tiktok_stock, adjusted_delta from stock_positions where sku_id = %s",
+                    (sku_id,)).fetchone()
+                if row is None:
+                    conn.execute(
+                        "insert into stock_positions (sku_id, shop_id, tiktok_stock, "
+                        "sold_not_posted, as_of) values (%s, %s, %s, %s, now())",
+                        (sku_id, shop_id, int(available), committed))
+                else:
+                    before, adjusted = int(row[0]), int(row[1])
+                    adjusted = _absorb(conn, shop_id, sku_id, title, before, int(available),
+                                       adjusted, tolerance, tally)
+                    conn.execute(
+                        "update stock_positions set tiktok_stock = %s, adjusted_delta = %s, "
+                        "sold_not_posted = %s, as_of = now() where sku_id = %s",
+                        (int(available), adjusted, committed, sku_id))
+                tally.written += 1
+    return tally
+
+
+DOMAINS = (("orders", sync_orders), ("returns", sync_returns), ("finance", sync_finance),
+           ("inventory", sync_inventory))
 
 
 def sync_shop(conn, shop_id: UUID | str, client: Client, since: datetime, until: datetime,
               kind: str = "incremental") -> dict[str, str]:
-    """Orders, then returns, then statements, each recorded in `sync_runs`. Inside `tenant()`."""
+    """Orders, returns, statements, then stock, each recorded in `sync_runs`. Inside `tenant()`."""
     shop = str(shop_id)
     outcome: dict[str, str] = {}
     for domain, run in DOMAINS:
@@ -534,28 +643,6 @@ def window(conn, shop_id: str, now: datetime) -> tuple[datetime, datetime, str]:
     return last - timedelta(days=OVERLAP_DAYS), now, "incremental"
 
 
-def probe_inventory(conn, shop_id: str, client: Client) -> dict[str, Any]:
-    """Asks TikTok's Inventory Search about the shop's stored products and returns its answer
-    untouched, so the daily run's log shows what a real shop's stock looks like.
-
-    It writes nothing. The stock read is built only once this answer has been seen, because
-    the documentation as pasted did not show what `data` holds (CLAUDE.md rule 7). Remove it
-    when the stock read replaces it.
-    """
-    from .tiktok_api import INVENTORY_MAX_PRODUCTS, INVENTORY_SEARCH_PATH, TikTokError
-
-    ids = [r[0] for r in conn.execute(
-        "select tiktok_product_id from products where shop_id = %s order by tiktok_product_id "
-        "limit %s", (shop_id, INVENTORY_MAX_PRODUCTS)).fetchall()]
-    if not ids:
-        return {"asked": 0, "note": "no products stored for this shop"}
-    try:
-        data = client.call("POST", INVENTORY_SEARCH_PATH, body={"product_ids": ids})
-    except TikTokError as err:
-        return {"asked": len(ids), "code": err.code, "message": err.message}
-    return {"asked": len(ids), "data": data}
-
-
 def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]:
     """Refresh and sync every shop `shops_due_for_sync()` lists (0027). One shop at a time,
     each in its own `tenant()` transaction, so one shop's failure touches no other."""
@@ -581,11 +668,6 @@ def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]
                     since, until, kind = window(conn, str(shop_id), now)
                     client = client_for(conn, shop_id, transport)
                     result["sync"] = sync_shop(conn, shop_id, client, since, until, kind)
-            # Read-only, and outside the sync's transaction, so it cannot undo a good sync.
-            with tenant(account_id) as conn:
-                if status != "needs_reconnect":
-                    result["inventory_probe"] = probe_inventory(
-                        conn, str(shop_id), client_for(conn, shop_id, transport))
         except Exception as err:  # noqa: BLE001  one shop's fault must not stop the others
             result["error"] = f"{type(err).__name__}: {err}"
         results.append(result)
