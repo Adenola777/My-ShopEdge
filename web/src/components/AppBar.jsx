@@ -36,8 +36,11 @@ function stamp(/** @type {string} */ iso) {
   return LONDON_DAY.format(at) === LONDON_DAY.format(new Date()) ? TIME.format(at) : DAY.format(at);
 }
 
-/** @param {{ shopId?: string }} props */
-export async function AppBar({ shopId }) {
+/**
+ * @param {{ shopId?: string, shopsLink?: boolean }} props `shopsLink` puts a way back to the
+ *   seller's shops in the bar on screens outside a shop, so no screen is a dead end.
+ */
+export async function AppBar({ shopId, shopsLink = false }) {
   let freshness = null;
   let unread = null;
   if (shopId) {
@@ -71,11 +74,11 @@ export async function AppBar({ shopId }) {
               href={`/shops/${encodeURIComponent(shopId)}/notifications`}
               aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
             >
-              <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="2" />
-                <path d="M16 9v9" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-                <circle cx="16" cy="22.5" r="1.7" fill="currentColor" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+                <path d="M10 20.5a2 2 0 0 0 4 0" />
               </svg>
+              <span className="bell__label">Notifications</span>
               {unread ? <span className="bell__dot">{unread > 9 ? "9+" : unread}</span> : null}
             </a>
             <a
@@ -88,7 +91,13 @@ export async function AppBar({ shopId }) {
                 <circle cx="12" cy="12" r="3" />
                 <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" />
               </svg>
+              <span className="bell__label">Settings</span>
             </a>
+          </div>
+        )}
+        {!shopId && shopsLink && (
+          <div className="appbar__status">
+            <a className="appbar__link" href="/shops">Your shops</a>
           </div>
         )}
       </div>

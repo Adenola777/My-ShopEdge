@@ -228,3 +228,32 @@ rather than judged by eye.
 The v0.1 category colours are withdrawn. Magenta, teal and the orange "you keep" segment
 were four unrelated hues carrying four unrelated ideas, and the audit's accessibility
 finding applied to the orange among them.
+
+## A7.11 The brand gradient in the app, and navigation on every screen
+
+**Ruling, 30 September 2026.** The owner asked for the real brand colours to be visible in the
+app, for navigation he could see on a phone and a computer, for short help text, and for the
+logo to render properly, with the goal that customers have a very good experience. On his
+approval of the recommendation:
+
+- **Text, links and buttons stay #C4400C** (A7.5), because it reads at 5.14 : 1 on white.
+  The logo's #FF9A1F and #FF6A00 fall below 4.5 : 1 on white, so they never carry text.
+- **The logo's gradient, #FF9A1F to #FF6A00 to #F4511E, is shown as brand accents**: a band
+  along the top of every screen, a bar on the active tab of the phone's tab bar, and the top
+  of the phone's More sheet. **No side lines**: on 30 September the owner ruled out vertical
+  bars and dividers, so cards carry no coloured edge and the rail on a larger screen is set
+  apart by a light background, not a line.
+- **Navigation.** The five tabs stay as the wireframes draw them. A sixth place, More, holds
+  Product costs, Returns, Records, Notifications, Settings, Help and glossary, and Your
+  shops, each with one line saying what it is for. On a phone More opens a sheet above the tab
+  bar. On a larger screen the same list sits in the rail under the tabs. The top bar names
+  Notifications and Settings in words on a larger screen, and the bell is drawn as a bell.
+- **Products** carries a Product costs card with Upload a cost file and Type costs in.
+- **The logo** is the same file as before, drawn 44 px high on a phone and 56 px on a larger
+  screen, both above the 110 px minimum width of A7.6.
+
+**Checked, 30 September 2026**, by running the service and the production build locally
+against the demo shop and screenshotting all 27 screens at 390 and 1440 pixels wide, before
+and after. The phone's More sheet was opened, and a tap on Product costs reached the costs
+screen and closed the sheet. The Your shops link on screens outside a shop depends on a real
+sign-in, which the local run does not have, so it is unverified until the live site shows it.

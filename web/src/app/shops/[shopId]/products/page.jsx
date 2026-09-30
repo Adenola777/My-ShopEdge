@@ -80,6 +80,19 @@ export default async function ProductsPage({ params, searchParams }) {
         ))}
       </nav>
 
+      {/* Added 30 September 2026: the owner found no way from Products to upload a cost
+          file. Costs are what turn sales into gross profit, so the way in sits on this page. */}
+      <div className="card card--action">
+        <div>
+          <h2>Product costs</h2>
+          <p className="card__why">Gross profit needs what each product costs you. Upload an Excel or CSV file, or type costs in one by one.</p>
+        </div>
+        <div className="card--action__buttons">
+          <Link className="btn btn--primary" href={`/shops/${shopId}/setup/costs/upload`}>Upload a cost file</Link>
+          <Link className="btn btn--quiet" href={`/shops/${shopId}/setup/costs/manual`}>Type costs in</Link>
+        </div>
+      </div>
+
       {products.length === 0 ? (
         <section className="state">
           <h2>No products sold in this period yet.</h2>
