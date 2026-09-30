@@ -126,7 +126,7 @@ export default async function SettingsPage({ params }) {
               <span><Link href={`${base}/other-sales`}>Other-channel sales</Link></span>
             </li>
             <li>
-              <span><Link href={`${base}/glossary`}>Glossary</Link></span>
+              <span><Link href={`${base}/glossary`}>Help and glossary</Link></span>
             </li>
           </ul>
         </div>

@@ -203,6 +203,16 @@ def money_rules():
 check("money is Decimal, GBP only, and a split leaves no residual pence", money_rules)
 
 
+def per_unit_rounding():
+    from app.money import per_unit
+    # The Curly Hair Brush in the demo year: 22 units. Floor division gave -273 for the
+    # refund only because it rounds negatives away from zero; half up is symmetric.
+    for amount, units, want in ((-6000, 22, -273), (34700, 22, 1577), (5, 2, 3), (-5, 2, -3),
+                                (-4, 3, -1), (4, 3, 1), (100, 0, 100)):
+        _assert(per_unit(amount, units) == want, (amount, units, per_unit(amount, units)))
+check("one unit's share rounds half away from zero, the same for costs and sales", per_unit_rounding)
+
+
 print("")
 if failures:
     print(f"{failures} failure(s)")

@@ -46,7 +46,7 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
           <Link href={`/shops/${shopId}/products/${productId}`}>Back to product</Link>
         </p>
         <h1>Every record behind this product</h1>
-        <p>These are the ledger entries that add up to the figures on the product screen.</p>
+        <p>These are the transactions behind this product&rsquo;s figures.</p>
       </header>
 
       <div className="card">

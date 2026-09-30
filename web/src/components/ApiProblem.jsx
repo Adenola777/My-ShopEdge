@@ -25,11 +25,7 @@ export function apiProblem(result, { what, notFound }) {
     return (
       <Problem
         title="MyShopEdge could not be reached."
-        note={
-          result.reason === "timeout"
-            ? `The request for ${what} took too long, so nothing is shown rather than part of it.`
-            : `The request for ${what} did not reach MyShopEdge. Try again in a moment.`
-        }
+        note={`We could not load ${what} just now. Please try again in a moment.`}
         retry
       />
     );
@@ -76,7 +72,7 @@ export function apiProblem(result, { what, notFound }) {
     return (
       <Problem
         title={`${what.charAt(0).toUpperCase()}${what.slice(1)} could not be loaded.`}
-        note="MyShopEdge answered with an error, so no figures are shown rather than wrong ones. Try again in a moment."
+        note="We show nothing rather than risk showing a wrong number. Please try again in a moment."
         retry
       />
     );

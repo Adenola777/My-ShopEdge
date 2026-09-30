@@ -41,7 +41,7 @@ from . import stock
 from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
-from .money import Money, money
+from .money import Money, money, per_unit
 from .settlements import MAX_LIMIT, decode_cursor, encode_cursor
 from .shops import require_shop
 from .stock import StockPosition
@@ -623,11 +623,15 @@ def get_product(
                     lines=[
                         CalculatorLine(
                             label=l.label,
-                            amount=money(l.amount.amount_minor // max(row.units, 1), currency),
+                            amount=money(per_unit(l.amount.amount_minor, row.units), currency),
                             category=l.category, tiktok_fee_type=l.tiktok_fee_type,
                         ) for l in s.lines
                     ],
-                    subtotal=money(s.subtotal.amount_minor // max(row.units, 1), currency),
+                    # Each figure is the period's figure divided by the units and rounded on
+                    # its own, so a subtotal can differ by a penny from the sum of rounded
+                    # lines above it. The subtotal is the true per-unit figure.
+                    subtotal=money(per_unit(s.subtotal.amount_minor, row.units), currency),
+                    subtotal_label=s.subtotal_label,
                 ) for s in sections
             ],
         },

@@ -31,6 +31,17 @@ def from_decimal_string(value: str, currency: str = "GBP") -> Money:
     return Money(amount_minor=int(quantised), currency=currency)
 
 
+def per_unit(amount_minor: int, units: int) -> int:
+    """One unit's share of an amount, rounded half away from zero to the penny.
+
+    Integer floor division rounds a refund of -6000 over 22 units to -273 and a sale of
+    34700 to 1577, so negative lines lean one way and positive lines the other. Decimal
+    rounds both the same way.
+    """
+    share = (Decimal(amount_minor) / Decimal(max(units, 1))).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return int(share)
+
+
 def allocate(total: int, weights: list[int]) -> list[int]:
     """Largest remainder. The parts sum to the total exactly, with no residual pence.
 

@@ -55,8 +55,8 @@ export default function RootLayout({ children }) {
       <footer className="footer">
         <div className="footer__inner">
           <p>
-            MyShopEdge is operated by Inspirecraft Global Limited, Leicester. Figures are drawn
-            from your own shop data and are not financial advice.
+            MyShopEdge is operated by Inspirecraft Global Ltd, Leicester. Your figures come from
+            your own shop data. They are not financial advice.
           </p>
         </div>
       </footer>

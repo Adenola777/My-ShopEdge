@@ -28,10 +28,10 @@ export default async function DataPage({ params }) {
       <div className="card">
         <h2>What the file holds</h2>
         <ul className="rows">
-          {["Your account and tax profile", "Your shops", "Orders and order lines", "The ledger and settlements",
+          {["Your account and tax profile", "Your shops", "Orders and order lines", "Your transactions and settlements",
             "Product costs", "Stock and returns", "Exports and notifications"].map((l) => <li key={l}><span>{l}</span></li>)}
         </ul>
-        <p className="card__why">Each table comes as a JSON file and a CSV file. It holds no buyer names or addresses, because MyShopEdge never keeps them. Your stored TikTok tokens are left out, because they are secrets.</p>
+        <p className="card__why">Your download holds each part of your records as a spreadsheet file (CSV) and as a data file (JSON). It holds no buyer names or addresses, because MyShopEdge never keeps them. Your TikTok sign-in details are never included.</p>
       </div>
       <DataDownload />
     </section>

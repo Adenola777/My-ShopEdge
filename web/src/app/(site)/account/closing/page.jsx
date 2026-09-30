@@ -35,9 +35,9 @@ export default async function ClosingPage() {
     <main className="billing" data-testid="closing-screen">
       <h1>Your account is closing</h1>
       <p>
-        On {formatDate(when)} your name and email are erased, the stored TikTok tokens are
-        erased, and every file you uploaded or exported is deleted. Your ledger stays,
-        attached to no person.
+        On {formatDate(when)} your name and email are erased, your TikTok sign-in details
+        are erased, and every file you uploaded or exported is deleted. Your financial records
+        stay, attached to no person.
       </p>
       <p>Until then you can keep your account. Your shop stays disconnected, so you connect it again afterwards.</p>
       <CancelDeletion />

@@ -75,8 +75,8 @@ export function PaymentForm({ plans, trialDays }) {
   if (!stripePromise) {
     return (
       <section className="card-step" data-testid="billing-unconfigured">
-        <h2>Card payments are not set up yet.</h2>
-        <p>Nothing has been started and nobody has been charged.</p>
+        <h2>Card payments are temporarily unavailable.</h2>
+        <p>Nothing has been started, and nothing has been charged.</p>
       </section>
     );
   }

@@ -146,6 +146,11 @@ def main():
     print(json.dumps(first, default=str))
     check(len(first) == 1 and "error" not in first[0], "one shop ran without an error")
     check(first[0].get("refresh") == "not_due", "a token with six days left is not refreshed")
+    probe = first[0].get("inventory_probe") or {}
+    asked = [c for c in calls if c[1] == tiktok_api.INVENTORY_SEARCH_PATH]
+    check(probe.get("asked", 0) > 0 and asked and all(c[0] == "POST" for c in asked)
+          and probe.get("code") == "404",
+          f"the inventory probe asks about stored products, and a refusal is recorded, not raised: {probe}")
     check(all(s == "completed" for s in (first[0].get("sync") or {}).values()),
           f"orders, returns and finance completed: {first[0].get('sync')}")
 

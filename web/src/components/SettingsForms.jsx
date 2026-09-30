@@ -77,10 +77,10 @@ export function AlertSettingsForm({ shopId, initial }) {
                onChange={(e) => setComing(e.target.value)} />
       </div>
       <div>
-        <label htmlFor="absorb">Absorption tolerance (units)</label>
+        <label htmlFor="absorb">Stock rise to accept without asking (units)</label>
         <input id="absorb" data-testid="absorption-tolerance" inputMode="numeric" value={absorb}
                onChange={(e) => setAbsorb(e.target.value)} />
-        <p className="rows__sub">Above this, an unexplained rise in TikTok stock is raised as a discrepancy rather than absorbed quietly.</p>
+        <p className="rows__sub">A larger unexplained rise in TikTok&rsquo;s count is flagged for you to check.</p>
       </div>
       {error && <p className="form-error" role="alert" data-testid="alert-settings-error">{error}</p>}
       {saved && <p className="note" role="status" data-testid="alert-settings-saved">Saved.</p>}
@@ -119,7 +119,7 @@ export function DisconnectAction({ shopId }) {
   if (done) {
     return (
       <div className="note" role="status" data-testid="disconnect-done">
-        <p>Your shop is disconnected. Your records are still here, and reconnecting the same shop resumes against them.</p>
+        <p>Your shop is disconnected. Your records are still here. Reconnect the same shop at any time and everything continues from where it stopped.</p>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export function OtherSalesForm({ shopId }) {
   async function save(e) {
     e.preventDefault();
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month.trim())) {
-      setError("Enter the month as YYYY-MM, for example 2026-06.");
+      setError("Choose the month.");
       return;
     }
     if (channel.trim() === "") {
@@ -183,7 +183,7 @@ export function OtherSalesForm({ shopId }) {
     <form onSubmit={save} className="card stack" data-testid="other-sales-form">
       <div>
         <label htmlFor="os-month">Month</label>
-        <input id="os-month" data-testid="other-sales-month" placeholder="2026-06" value={month}
+        <input id="os-month" data-testid="other-sales-month" type="month" value={month}
                onChange={(e) => setMonth(e.target.value)} />
       </div>
       <div>

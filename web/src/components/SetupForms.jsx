@@ -167,7 +167,7 @@ export function ManualCosts({ shopId, rows, currency }) {
               {/** @type {[string, string][]} */ ([["cost", "Product cost (£)"], ["packing", "Packing (£)"], ["postage", "Postage (£)"]]).map(([f, label]) => (
                 <div key={f}>
                   <label htmlFor={`${f}-${r.sku_id}`}>{label}</label>
-                  <input id={`${f}-${r.sku_id}`} inputMode="decimal" placeholder={f === "cost" ? "e.g. 3.40" : "Optional"}
+                  <input id={`${f}-${r.sku_id}`} inputMode="decimal" placeholder={f === "cost" ? "For example 3.40" : "Optional"}
                          value={/** @type {any} */ (v)[f]} onChange={(e) => set(r.sku_id, f, e.target.value)} />
                 </div>
               ))}

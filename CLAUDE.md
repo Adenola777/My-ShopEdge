@@ -10,7 +10,7 @@ MyShopEdge is a bookkeeping and finance application for UK TikTok Shop sellers. 
 seller's orders, returns and settlement statements from TikTok, holds them in a double entry
 ledger, and shows the seller what they actually earned rather than what TikTok paid out.
 
-The owner is Adenola Adegbesan, trading through Inspirecraft Global Limited, Leicester.
+The owner is Adenola Adegbesan, trading through Inspirecraft Global Ltd, Leicester, which is its registered name.
 
 ## How to work on it
 

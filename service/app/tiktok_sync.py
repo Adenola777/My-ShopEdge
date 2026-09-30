@@ -534,6 +534,28 @@ def window(conn, shop_id: str, now: datetime) -> tuple[datetime, datetime, str]:
     return last - timedelta(days=OVERLAP_DAYS), now, "incremental"
 
 
+def probe_inventory(conn, shop_id: str, client: Client) -> dict[str, Any]:
+    """Asks TikTok's Inventory Search about the shop's stored products and returns its answer
+    untouched, so the daily run's log shows what a real shop's stock looks like.
+
+    It writes nothing. The stock read is built only once this answer has been seen, because
+    the documentation as pasted did not show what `data` holds (CLAUDE.md rule 7). Remove it
+    when the stock read replaces it.
+    """
+    from .tiktok_api import INVENTORY_MAX_PRODUCTS, INVENTORY_SEARCH_PATH, TikTokError
+
+    ids = [r[0] for r in conn.execute(
+        "select tiktok_product_id from products where shop_id = %s order by tiktok_product_id "
+        "limit %s", (shop_id, INVENTORY_MAX_PRODUCTS)).fetchall()]
+    if not ids:
+        return {"asked": 0, "note": "no products stored for this shop"}
+    try:
+        data = client.call("POST", INVENTORY_SEARCH_PATH, body={"product_ids": ids})
+    except TikTokError as err:
+        return {"asked": len(ids), "code": err.code, "message": err.message}
+    return {"asked": len(ids), "data": data}
+
+
 def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]:
     """Refresh and sync every shop `shops_due_for_sync()` lists (0027). One shop at a time,
     each in its own `tenant()` transaction, so one shop's failure touches no other."""
@@ -559,6 +581,11 @@ def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]
                     since, until, kind = window(conn, str(shop_id), now)
                     client = client_for(conn, shop_id, transport)
                     result["sync"] = sync_shop(conn, shop_id, client, since, until, kind)
+            # Read-only, and outside the sync's transaction, so it cannot undo a good sync.
+            with tenant(account_id) as conn:
+                if status != "needs_reconnect":
+                    result["inventory_probe"] = probe_inventory(
+                        conn, str(shop_id), client_for(conn, shop_id, transport))
         except Exception as err:  # noqa: BLE001  one shop's fault must not stop the others
             result["error"] = f"{type(err).__name__}: {err}"
         results.append(result)

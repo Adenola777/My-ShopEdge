@@ -29,7 +29,7 @@ export default async function PaymentFailedPage() {
       <p>Your bank did not accept the last payment for your {sub.data.plan ?? ""} plan. This is often a bank being cautious rather than a problem with your account.</p>
       {sub.data.current_period_end && <p>The period it was for ends on {formatDate(sub.data.current_period_end)}.</p>}
       <p>Your figures stay open to you while this is sorted.</p>
-      <p className="note">Changing the card from MyShopEdge is not built yet.</p>
+      <p className="note">To update your card, email <a href="mailto:info@inspirecraftglobal.com">info@inspirecraftglobal.com</a> and we will send you a secure link.</p>
       <p><Link className="btn btn--primary btn--block" href="/shops">Go to your shop</Link></p>
     </main>
   );
