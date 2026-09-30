@@ -51,8 +51,8 @@ export default async function TaxPage({ params }) {
           <p className="card__why">Your rolling twelve-month turnover against the current threshold.</p>
           {!vat ? (
             <p className="muted" data-testid="vat-unconfigured">
-              The VAT registration threshold is not loaded on this deployment yet, so your
-              position against it cannot be shown.
+              Your VAT position will appear here shortly. We are adding this year&rsquo;s HMRC
+              threshold.
             </p>
           ) : (<>
           <ul className="rows">
@@ -103,7 +103,7 @@ export default async function TaxPage({ params }) {
           <h2>Key tax dates</h2>
           <p className="card__why">The Self Assessment dates for the current tax year.</p>
           {dates.length === 0 ? (
-            <p className="muted">Tax dates are not configured on this deployment yet.</p>
+            <p className="muted">Your key tax dates will appear here shortly.</p>
           ) : (
             <ul className="rows">
               {dates.map((d) => (

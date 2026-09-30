@@ -22,7 +22,7 @@ export default async function CostsChoicePage({ params }) {
         <Link className="btn btn--primary btn--block" href={`${base}/costs/upload`} data-testid="choose-upload">Yes, in Excel or CSV</Link>
         <Link className="btn btn--quiet btn--block" href={`${base}/costs/manual`} data-testid="choose-manual">Yes, I will type them in</Link>
         <Link className="btn btn--quiet btn--block" href={`${base}/tax`} data-testid="choose-later">Not right now</Link>
-        <p className="footnote">Without costs you see what is left after TikTok. With costs you see what you keep. We remind you where a missing cost hides a figure.</p>
+        <p className="footnote">Without costs you see what is left after TikTok. With costs you see your gross profit. We remind you where a missing cost hides a figure.</p>
       </div>
     </section>
   );

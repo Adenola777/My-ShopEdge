@@ -134,10 +134,10 @@ export default async function TodayPage({ params }) {
         </div>
 
         <div className="card">
-          <h2>Needs you</h2>
+          <h2>Needs your attention</h2>
           <p className="card__why">What is holding your figures back, most urgent first.</p>
           {t.needs_you.length === 0 ? (
-            <p className="muted">Nothing needs you right now.</p>
+            <p className="muted">Nothing needs your attention right now.</p>
           ) : (
             <ul className="rows">
               {t.needs_you.map((n) => (

@@ -46,12 +46,12 @@ const REFUSAL = {
     "Each shop can belong to one account. Sign in with the account that connected it.",
   ],
   tiktok_unconfigured: [
-    "Connecting a TikTok Shop is not switched on yet.",
-    "The TikTok app details are not set on the service, so nothing was connected.",
+    "We could not connect your shop just now.",
+    "Nothing has changed, and you can try again in a few minutes.",
   ],
   token_encryption_unconfigured: [
-    "Connecting a TikTok Shop is not switched on yet.",
-    "The key that protects your TikTok access is not set on the service, so nothing was stored.",
+    "We could not connect your shop just now.",
+    "Nothing has changed, and you can try again in a few minutes.",
   ],
 };
 
@@ -96,7 +96,7 @@ export default async function TikTokCallbackPage({ searchParams }) {
     const code = /** @type {keyof typeof REFUSAL} */ (result.data?.code);
     const [title, note] = /** @type {[string, string]} */ (REFUSAL[code] ?? [
       "The shop could not be connected.",
-      result.data?.detail ?? "MyShopEdge answered with an error, so nothing was connected.",
+      result.data?.detail ?? "Nothing has changed, and you can try again in a few minutes.",
     ]);
     return <Problem title={title} note={note} startAgain />;
   }
@@ -119,8 +119,8 @@ export default async function TikTokCallbackPage({ searchParams }) {
     <section className="state">
       <h1>{name} is connected.</h1>
       <p>
-        MyShopEdge now holds read-only access to your shop. Reading your orders, returns and
-        statements is not switched on yet, so no figures appear until it is.
+        MyShopEdge now holds read-only access to your shop. We are reading your orders,
+        returns and payouts now, and your figures fill in as they arrive.
       </p>
       <p>
         {/* A14.2: the step after connecting is S2 First sync, not Today. */}

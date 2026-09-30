@@ -61,8 +61,8 @@ export default async function ConfirmedPage({ searchParams }) {
       <main className="confirmed">
         <h1>Your bank did not confirm the card.</h1>
         <p>
-          Nothing has been charged. Banks refuse for ordinary reasons, and trying again
-          usually works.
+          Nothing has been charged. Banks sometimes decline a first check, and trying again
+          or using another card normally resolves it.
         </p>
         <Link className="btn btn--primary" href="/billing">
           Try the card again
@@ -79,7 +79,7 @@ export default async function ConfirmedPage({ searchParams }) {
       <p>
         {status === "none" || status === null
           ? "You have not started a trial yet."
-          : `Your subscription is ${status}.`}
+          : status === "trialing" ? "Your free trial is running." : status === "active" ? "Your plan is active." : status === "past_due" ? "Your last payment did not go through." : status === "canceled" ? "Your plan has ended." : "Your plan is being set up."}
       </p>
       <Link className="btn btn--primary" href="/billing">
         Go to your plan

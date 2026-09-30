@@ -98,8 +98,8 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
               {d.kind === "unmapped_fee" ? (
                 <>
                   <p>
-                    TikTok charged a fee under a name MyShopEdge does not recognise. You have done
-                    nothing wrong, and the money is counted in full.
+                    TikTok charged a fee we have not seen before. It is included in your figures
+                    in full, and we are identifying it.
                   </p>
                   <ul className="rows">
                     <li><span>TikTok recorded</span><strong>{d.tiktok_value ?? "Nothing recorded"}</strong></li>
@@ -121,7 +121,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
                 <>
                   <h3 className="card__sub">Effect</h3>
                   <p className="rows__sub" style={{ marginTop: 0 }}>
-                    Totals use TikTok&rsquo;s value while this is open . Your value is kept beside it.
+                    Your totals use TikTok&rsquo;s figure until this is resolved. Your own figure is kept alongside.
                   </p>
                   <ResolveActions shopId={shopId} id={d.id} correctable={Boolean(d.correctable)} />
                 </>

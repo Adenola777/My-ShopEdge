@@ -25,7 +25,7 @@ export const metadata = { title: "Connection problem" };
 /** @type {State} */
 const DISCONNECTED = {
   head: "Your TikTok Shop is disconnected",
-  body: "MyShopEdge has stopped reading from TikTok, so your figures will not update. Your records are still here, and reconnecting the same shop resumes against them.",
+  body: "MyShopEdge has stopped reading from TikTok, so your figures will not update. Your records are still here. Reconnect the same shop at any time and everything continues from where it stopped.",
   reconnect: true,
 };
 
@@ -71,8 +71,8 @@ export default async function ConnectionProblemPage({ params }) {
         </div>
         {state.reconnect ? (
           <div className="card">
-            <h2>Put it right</h2>
-            <p className="card__why">Approve MyShopEdge again on TikTok&rsquo;s own page. It takes a minute.</p>
+            <h2>Reconnect your shop</h2>
+            <p className="card__why">Approve MyShopEdge again on TikTok&rsquo;s own page.</p>
             <ConnectTikTok />
           </div>
         ) : (

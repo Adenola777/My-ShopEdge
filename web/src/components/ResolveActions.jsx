@@ -38,7 +38,7 @@ export function ResolveActions({ shopId, id, correctable }) {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was changed." : (r.data?.detail ?? "That did not go through."));
+      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was changed." : (r.data?.detail ?? "That was not saved. Please try again."));
       return;
     }
     router.refresh();

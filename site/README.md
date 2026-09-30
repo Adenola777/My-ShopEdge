@@ -16,8 +16,12 @@ corrected the same day against the records:
 - The email and password panel was a design preview. Email sign-in is off in Neon Auth, so
   Sign in and Get started now go to the app's Start page, which hands off to the provider.
 
-Still open: the footer carries no privacy notice or terms, because neither page exists (A14),
-and the address line reads "Massionette 3" exactly as supplied.
+On 30 September the copy was rewritten from `audit/COPY_audit_30_september.md` with the owner's
+decisions: the company is written Inspirecraft Global Ltd, as registered, and the address reads
+"Maisonette 3". Headlines are sentences, "what you keep" became gross profit, and "Under a
+minute" and "Stock and loss update themselves" are gone, because neither was measured or true.
+
+Still open: the footer carries no privacy notice or terms, because neither page exists (A14).
 
 The logo is the official artwork from `brand/` (A7): `site/brand/` holds byte-for-byte copies of
 `mse-logo-horizontal-notagline.svg`, `mse-mark-colour.svg` and `mse-favicon.svg`, replacing the

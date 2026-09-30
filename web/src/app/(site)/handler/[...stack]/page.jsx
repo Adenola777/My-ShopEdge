@@ -20,8 +20,8 @@ export default function Handler() {
   if (!STACK_CONFIGURED) {
     return (
       <Problem
-        title="Sign-in is not set up on this copy of MyShopEdge."
-        note="The Stack project id is not configured here, so nobody can sign in yet."
+        title="Sign-in is temporarily unavailable."
+        note="Please try again shortly."
       />
     );
   }

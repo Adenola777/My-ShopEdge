@@ -38,7 +38,7 @@ export default async function BillingPage() {
   if (status && status !== "none") {
     return (
       <main className="billing" data-testid="billing-current">
-        <h1>{status === "trialing" ? "Your free trial is running." : status === "active" ? "Your plan is active." : `Your subscription is ${status.replace("_", " ")}.`}</h1>
+        <h1>{status === "trialing" ? "Your free trial is running." : status === "active" ? "Your plan is active." : status === "past_due" ? "Your last payment did not go through." : status === "canceled" ? "Your plan has ended." : "Your plan is being set up."}</h1>
         <p>There is nothing to choose here now.</p>
         {status === "past_due" && <p><Link href="/billing/payment-failed" data-testid="payment-failed-link">What a failed payment means</Link></p>}
         <Link className="btn btn--primary" href="/shops">Go to your shop</Link>

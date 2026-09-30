@@ -67,7 +67,7 @@ export default async function NotificationsPage({ params, searchParams }) {
 
       {notifications.length === 0 ? (
         <section className="state">
-          <h2>{resolved ? "Nothing resolved yet." : "Nothing needs you."}</h2>
+          <h2>{resolved ? "Nothing resolved yet." : "Nothing needs your attention."}</h2>
           <p>Notices appear here when something in your shop changes or needs a decision.</p>
         </section>
       ) : (

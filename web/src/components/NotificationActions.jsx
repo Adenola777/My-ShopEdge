@@ -26,7 +26,7 @@ function update(id, status) {
 function failure(r) {
   return r.unreachable
     ? "MyShopEdge could not be reached, so nothing was changed."
-    : (r.data?.detail ?? "That did not go through.");
+    : (r.data?.detail ?? "That was not saved. Please try again.");
 }
 
 /** @param {{ id: string, status: "unread" | "read" | "done", title: string }} props */

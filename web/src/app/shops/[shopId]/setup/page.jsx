@@ -13,6 +13,10 @@ import { apiProblem } from "@/components/ApiProblem";
 
 export const metadata = { title: "Continue setting up" };
 
+/** The part of the shop being read, in words rather than its code. */
+/** @type {Record<string, string>} */
+const DOMAIN_WORDS = { orders: "orders", returns: "returns", finance: "payouts" };
+
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function SetupPage({ params }) {
   const { shopId } = await params;
@@ -32,7 +36,7 @@ export default async function SetupPage({ params }) {
   const synced = domains.length > 0 && domains.every((d) => d.status === "completed");
   const failedDomain = domains.find((d) => d.status === "failed" || d.status === "needs_reconnect");
   const syncNote = !sync.ok ? "Not known right now"
-    : failedDomain ? `Stopped on ${failedDomain.domain}`
+    : failedDomain ? `Paused while reading your ${DOMAIN_WORDS[failedDomain.domain] ?? "shop"}`
     : synced ? undefined : "Still running";
   const steps = [
     { label: "TikTok Shop connected", done: true, href: `/shops/${shopId}/settings` },

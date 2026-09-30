@@ -47,7 +47,7 @@ export function CostForm({ shopId, skuId, currency = "GBP" }) {
       <input
         id={`cost-${skuId}`}
         inputMode="decimal"
-        placeholder="Cost, e.g. 3.40"
+        placeholder="Cost, for example 3.40"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         aria-describedby={error ? `cost-${skuId}-error` : undefined}

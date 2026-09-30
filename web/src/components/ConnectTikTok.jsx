@@ -14,7 +14,7 @@ import { api } from "@/lib/api";
 /** Wording for the refusals `authorize_tiktok` can give. Anything else shows its detail. */
 const REFUSAL = {
   tiktok_unconfigured:
-    "Connecting a TikTok Shop is not switched on yet. The TikTok app details are not set on the service.",
+    "We could not connect your shop just now. Nothing has changed, and you can try again in a few minutes.",
   unauthenticated: "Your session has ended. Sign in again, then connect your shop.",
 };
 

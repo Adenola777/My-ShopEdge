@@ -142,3 +142,18 @@ Much of the app already speaks well, and these lines set the standard for the re
 
 Once these are decided, the changes are one pass through the files named above, followed by
 a screenshot of every screen at phone and desktop widths.
+
+## The owner's answers, 30 September 2026
+
+1. The company is **Inspirecraft Global Ltd**, and the address reads **Maisonette 3**.
+2. The plan list stays as it is, Scheduled exports and Priority support included. The owner
+   ruled that the product offer is delivered as the build continues.
+3. "Most chosen" stays.
+4. **Gross profit** replaces "what you keep". The A8 label "Gross profit after returns" stays
+   where the figure is defined, because A8 and CLR-5 set it.
+5. Until the app can change a card, a seller emails info@inspirecraftglobal.com.
+
+The rewrite then went through every file named in sections 1, 2, 4 and 6. The landing page's
+tax card stays, as part of the offer. The glossary now opens with the figures' meanings, taken
+from A8, above the tax rules. Section 5's other single terms are not applied, because only
+gross profit was decided.

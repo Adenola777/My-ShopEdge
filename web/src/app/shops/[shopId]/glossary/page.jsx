@@ -13,7 +13,20 @@
 import { api, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 
-export const metadata = { title: "Glossary" };
+export const metadata = { title: "Help and glossary" };
+
+/** What each figure on the screens means, in the A8 terms. The rules below it come from the service. */
+const TERMS = [
+  ["Gross sales (GMV)", "What customers paid for your products, before refunds and before anything TikTok takes."],
+  ["Refunds to customers", "Money returned to buyers, in full or in part."],
+  ["Net proceeds", "Your sales after refunds, less every fee and deduction TikTok makes."],
+  ["Gross profit after returns", "Net proceeds less what the goods you sold cost you, after returned stock is put back or written off. It is before your own running costs and your tax."],
+  ["Settlement", "A statement from TikTok and the payout it sends to your bank."],
+  ["Sales basis", "Counts money on the day of the sale."],
+  ["Cash basis", "Counts money in the month TikTok settled it."],
+  ["Stock written off", "The cost of returned units you marked as unsellable."],
+  ["Days of cover", "Stock on hand divided by the daily rate of sales over the last fourteen days."],
+];
 
 /** @typedef {import("@/lib/api-types").components["schemas"]["ReferenceRule"]} ReferenceRule */
 
@@ -56,13 +69,21 @@ export default async function GlossaryPage() {
   return (
     <section data-testid="glossary-screen">
       <header className="page-head">
-        <h1>Glossary</h1>
-        <p>The rules MyShopEdge uses, with the date each was last checked against its source.</p>
+        <h1>Help and glossary</h1>
+        <p>What each figure means, and the tax rules MyShopEdge uses with the date each was last checked.</p>
       </header>
+      <div className="card" data-testid="glossary-terms">
+        <h2>The figures</h2>
+        <ul className="rows">
+          {TERMS.map(([term, meaning]) => (
+            <li key={term}><span>{term}<span className="rows__sub" style={{ display: "block" }}>{meaning}</span></span></li>
+          ))}
+        </ul>
+      </div>
       {rules.length === 0 ? (
         <div className="card">
-          <h2>No rules are loaded yet.</h2>
-          <p className="muted">Reference rules appear here once they are configured.</p>
+          <h2>Tax rules</h2>
+          <p className="muted">The current HMRC figures will appear here shortly.</p>
         </div>
       ) : (
         <div className="stack">
