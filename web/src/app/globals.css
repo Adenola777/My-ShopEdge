@@ -317,12 +317,15 @@ a:hover { color: var(--orange-700); }
     gap: var(--space-1);
     padding: 100px var(--space-3) var(--space-4);
     border-top: 0;
-    border-right: 1px solid var(--ink-200);
+    background: var(--ink-50);
     box-shadow: none;
     overflow-y: auto;
   }
   .tabs__tab { flex: none; max-width: none; flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding: 0 var(--space-3); font-size: 0.9375rem; }
-  .tabs__tab[aria-current="page"]::after { top: 20%; bottom: 20%; left: 0; right: auto; width: 3px; height: auto; border-radius: 0 3px 3px 0; }
+  /* No side lines on a larger screen, at the owner's request: the active tab is marked by
+     its background and colour alone. */
+  .tabs__tab[aria-current="page"]::after { display: none; }
+  .tabs__tab[aria-current="page"] { background: var(--white); }
   .tabs__more { display: none; }
   .tabs__sheet {
     display: block;
@@ -332,8 +335,8 @@ a:hover { color: var(--orange-700); }
     margin-top: var(--space-4);
     padding: var(--space-3) 0 0;
     border: 0;
-    border-top: 1px solid var(--ink-200);
     border-radius: 0;
+    background: transparent;
     box-shadow: none;
   }
   .tabs__heading { padding: 0 var(--space-3); }
@@ -541,8 +544,7 @@ tbody tr:last-child td { border-bottom: 0; }
 /* The hero: an orange tinted panel with a navy figure. The tint marks the panel as the
    headline; the figure is navy because orange never carries data (A7.10). */
 .hero { position: relative; overflow: hidden; background: var(--orange-50); border-color: var(--orange-100); }
-/* A7.11: the headline figure's card carries the brand gradient down its edge. */
-.hero::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--brand-gradient); }
+
 .hero__label { font-weight: 700; margin: 0; color: var(--navy-900); }
 .hero__value { font-size: 2.25rem; font-weight: 700; margin: var(--space-1) 0; line-height: 1.1; }
 .hero__value .money { color: var(--navy-figure); font-weight: 700; }
@@ -662,7 +664,7 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 
 /* A card whose purpose is one action, such as adding product costs. */
 .card--action { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
-.card--action::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--brand-gradient); }
+
 .card--action h2 { margin: 0 0 var(--space-1); }
 .card--action .card__why { margin: 0; }
 .card--action__buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }

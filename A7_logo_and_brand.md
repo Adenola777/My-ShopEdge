@@ -239,8 +239,10 @@ approval of the recommendation:
 - **Text, links and buttons stay #C4400C** (A7.5), because it reads at 5.14 : 1 on white.
   The logo's #FF9A1F and #FF6A00 fall below 4.5 : 1 on white, so they never carry text.
 - **The logo's gradient, #FF9A1F to #FF6A00 to #F4511E, is shown as brand accents**: a band
-  along the top of every screen, a bar on the active tab, the edge of the headline figure's
-  card, the edge of action cards, and the top of the phone's More sheet.
+  along the top of every screen, a bar on the active tab of the phone's tab bar, and the top
+  of the phone's More sheet. **No side lines**: on 30 September the owner ruled out vertical
+  bars and dividers, so cards carry no coloured edge and the rail on a larger screen is set
+  apart by a light background, not a line.
 - **Navigation.** The five tabs stay as the wireframes draw them. A sixth place, More, holds
   Product costs, Returns, Records, Notifications, Settings, Help and glossary, and Your
   shops, each with one line saying what it is for. On a phone More opens a sheet above the tab
