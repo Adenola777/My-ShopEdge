@@ -1,26 +1,28 @@
 # Setting up the file store
 
-Written 28 September 2026. The owner chose a private S3 bucket in London for cost uploads,
-exports and the data download. The service code is `service/app/storage.py`. It has run
-against a local stand-in for S3 and never against a real bucket, so the first real upload
-is its test.
+Written 28 September 2026 for an S3 bucket in London, and rewritten on 30 September 2026
+when the owner ruled that AWS is not used for now and the store is a **Cloudflare R2 bucket
+in the EU jurisdiction** (A10.8 as amended). The service code is `service/app/storage.py`.
+It speaks the S3 protocol, so the same code serves R2 and AWS and only the settings differ.
 
-Every step below happens in the AWS console or in your own terminal. No key is ever typed
-into a conversation.
+It has run against a local stand-in for S3, configured as R2 will be
+(`testdata/storage_check.py`, 11 of 11 on 30 September), and never against a real bucket.
+The first real upload is its test.
 
-## 1. Create the bucket
+Every step below happens in the Cloudflare dashboard or on Render. No key is ever typed into
+a conversation.
 
-In the S3 console, create a bucket in **Europe (London) eu-west-2**. Keep **Block all
-public access** switched on. Keep versioning off for now: Object Lock for the six-year
-invoice store (A10.8) is a separate decision, and it can only be switched on when a bucket
-is created, so if it will be wanted, choose it here.
+## 1. The bucket
+
+The owner created it on 30 September 2026 under R2 Object Storage, in the **EU**
+jurisdiction. R2 buckets are private unless a public address is switched on, so leave
+**Public access** off. R2 Data Catalog is not used.
 
 ## 2. Allow the browser to upload
 
 A seller's browser uploads the cost file straight to the bucket through a URL the service
-signs. The browser refuses to do that unless the bucket names the site. Under the bucket's
-**Permissions**, set **Cross-origin resource sharing (CORS)** to the following, with the
-site's real addresses in `AllowedOrigins`:
+signs, and fetches exports the same way. The browser refuses to do either unless the bucket
+names the site. Open the bucket, then **Settings**, then **CORS Policy**, and add:
 
 ```json
 [
@@ -33,41 +35,36 @@ site's real addresses in `AllowedOrigins`:
 ]
 ```
 
+The upload sends one header, `content-type`, at `web/src/components/SetupForms.jsx` line 218.
+
 ## 3. Create a key that can reach only this bucket
 
-In IAM, create a user for the service with no console access, and attach a policy that
-allows only reading and writing objects in this bucket:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": "arn:aws:s3:::BUCKET_NAME/*"
-    }
-  ]
-}
-```
-
-Create an access key for that user. AWS shows the secret once.
+In R2, open **Manage API tokens** and create an API token with **Object Read & Write**
+permission, applied to **this bucket only**. Cloudflare shows an **Access Key ID** and a
+**Secret Access Key** once. They are the pair the service uses.
 
 ## 4. Give the service the settings
+
+The bucket's **Settings** page shows its **S3 API** address. For an EU bucket it has the form
+`https://{account id}.eu.r2.cloudflarestorage.com/{bucket}`. The endpoint below is that
+address **without** the bucket name at the end.
 
 On Render, open `My-ShopEdge-1`, then **Environment**, and add:
 
 | Variable | Value |
 |---|---|
 | `S3_BUCKET` | the bucket name |
-| `AWS_REGION` | `eu-west-2` |
+| `AWS_ENDPOINT_URL_S3` | the S3 API address without the bucket name |
+| `AWS_REGION` | `auto` |
 | `AWS_ACCESS_KEY_ID` | from step 3 |
 | `AWS_SECRET_ACCESS_KEY` | from step 3 |
 
-Render redeploys on save. Until `S3_BUCKET` is set, a cost upload answers 503
+The variable names say AWS because boto3, the library that signs the URLs, reads them by
+those names. Render redeploys on save. Until `S3_BUCKET` is set, a cost upload answers 503
 `storage_unconfigured` and writes nothing.
 
 ## 5. Check it
 
-Upload a small CSV through the cost upload screen once it is built, or with the API. If the
-browser reports a CORS error, step 2 does not name the address the site is served from.
+Upload a small CSV on the cost screen. If the browser reports a CORS error, step 2 does not
+name the address the site is served from. If the service answers 502 or logs an error from
+botocore, the endpoint, the region or the key is wrong, and the Render log names which.

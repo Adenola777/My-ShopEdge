@@ -123,6 +123,15 @@ resolve the British Summer Time boundary correctly, with 23:30 UTC on 30 June fa
 
 ## A10.8 Object storage
 
+**Amended on 30 September 2026 by the owner.** AWS is not used for now. The file store is a
+**Cloudflare R2 bucket in the EU jurisdiction**, created by the owner the same day. This
+replaces the London requirement below: seller cost files, exports and data downloads are
+kept in the EU, not in London. R2 offers the S3 protocol, so `service/app/storage.py` and
+the key convention below are unchanged, and `RUNBOOK_file_storage.md` gives the settings.
+The fifteen-minute signed URLs still hold. Whether R2 offers anything like S3 Object Lock for
+the six-year invoice store is not known and was not checked, so the `invoices/` prefix stays
+unused, as below.
+
 **Superseded on 28 September 2026 by the owner.** The file store is a private S3 bucket in
 London, `eu-west-2`, not Vercel Blob. Vercel documents signed Blob URLs only for its
 JavaScript SDK, so the Python service could not issue the signed upload and download URLs
