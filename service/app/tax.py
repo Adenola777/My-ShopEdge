@@ -232,7 +232,8 @@ def get_vat_monitor(
         rolling_twelve_month_turnover=money(turnover, currency),
         threshold=money(threshold_minor, currency),
         headroom=money(threshold_minor - turnover, currency),
-        above_threshold=turnover >= threshold_minor,
+        # gov.uk: register when taxable turnover is "More than £90,000", so equal is not over.
+        above_threshold=turnover > threshold_minor,
         includes_other_channels=has_other,
         months=months,
         rule_key=rule_key,

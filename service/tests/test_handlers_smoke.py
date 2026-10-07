@@ -1533,6 +1533,36 @@ def expected_payouts():
 check("getExpectedPayouts groups unsettled transactions by London week and labels them estimated", expected_payouts)
 
 
+# --- the VAT monitor follows gov.uk's "More than £90,000" (7 October 2026)
+from app import tax as tax_mod
+
+def vat_threshold_is_more_than():
+    import contextlib
+    from app.dates import business_today
+    month = business_today().strftime("%Y-%m")
+    def make(turnover):
+        @contextlib.contextmanager
+        def fake(_a):
+            yield Conn([
+                ("from ledger_entries", Result(["m", "g"], [(month, turnover)])),
+                ("from other_channel_sales where shop_id = %s and month", Result(["m", "g"], [])),
+                ("select exists", Result(["e"], [(False,)])),
+                ("from reference_rules", Result(["k", "v", "r"], [
+                    ("registration_threshold", {"amount_minor": 9000000, "currency": "GBP"}, None)])),
+            ])
+        return fake
+    saved = tax_mod.tenant
+    try:
+        for turnover, over in ((8999999, False), (9000000, False), (9000001, True)):
+            tax_mod.tenant = make(turnover)
+            r = client.get(f"/v1/shops/{SHOP}/tax/vat")
+            _assert(r.status_code == 200 and r.json()["above_threshold"] is over,
+                    f"{turnover}: {r.status_code} {r.text[:160]}")
+    finally:
+        tax_mod.tenant = saved
+check("The VAT monitor counts a seller over the threshold only above £90,000", vat_threshold_is_more_than)
+
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")
