@@ -20,12 +20,14 @@
  * A fee TikTok names in a way MyShopEdge does not recognise is shown under that heading
  * with TikTok's own name beneath it (A18.4), never as a bare code.
  *
- * Expected payouts by week and the month summary and export are blocked (CLAUDE.md), so
- * they are not drawn.
+ * Expected payouts by week are read from `getExpectedPayouts`, which asks TikTok for the
+ * shop's unsettled transactions when the page opens (7 October 2026). Every figure there is
+ * TikTok's estimate and is labelled as one. If TikTok does not answer, that card says so and
+ * the rest of the page is unaffected.
  */
 
 import Link from "next/link";
-import { fetchShop, formatDate } from "@/lib/api";
+import { fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
 import { Figure } from "@/components/Figure";
@@ -45,7 +47,10 @@ export default async function MoneyPage({ params, searchParams }) {
   const basis = query.basis === "cash" ? "cash" : "sales";
   const day = query.day;
 
-  const result = await fetchShop(shopId, "/money", { basis, from: day, to: day });
+  const [result, expected] = await Promise.all([
+    fetchShop(shopId, "/money", { basis, from: day, to: day }),
+    fetchShop(shopId, "/payouts/expected"),
+  ]);
   const problem = apiProblem(result, { what: "your money figures" });
   if (problem) return problem;
 
@@ -123,11 +128,66 @@ export default async function MoneyPage({ params, searchParams }) {
         ))}
       </div>
 
+      <ExpectedPayouts result={expected} />
+
       <p className="footnote">
         {basis === "sales" ? "Sales basis counts money on the day of the sale." : "Cash basis counts money in the month TikTok settled it."}{" "}
         {m.kept ? BEFORE_OVERHEADS : keptReason(m.kept_reason)}
       </p>
       <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/money/export`} data-testid="money-export">Export this for your accountant</Link></p>
     </section>
+  );
+}
+
+/**
+ * TikTok's unsettled transactions grouped by the week TikTok expects to pay them. The
+ * service does the grouping and the sums; this only lays them out.
+ *
+ * @param {{ result: import("@/lib/api").ApiResult }} props
+ */
+function ExpectedPayouts({ result }) {
+  if (!result.ok || !result.data) {
+    return (
+      <div className="card" data-testid="expected-payouts">
+        <h2>Expected payouts</h2>
+        <p className="card__why">
+          {result.status === 409
+            ? "This shop is not connected to TikTok, so there is nothing to read."
+            : "TikTok did not answer just now, so expected payouts are not shown. The figures above are unaffected."}
+        </p>
+      </div>
+    );
+  }
+  /** @type {import("@/lib/api-types").components["schemas"]["ExpectedPayouts"]} */
+  const p = result.data;
+  const [estLabel, estTone] = CONFIDENCE.estimated ?? ["Estimated", "strong"];
+  return (
+    <div className="card" data-testid="expected-payouts">
+      <h2>Expected payouts <span className={chipClass(estTone)}>{estLabel}</span></h2>
+      {p.weeks.length === 0 ? (
+        <p className="card__why">TikTok holds no unsettled orders for this shop.</p>
+      ) : (
+        <ul className="rows">
+          {p.weeks.map((w) => (
+            <li key={w.week_starting}>
+              <span>
+                Week of {formatDate(w.week_starting)}
+                {w.orders > 0 ? `, ${w.orders} ${w.orders === 1 ? "order" : "orders"}` : ""}
+              </span>
+              <Figure amount={w.amount} />
+            </li>
+          ))}
+          <li className="rows__total">
+            <span>Total expected</span>
+            <Figure amount={p.total} />
+          </li>
+        </ul>
+      )}
+      <p className="card__why">
+        These are TikTok&apos;s own estimates of {formatMoney(p.total)} still to come, and they can
+        change before TikTok settles. An order leaves this list once it is settled and appears in
+        the figures above.
+      </p>
+    </div>
   );
 }

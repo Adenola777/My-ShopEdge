@@ -26,6 +26,7 @@ from . import (
     notifications,
     money_view,
     other_sales,
+    payouts,
     products,
     records,
     returns,
@@ -98,6 +99,7 @@ app.include_router(me.router, prefix="/v1")
 app.include_router(notifications.router, prefix="/v1")
 app.include_router(money_view.router, prefix="/v1")
 app.include_router(other_sales.router, prefix="/v1")
+app.include_router(payouts.router, prefix="/v1")
 app.include_router(products.router, prefix="/v1")
 app.include_router(records.router, prefix="/v1")
 app.include_router(returns.router, prefix="/v1")
