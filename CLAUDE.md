@@ -256,6 +256,10 @@ Each of these was found by running something, and each survived reading.
   that Inspirecraft Global Ltd is not VAT registered, so **no VAT is charged**: a seller pays
   £9.99, £24.99 or £49.99 and nothing more. The trial call applies no tax, so the exclusive
   prices charge exactly that. A15.6 says what changes on registration.
+- **The trial is thirty days during the beta**, ruled on 7 October 2026 (`TRIAL_DAYS` in
+  `plans.py`). It was fourteen. A trial already running keeps the end Stripe gave it.
+- **A deletion stops the plan renewing** at the end of the period or trial under way, with
+  no refund, and cancelling the deletion turns renewal back on (A30.1, 7 October 2026).
 - **History is twenty four months on every plan**, not tiered.
 - **The order limit is enforced softly.** The count appears at eighty per cent and at a
   hundred per cent, the larger plan is offered, and nothing stops. No month closes, no
@@ -331,7 +335,6 @@ file inside this repository. `.gitignore` already excludes `.env` and its varian
 | `checkReturnItem` | Nothing now. The four rulings were made on 28 September (A30.2) |
 | Erasing closed accounts on day thirty | A scheduler. `service/scripts/erase_accounts.py` does the erasure A30.1 rules and has run against the local copy and a local stand-in for S3. Nothing runs it daily until the owner creates a Render cron job. Migration 0025, which it needs, is on all three branches since 29 September |
 | Any tax figure on S12 | Reference rules. Production's `reference_rules` held 0 rows when queried on 28 September, so the VAT monitor, the set-aside and the tax dates all show that nothing is loaded. The set-aside method of A30.3 is built and tested on made-up values, and uses a rule only once its `reviewed_at` is set. The figures have to be read from gov.uk, which this session's network policy refuses, and loaded with their `source_url` |
-| What a deletion does to a paid plan | A ruling. A30.1 does not cover billing, so a seller who deletes the account keeps being charged by Stripe until it is ruled and built |
 | `getExpectedPayouts` | A source for TikTok's unsettled orders. The contract says it is read from that endpoint, nothing ingests it, and the ledger holds the week a sale happened, not the week TikTok will pay |
 
 ## What is next in the code

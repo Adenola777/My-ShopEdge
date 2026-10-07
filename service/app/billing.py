@@ -185,6 +185,57 @@ def start_trial(
     return _trial_start(subscription)
 
 
+# Set on the Stripe subscription when a deletion stopped its renewal, so that cancelling the
+# deletion turns renewal back on only where the deletion turned it off. A seller who had
+# already chosen to stop renewing before deleting keeps that choice.
+DELETION_FLAG = "renewal_stopped_by_deletion"
+
+
+def set_renewal_for_deletion(account_id, closing: bool) -> str:
+    """Stops or restores renewal of the account's subscription, under the owner's ruling of
+    7 October 2026: a deletion stops renewal at the end of the paid period, and cancelling
+    the deletion turns renewal back on.
+
+    Returns what was done: 'none' when the account has no live subscription at Stripe,
+    'stopped', 'restored' or 'unchanged'. Raises Problem when Stripe cannot be reached, so the
+    caller can refuse the deletion rather than leave a seller being charged.
+
+    Setting `cancel_at_period_end` during a trial ends the subscription when the trial ends,
+    so no charge is taken; that is Stripe's documented behaviour and has not been run against
+    the live account. **Unverified against Stripe** for the reason `_open_subscription` gives.
+    """
+    row = db.get_subscription_row(account_id)
+    if row is None or row["status"] not in LIVE or not row.get("stripe_subscription_id"):
+        return "none"
+    # The demo shop's trial is written straight into the database with a customer id that
+    # Stripe never issued (testdata/load_demo.py), so there is nothing at Stripe to change.
+    if str(row.get("stripe_customer_id") or "").startswith("demo_"):
+        return "none"
+
+    client = _stripe()
+    try:
+        sub = client.subscriptions.retrieve(row["stripe_subscription_id"])
+        flagged = (sub.get("metadata") or {}).get(DELETION_FLAG) == "true"
+        if closing and not sub.get("cancel_at_period_end"):
+            params = {"cancel_at_period_end": True, "metadata": {DELETION_FLAG: "true"}}
+            outcome = "stopped"
+        elif not closing and flagged:
+            # Stripe removes a metadata key that is set to an empty string.
+            params = {"cancel_at_period_end": False, "metadata": {DELETION_FLAG: ""}}
+            outcome = "restored"
+        else:
+            return "unchanged"
+        sub = client.subscriptions.update(row["stripe_subscription_id"], params=params)
+    except stripe.StripeError as exc:
+        raise Problem(502, "stripe_error",
+                      "We could not reach our payment provider, so nothing was changed. "
+                      "Please try again in a moment.") from exc
+
+    _apply_stripe_subscription(sub)
+    logger.info("account %s renewal %s for deletion", account_id, outcome)
+    return outcome
+
+
 def _open_subscription(client: stripe.StripeClient, customer_id: str):
     """The customer's subscription that is still open at Stripe, or None.
 

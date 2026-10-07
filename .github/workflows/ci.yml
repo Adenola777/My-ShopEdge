@@ -50,8 +50,11 @@ jobs:
       # There is no lockfile, because .gitignore excludes web/package-lock.json.
       - run: npm install
       - run: npm run lint
-      # Fails on a high or critical advisory. postcss is pinned in package.json overrides.
-      - run: npm audit --audit-level=high
+      # Fails on a high or critical advisory in a package that ships. postcss is pinned in
+      # package.json overrides. Dev tooling is left out since 7 October 2026, with the owner's
+      # approval: braces (GHSA-vfj7-8cjw-p6xm) reaches the build only through
+      # eslint-config-next, and no version of braces is fixed.
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run check
       - run: npm run build
 

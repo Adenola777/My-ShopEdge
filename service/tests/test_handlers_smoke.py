@@ -1281,6 +1281,15 @@ check("checkReturnItem writes a write-off and postage, and refuses a second chec
 from app import account_deletion as deletion
 
 def delete_and_cancel():
+    from app import billing as _billing
+    saved_row = _billing.db.get_subscription_row
+    _billing.db.get_subscription_row = lambda _a: None  # no plan: Stripe is never called
+    try:
+        _delete_and_cancel()
+    finally:
+        _billing.db.get_subscription_row = saved_row
+
+def _delete_and_cancel():
     writes = []
     def make(status):
         import contextlib
@@ -1318,6 +1327,23 @@ def delete_and_cancel():
     _assert(r.status_code == 200 and r.json()["shops_disconnected"] == 1, r.text)
     deletion.tenant = make("active")
     _assert(client.post("/v1/me/deletion/cancel").status_code == 409, "nothing to cancel")
+
+    # A seller with a plan is told it stops renewing, and a Stripe failure deletes nothing.
+    from app.problems import Problem as _P
+    saved_set = deletion.billing.set_renewal_for_deletion
+    try:
+        writes.clear()
+        deletion.billing.set_renewal_for_deletion = lambda _a, closing: "stopped"
+        r = client.request("DELETE", "/v1/me", json={"confirm_email": ACCOUNT.email})
+        _assert(r.status_code == 202 and len(r.json()["includes"]) == 6
+                and "stops renewing" in r.json()["includes"][2], r.text)
+        writes.clear()
+        def down(_a, closing): raise _P(502, "stripe_error", "x")
+        deletion.billing.set_renewal_for_deletion = down
+        r = client.request("DELETE", "/v1/me", json={"confirm_email": ACCOUNT.email})
+        _assert(r.status_code == 502 and not writes, f"{r.status_code} {writes}")
+    finally:
+        deletion.billing.set_renewal_for_deletion = saved_set
 check("deleteMe closes the account with dates, and cancelAccountDeletion reopens it", delete_and_cancel)
 
 
@@ -1373,6 +1399,71 @@ def trial_once():
         (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
          billing._apply_stripe_subscription) = saved
 check("startTrial refuses a live subscription, reuses an unfinished one, and starts a first", trial_once)
+
+
+# --- a deletion stops renewal, and cancelling it restores only what it stopped (7 October 2026)
+def renewal_follows_deletion():
+    from types import SimpleNamespace as NS
+    import stripe as _stripe_mod
+    calls = []
+
+    class Sub(dict):
+        pass
+
+    state = {"cancel_at_period_end": False, "metadata": {}}
+
+    class Subs:
+        fail = False
+        def retrieve(self, sid):
+            if Subs.fail: raise _stripe_mod.APIConnectionError("down")
+            return Sub(id=sid, customer="cus_1", status="trialing", **state)
+        def update(self, sid, params):
+            calls.append(params)
+            state["cancel_at_period_end"] = params["cancel_at_period_end"]
+            meta = dict(state["metadata"])
+            for k, v in params["metadata"].items():
+                if v == "": meta.pop(k, None)
+                else: meta[k] = v
+            state["metadata"] = meta
+            return Sub(id=sid, customer="cus_1", status="trialing", **state)
+
+    saved = (billing._stripe, billing.db.get_subscription_row, billing._apply_stripe_subscription)
+    billing._stripe = lambda: NS(subscriptions=Subs())
+    billing._apply_stripe_subscription = lambda sub: None
+    live = {"status": "trialing", "stripe_customer_id": "cus_1", "stripe_subscription_id": "sub_1"}
+    try:
+        billing.db.get_subscription_row = lambda _a: None
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, True) == "none" and not calls, "no plan")
+        billing.db.get_subscription_row = lambda _a: dict(live, stripe_customer_id="demo_x")
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, True) == "none" and not calls, "demo")
+        billing.db.get_subscription_row = lambda _a: dict(live, status="canceled")
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, True) == "none" and not calls, "canceled")
+
+        billing.db.get_subscription_row = lambda _a: live
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, True) == "stopped", "stop")
+        _assert(calls[-1] == {"cancel_at_period_end": True,
+                              "metadata": {billing.DELETION_FLAG: "true"}}, calls)
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, False) == "restored", "restore")
+        _assert(state == {"cancel_at_period_end": False, "metadata": {}}, state)
+
+        # A seller who had already stopped renewal keeps that choice through a deletion and
+        # its cancellation.
+        calls.clear()
+        state.update(cancel_at_period_end=True, metadata={})
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, True) == "unchanged", "already off")
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, False) == "unchanged" and not calls,
+                "a seller's own choice is not undone")
+
+        state.update(cancel_at_period_end=False, metadata={})
+        Subs.fail = True
+        try:
+            billing.set_renewal_for_deletion(ACCOUNT.id, True)
+            _assert(False, "a Stripe failure must raise")
+        except Exception as exc:  # noqa: BLE001
+            _assert(getattr(exc, "status_code", None) == 502 and exc.code == "stripe_error", repr(exc))
+    finally:
+        billing._stripe, billing.db.get_subscription_row, billing._apply_stripe_subscription = saved
+check("a deletion stops renewal at period end, and its cancellation restores only that", renewal_follows_deletion)
 
 
 print()

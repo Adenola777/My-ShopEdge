@@ -39,9 +39,11 @@ WHAT IS NOT BUILT, AND IS STATED RATHER THAN IMPLIED
 
 - **Nothing runs the erasure on a schedule.** `scripts/erase_accounts.py` does the work when
   it is run. A Render cron job, or any scheduler, has to be set up by the owner.
-- **A running Stripe subscription is not cancelled.** A30.1 does not rule on billing, and
-  a call to the live Stripe account is not made on a guess. A seller on a paid plan who
-  deletes the account is still charged until that is ruled and built.
+- **A running Stripe subscription stops renewing, and is not refunded.** The owner ruled
+  on 7 October 2026 that a deletion sets the subscription to end with the period already
+  paid for, or with the trial, and that cancelling the deletion turns renewal back on. The
+  Stripe call is made before the account is closed, and a failure refuses the deletion.
+  It has run against a stand-in client only, not against the live account.
 - **No email confirms the erasure**, which A3's S30 step 4 describes, because nothing in the
   service sends email.
 - **TikTok is not told.** The tokens are marked revoked here and overwritten at erasure, but
@@ -63,7 +65,7 @@ from fastapi import APIRouter, Depends, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import storage
+from . import billing, storage
 from .auth import Account, require_signed_in
 from .db import tenant, unscoped
 from .idempotency import record, replay, request_hash
@@ -102,12 +104,19 @@ def _london_day(moment: datetime) -> str:
     return f"{local.day} {local:%B %Y}"
 
 
-def _includes(erase_at: datetime) -> list[str]:
-    """What A30.1 says happens, in its own order and nothing more."""
+def _includes(erase_at: datetime, plan_stopped: bool = False) -> list[str]:
+    """What A30.1 says happens, in its own order, and the billing line the owner's ruling of
+    7 October 2026 adds when the account has a plan."""
     day = _london_day(erase_at)
+    plan = ([
+        "Your plan stops renewing now. It ends with the period or free trial already under "
+        "way, nothing more is charged, and nothing is refunded. Cancelling the deletion "
+        "turns renewal back on.",
+    ] if plan_stopped else [])
     return [
         "Sign-in stops working for this account now.",
         "Every connected shop is disconnected now, and its TikTok tokens are marked revoked.",
+        *plan,
         f"Until {day} you can cancel the deletion by signing in again. Nothing is erased before then.",
         f"On {day} your name and email are erased, the stored TikTok tokens are erased, "
         "and every file you uploaded or exported is deleted.",
@@ -152,7 +161,12 @@ def delete_me(
         if status == "suspended":
             raise Problem(403, "account_suspended", "This account is suspended.")
 
+        renewal = "none"
         if status != "deleted":
+            # Stripe goes first, inside this transaction. If it cannot be reached the
+            # Problem it raises rolls the transaction back, so the seller is told nothing
+            # was deleted rather than left closed and still being charged.
+            renewal = billing.set_renewal_for_deletion(account.id, closing=True)
             deleted_at = conn.execute(
                 "update accounts set status = 'deleted', deleted_at = now() where id = %s "
                 "returning deleted_at",
@@ -178,7 +192,8 @@ def delete_me(
 
         erase_at = deleted_at + GRACE
         out = DeletionAcknowledgement(
-            account_id=account.id, scheduled_at=erase_at, includes=_includes(erase_at),
+            account_id=account.id, scheduled_at=erase_at,
+            includes=_includes(erase_at, plan_stopped=renewal != "none"),
             invoices_retained_until=_six_years_after(latest) if latest else None,
             cancel_by=erase_at,
         )
@@ -198,6 +213,9 @@ def cancel_account_deletion(account: Annotated[Account, Depends(require_signed_i
         ).fetchone()
         if row is None:
             raise Problem(409, "not_closing", "This account has no deletion to cancel.")
+        # Renewal comes back only where the deletion stopped it. A Stripe failure raises
+        # and rolls back, so the account stays closing and the seller can try again.
+        billing.set_renewal_for_deletion(account.id, closing=False)
         shops = conn.execute(
             "select count(*) from shops where account_id = %s and connection_status = 'disconnected'",
             (str(account.id),),
