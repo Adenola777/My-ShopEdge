@@ -349,8 +349,27 @@ was done. The email is in the owner's inbox.
    The reviewer signs in at `/reviewer` on the demo address. The keypair is the owner's to
    generate in his own terminal, so no private key enters a session or the repository.
 
-2. **The TikTok webhook receiver is not built.** The contract says so, and this is still
-   open. It needs TikTok's webhook documentation to build to spec, which the owner will paste.
+2. **The TikTok webhook receiver was built on 7 October 2026**, after the owner pasted
+   TikTok's webhook configuration guide. `POST /v1/webhooks/tiktok` (`service/app/tiktok_webhooks.py`,
+   added to the contract) verifies the signature TikTok's way, which is HMAC-SHA256 of the app
+   key followed by the raw body, keyed by the app secret, compared as lowercase hex, and not
+   the API request signing of `connections._sign`. It acknowledges with 200 within three
+   seconds and does the work in a background task: an order, return or product event triggers a
+   scoped sync of that shop, a seller deauthorisation disconnects the shop and revokes its
+   tokens, and an upcoming authorisation expiry marks the shop `needs_reconnect` and raises a
+   Needs you notification. Delivery is at least once, so every event is de-duplicated on its
+   `tts_notification_id`, or on a hash of the raw body when that is absent. Migration 0028 adds
+   `tiktok_webhook_events` and two SECURITY DEFINER resolvers owned by `mse_migrator` and
+   executable by `mse_app` alone. Verified: `service/tests/test_webhook_tiktok.py` (27 of 27,
+   signature accept and reject, a redelivery handled once, an unknown shop ignored), the
+   contract, auth and smoke tests, ruff, and 0028 applied on a local PostgreSQL 16 where the
+   de-duplication, the shop resolution and the grants behaved as designed. **Unverified**: the
+   payload field names, because TikTok's payload schema is not in the repository, and the real
+   data-update behaviour, because no real TikTok event has reached the receiver yet. 0028 is
+   **not yet applied to any Neon branch**, which is the owner's authority. The owner sets the
+   webhook URL `https://my-shopedge-1.onrender.com/v1/webhooks/tiktok` and the topics in
+   Partner Center; the receiver uses the `TIKTOK_APP_KEY` and `TIKTOK_APP_SECRET` already on the
+   service.
 
 ## What is blocked, and on what
 
