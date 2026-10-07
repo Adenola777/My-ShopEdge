@@ -35,6 +35,7 @@ from . import (
     stock,
     sync_status,
     tax,
+    tiktok_webhooks,
     today_view,
     trends,
 )
@@ -108,6 +109,7 @@ app.include_router(settlements.router, prefix="/v1")
 app.include_router(stock.router, prefix="/v1")
 app.include_router(sync_status.router, prefix="/v1")
 app.include_router(tax.router, prefix="/v1")
+app.include_router(tiktok_webhooks.router, prefix="/v1")
 app.include_router(today_view.router, prefix="/v1")
 app.include_router(trends.router, prefix="/v1")
 

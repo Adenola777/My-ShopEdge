@@ -15,9 +15,9 @@ info:
     \ act on states its basis, its period and its cost coverage, and says\n   whether it is confirmed,\
     \ estimated or incomplete. A figure that cannot be trusted\n   returns null with a reason rather than\
     \ a zero.\n\n4. **Errors are problem details with a stable code.** The `code` field is the\n   contract.\
-    \ The `title` and `detail` are for humans and may change wording.\n\n\n    Coverage: 58 of the 59\
-    \ endpoints in the catalogue. The one not present is the\n    TikTok webhook receiver, which needs\
-    \ a subscription design and is deferred.\n"
+    \ The `title` and `detail` are for humans and may change wording.\n\n\n    Coverage: 59 of the 59\
+    \ endpoints in the catalogue. The TikTok webhook receiver was added on 7 October 2026\n    to close\
+    \ the Go Live review's second ground.\n"
   contact:
     name: MyShopEdge
   license:
@@ -2659,6 +2659,41 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /webhooks/tiktok:
+    post:
+      operationId: receiveTikTokWebhook
+      summary: TikTok Shop events
+      description: 'Authenticated by the webhook signature in the Authorization header rather
+
+        than by a bearer token, which is why the security requirement is empty. The
+
+        signature is HMAC-SHA256 of the app key followed by the raw body, keyed by the
+
+        app secret, compared as lowercase hex. The receiver acknowledges with 200 within
+
+        three seconds and processes the event in the background, so an order, return or
+
+        product event triggers a scoped sync of that shop, a seller deauthorisation
+
+        disconnects the shop, and an upcoming authorisation expiry marks it for reconnect.
+
+        Delivery is at least once, so every event is de-duplicated on its notification id.
+
+        '
+      tags:
+      - Connection
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Received
+        '401':
+          description: The signature did not verify
 components:
   securitySchemes:
     bearerAuth:
