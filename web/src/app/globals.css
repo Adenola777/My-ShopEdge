@@ -285,15 +285,19 @@ a:hover { color: var(--orange-700); }
 .tabs__heading { margin: 0 0 var(--space-2); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-500); }
 .tabs__sheet ul { list-style: none; margin: 0; padding: 0; }
 .tabs__sheet li + li { border-top: 1px solid var(--ink-100); }
+.tabs__group + .tabs__group { margin-top: var(--space-3); }
 .tabs__sheet a {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-2);
   border-radius: var(--radius);
   text-decoration: none;
   color: var(--navy-900);
 }
+.tabs__sheet a svg { flex: none; width: 20px; height: 20px; color: var(--ink-500); }
+.tabs__sheet a[aria-current="page"] svg { color: var(--orange-600); }
+.tabs__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tabs__sheet a:hover, .tabs__sheet a[aria-current="page"] { background: var(--orange-50); }
 .tabs__label { font-weight: 650; font-size: 1rem; }
 .tabs__sheet a[aria-current="page"] .tabs__label { color: var(--orange-600); }
@@ -332,19 +336,24 @@ a:hover { color: var(--orange-700); }
     position: static;
     max-height: none;
     overflow: visible;
-    margin-top: var(--space-4);
-    padding: var(--space-3) 0 0;
+    margin-top: var(--space-3);
+    padding: var(--space-4) 0 0;
     border: 0;
+    border-top: 1px solid var(--ink-200);
     border-radius: 0;
     background: transparent;
     box-shadow: none;
   }
-  .tabs__heading { padding: 0 var(--space-3); }
+  .tabs__heading { padding: 0 var(--space-3); margin-bottom: var(--space-1); }
   .tabs__sheet::before { display: none; }
+  .tabs__group + .tabs__group { margin-top: var(--space-4); }
   .tabs__sheet li + li { border-top: 0; }
-  .tabs__sheet a { padding: var(--space-2) var(--space-3); }
-  .tabs__label { font-size: 0.9375rem; }
-  .tabs__hint { font-size: 0.75rem; }
+  /* In the rail a secondary item is a row like a tab: icon and label, no second line. The
+     line stays on the phone sheet, and here it is the link's title. */
+  .tabs__sheet a { min-height: 40px; padding: 0 var(--space-3); color: var(--ink-700); font-weight: 600; }
+  .tabs__sheet a[aria-current="page"] { background: var(--white); }
+  .tabs__label { font-size: 0.9375rem; font-weight: 600; }
+  .tabs__hint { display: none; }
 }
 
 .footer {

@@ -94,6 +94,9 @@ export default async function MoneyPage({ params, searchParams }) {
         <Link href={href(day ? { day } : {})} aria-current={basis === "sales" ? "true" : undefined}>Sales basis</Link>
         <Link href={href({ basis: "cash", ...(day ? { day } : {}) })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
       </nav>
+      <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts`} data-testid="money-payouts">
+        Payouts and fee invoices
+      </Link></p>
 
       {(m.unmapped_fee_count ?? 0) > 0 && (
         <div className="note note--warn" role="status">
