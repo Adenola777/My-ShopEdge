@@ -6,9 +6,10 @@ It connects as the service does, runs as `mse_app`, and finds the accounts throu
 `accounts_due_for_erasure()` from migration 0025. It is safe to run as often as wanted: an
 account is erased once, and one that fails part way stays due for the next run.
 
-**Nothing schedules it yet.** It has run against the local copy of development and a local
-stand-in for S3, on 28 September 2026, and never against Neon or a real bucket. A Render cron
-job running it daily is the owner's to create.
+**Scheduled since 7 October 2026** by the Render cron job `My-ShopEdge-erase`, daily at
+03:17 UTC, once the owner has set its `DATABASE_URL` and storage variables. It has run against
+the local copy of development and a local stand-in for S3, on 28 September 2026, and never
+against Neon or a real bucket.
 """
 
 import json
