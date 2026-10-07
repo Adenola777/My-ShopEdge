@@ -317,6 +317,41 @@ npm run dev
 The database connection string belongs in the environment as `DATABASE_URL` and never in a
 file inside this repository. `.gitignore` already excludes `.env` and its variants.
 
+## The TikTok Go Live review, rejected 7 October 2026
+
+TikTok rejected the Go Live review for "My ShopEdge" on two grounds, and this records what
+was done. The email is in the owner's inbox.
+
+1. **The test credentials returned "Wrong e-mail or password."** The product's sign-in is
+   Stack Auth, Google only, with email and password switched off on a project
+   (`f1762e29-4750-42f6-80e1-c94b040a72e8` at `api.stack-auth.com`) that the owner could not
+   administer: it was auto-provisioned by Neon Auth and sits under a Stack organisation his
+   own Stack account does not own. Rather than re-platform the auth layer, a **reviewer
+   credential** was built, on the owner's approval of 7 October. The demo service alone
+   accepts a second kind of token: an ES256 JWT the app signs itself, carrying the demo
+   account's subject, so a reviewer who signs in with a fixed email and password lands on the
+   demo shop with its sample data. It is gated on `REVIEWER_JWT_PUBLIC_JWK`, which production
+   never sets, so the Stack path and production are untouched. Built in `service/app/auth.py`
+   (the reviewer path, `_verify_reviewer`), `web/src/app/api/reviewer/login`, `.../logout`,
+   `web/src/app/(site)/reviewer`, and the token wiring in `web/src/lib/stack.js`. Verified:
+   `service/tests/test_reviewer_auth.py` (5 of 5), a jose-minted token accepted by the Python
+   service, and the browser login flow rendering the dashboard against the fixture data. The
+   five variables the **demo service** needs are below; production sets none of them.
+
+   | Variable | Where | What |
+   |---|---|---|
+   | `REVIEWER_JWT_PUBLIC_JWK` | Render `My-ShopEdge-demo` | the ES256 public JWK |
+   | `REVIEWER_JWT_PRIVATE_JWK` | Vercel, the demo branch | the matching private JWK |
+   | `REVIEWER_EMAIL` | Vercel, the demo branch | the one email the reviewer types |
+   | `REVIEWER_PASSWORD` | Vercel, the demo branch | the one password the reviewer types |
+   | `REVIEWER_SUBJECT` | Vercel, the demo branch | the demo account's `DEMO_ACCOUNT_SUBJECT` |
+
+   The reviewer signs in at `/reviewer` on the demo address. The keypair is the owner's to
+   generate in his own terminal, so no private key enters a session or the repository.
+
+2. **The TikTok webhook receiver is not built.** The contract says so, and this is still
+   open. It needs TikTok's webhook documentation to build to spec, which the owner will paste.
+
 ## What is blocked, and on what
 
 | Item | Blocked on |

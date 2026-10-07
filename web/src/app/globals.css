@@ -495,26 +495,62 @@ tbody tr:last-child td { border-bottom: 0; }
 .billing { max-width: var(--column); margin: 0 auto; }
 .billing__head { margin-bottom: var(--space-5); }
 .billing__lede { color: var(--ink-700); font-size: 1.0625rem; }
+.billing__foot { margin-top: var(--space-5); color: var(--ink-500); font-size: 0.875rem; }
+.billing__foot p { margin-bottom: var(--space-2); max-width: var(--measure); }
 
+/* The plans are the chooser. Each card is a label over a hidden radio, so the whole card is
+   a tap target and the keyboard moves between them as a radio group. The chosen card is
+   marked by its border, a filled tick and a tint, never by colour on its own (A7.10). The
+   base border is 2px on every card so selecting one does not shift the layout. */
 .plans {
-  list-style: none;
-  margin: 0 0 var(--space-5);
+  margin: 0;
   padding: 0;
+  border: 0;
   display: grid;
   gap: var(--space-3);
 }
 .plan {
+  position: relative;
   background: var(--white);
-  border: 1px solid var(--ink-200);
+  border: 2px solid var(--ink-200);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
+  padding-right: var(--space-7);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
-/* The highlighted plan is marked by a border, a label and its position, never by colour
-   on its own. */
-.plan--highlight { border: 2px solid var(--orange-600); }
+.plan--selectable { cursor: pointer; transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease; }
+.plan--selectable:hover { border-color: var(--orange-300); }
+.plan--selectable:focus-within { outline: 3px solid var(--orange-600); outline-offset: 2px; }
+/* The recommended plan is marked by a border, a label and its position. */
+.plan--highlight { border-color: var(--orange-600); }
+.plan--selected { border-color: var(--orange-600); background: var(--orange-50); box-shadow: var(--shadow-2); }
+
+/* The tick in the top corner of each card: an empty ring until chosen, then filled. */
+.plan__select {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ink-500);
+  border-radius: 999px;
+  background: var(--white);
+}
+.plan--selected .plan__select { border-color: var(--orange-600); background: var(--orange-600); }
+.plan--selected .plan__select::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--white);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
 .plan__flag {
   align-self: flex-start;
   background: var(--orange-50);
@@ -524,10 +560,59 @@ tbody tr:last-child td { border-bottom: 0; }
   font-size: 0.75rem;
   font-weight: 700;
 }
-.plan__price { font-family: var(--font-num); font-size: 1.75rem; font-weight: 700; color: var(--navy-figure); }
-.plan__price small { font-family: var(--font); font-size: 0.875rem; font-weight: 500; color: var(--ink-500); }
-.plan__features { list-style: none; margin: 0; padding: 0; color: var(--ink-700); font-size: 0.9375rem; }
-.plan__features li { padding: var(--space-1) 0; }
+.plan--selected .plan__flag { background: var(--white); }
+.plan__name { font-size: 1.125rem; font-weight: 700; color: var(--navy-900); }
+.plan__strapline { color: var(--ink-700); }
+.plan__price {
+  font-family: var(--font-num);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--navy-figure);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.plan__price small { font-family: var(--font); font-size: 0.8125rem; font-weight: 500; color: var(--ink-500); }
+.plan__limit { color: var(--ink-700); font-size: 0.9375rem; }
+.plan__features {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  color: var(--ink-700);
+  font-size: 0.9375rem;
+}
+.plan__feature { position: relative; padding-left: var(--space-5); }
+.plan__feature::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--orange-600);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* The summary and the one primary button that starts the trial. */
+.plan-cta { margin-top: var(--space-4); }
+.plan-cta__summary { color: var(--ink-700); font-size: 0.9375rem; margin-bottom: var(--space-3); }
+.plan-summary {
+  background: var(--ink-50);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.plan-summary p { margin: 0; }
+.card-step { margin-top: var(--space-4); }
+.card-step--done { text-align: left; }
+.card-form__note { color: var(--ink-700); font-size: 0.9375rem; }
+
+/* From a wider screen the three cards sit side by side. */
+@media (min-width: 720px) {
+  .plans { grid-template-columns: repeat(3, 1fr); align-items: start; }
+}
 
 /* --- the shop screens ------------------------------------------------------------ */
 

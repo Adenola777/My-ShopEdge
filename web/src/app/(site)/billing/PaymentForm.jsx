@@ -1,36 +1,47 @@
 "use client";
 
 /**
- * The card half of S33.
+ * S33. Choose a plan and start the free trial.
  *
- * Two steps, and the second one is the important one.
+ * The plan cards are the control. A seller taps a card to choose it, reads a plain summary
+ * of what starting the trial means, and moves to the card step in one button. This replaced
+ * an earlier layout where the cards only displayed the plans and a separate radio list below
+ * them did the choosing; on a phone that list sat far below three full-height cards, so the
+ * cards looked like the choice and tapping one did nothing (owner report, 7 October 2026).
  *
- *   1. Ask the API for a subscription. It creates one with a trial and an incomplete
- *      payment behaviour, and returns the client secret of a SetupIntent.
+ * The flow has two steps at Stripe, and the second is the one that matters.
+ *
+ *   1. Ask the API for a subscription. It creates one with a trial and an incomplete payment
+ *      behaviour, and returns the client secret of a SetupIntent.
  *   2. Confirm that SetupIntent in the browser. This is where the bank may present a
  *      challenge, and where the mandate for later off session charges is recorded.
  *
- * The component never sees a price and never sends one. It sends a plan slug.
+ * The component never sees a price and never sends one. It sends a plan slug. The plan can
+ * be changed freely while choosing; once the card step opens the subscription exists at
+ * Stripe, so the choice is fixed from then on (the service hands back the same incomplete
+ * subscription regardless of a later slug, so offering a change here would quietly ignore it).
  *
  * @typedef {import("@/lib/api-types").components["schemas"]} Schemas
  * @typedef {Schemas["Plan"]} Plan
  */
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { api, formatMoney } from "@/lib/api";
 
-// Read on 28 September 2026: the Vercel project holds no NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
-// Without it the button below used to create the subscription at Stripe and only then fail
-// to show the card form, leaving a trial with no card. With no key nothing is started.
+// Read on 28 September 2026: without NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY the button below used
+// to create the subscription at Stripe and only then fail to show the card form, leaving a
+// trial with no card. With no key nothing is started. The key is set on Vercel for
+// production and preview as of 7 October, so this guard is inert there.
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 
 /**
- * @param {{ plans: Plan[], trialDays: number }} props
+ * @param {{ plans: Plan[], trialDays: number, trialEnds: string }} props
  */
-export function PaymentForm({ plans, trialDays }) {
+export function PaymentForm({ plans, trialDays, trialEnds }) {
   const preferred = plans.find((p) => p.highlight) ?? plans[0];
   const [slug, setSlug] = useState(preferred ? preferred.slug : "");
   const [phase, setPhase] = useState(
@@ -56,7 +67,7 @@ export function PaymentForm({ plans, trialDays }) {
         idempotencyKey,
       });
       if (!ok) {
-        setError(data?.detail ?? "We could not start the trial.");
+        setError(data?.detail ?? "We could not start the trial. Nobody has been charged.");
         return;
       }
       if (data.status === "trialing") {
@@ -75,74 +86,152 @@ export function PaymentForm({ plans, trialDays }) {
   if (!stripePromise) {
     return (
       <section className="card-step" data-testid="billing-unconfigured">
-        <h2>Card payments are temporarily unavailable.</h2>
-        <p>Nothing has been started, and nothing has been charged.</p>
+        <h1>Card payments are temporarily unavailable.</h1>
+        <p>Nothing has been started, and nothing has been charged. Please try again shortly.</p>
       </section>
     );
   }
 
   if (phase === "done") {
     return (
-      <section className="card-step" aria-live="polite">
-        <h2>Your trial has started.</h2>
+      <section className="card-step card-step--done" aria-live="polite" data-testid="billing-done">
+        <h1>Your free trial has started.</h1>
         <p>
-          You have {trialDays} days on {chosen ? chosen.name : "your plan"}. We will email
-          you three days before the first payment.
+          You are on {chosen ? chosen.name : "your plan"} for {trialDays} days. Nothing has
+          been charged. We will email you three days before the first payment on {trialEnds},
+          and you can cancel before then in Settings and pay nothing.
         </p>
+        <Link className="btn btn--primary btn--block" href="/shops" data-testid="billing-done-continue">
+          Go to your dashboard
+        </Link>
       </section>
     );
   }
 
   return (
-    <section className="card-step">
-      <h2>Start your free trial</h2>
-
-      <fieldset className="plan-choice" disabled={phase === "collecting"}>
-        <legend>Plan</legend>
-        {plans.map((plan) => (
-          <label key={plan.slug} className="plan-choice__option">
-            <input
-              type="radio"
-              name="plan"
-              value={plan.slug}
-              checked={slug === plan.slug}
-              onChange={() => setSlug(plan.slug)}
-            />
-            <span>
-              {plan.name}, {formatMoney(plan.price)} a month after the trial
-            </span>
-          </label>
-        ))}
-      </fieldset>
-
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
+    <>
+      <header className="billing__head">
+        <h1>
+          {phase === "collecting"
+            ? "Add your card to start the trial."
+            : "Your shop is connected. Start your free trial."}
+        </h1>
+        <p className="billing__lede">
+          Every plan begins with {trialDays} days free. We verify your card now and take
+          nothing until {trialEnds}. You can cancel before then and you will not be charged.
         </p>
-      ) : null}
+      </header>
 
       {phase === "choosing" ? (
-        <button type="button" className="btn btn--primary" onClick={start} disabled={busy}>
-          {busy ? "One moment" : "Continue to card details"}
-        </button>
+        <section className="card-step">
+          <fieldset className="plans" aria-describedby="plan-help">
+            <legend className="visually-hidden">Choose your plan</legend>
+            {plans.map((/** @type {Plan} */ plan) => {
+              const selected = slug === plan.slug;
+              const cls =
+                "plan plan--selectable" +
+                (plan.highlight ? " plan--highlight" : "") +
+                (selected ? " plan--selected" : "");
+              return (
+                <label key={plan.slug} className={cls} data-testid={`plan-${plan.slug}`}>
+                  <input
+                    type="radio"
+                    name="plan"
+                    className="plan__radio visually-hidden"
+                    value={plan.slug}
+                    checked={selected}
+                    onChange={() => setSlug(plan.slug)}
+                  />
+                  <span className="plan__select" aria-hidden="true" />
+                  {plan.highlight ? <span className="plan__flag">Most chosen</span> : null}
+                  <span className="plan__name">{plan.name}</span>
+                  <span className="plan__strapline">{plan.strapline}</span>
+                  <span className="plan__price">
+                    <span className="plan__amount">{formatMoney(plan.price)}</span>
+                    <small> a month after your free trial</small>
+                  </span>
+                  <span className="plan__limit">
+                    Up to {plan.order_limit.toLocaleString("en-GB")} orders a month, and{" "}
+                    {plan.history_months} months of history.
+                  </span>
+                  <span className="plan__features" role="list">
+                    {plan.features.map((/** @type {string} */ feature) => (
+                      <span className="plan__feature" role="listitem" key={feature}>
+                        {feature}
+                      </span>
+                    ))}
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
+
+          {error ? (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="plan-cta">
+            <p className="plan-cta__summary" id="plan-help">
+              {chosen ? (
+                <>
+                  You chose {chosen.name}. After {trialDays} free days it is{" "}
+                  {formatMoney(chosen.price)} a month, and you can change the card or cancel at
+                  any time in Settings.
+                </>
+              ) : (
+                <>Choose a plan to continue.</>
+              )}
+            </p>
+            <button
+              type="button"
+              className="btn btn--primary btn--block"
+              onClick={start}
+              disabled={busy || !chosen}
+              data-testid="billing-continue"
+            >
+              {busy ? "One moment" : "Continue to card details"}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {phase === "collecting" && clientSecret ? (
-        <Elements
-          stripe={stripePromise}
-          options={{
-            clientSecret,
-            appearance: { theme: "flat", variables: { colorPrimary: "#C4400C" } },
-          }}
-        >
-          <ConfirmCard
-            planName={chosen ? chosen.name : "your plan"}
-            trialDays={trialDays}
-            onDone={() => setPhase("done")}
-          />
-        </Elements>
+        <section className="card-step">
+          <div className="plan-summary" data-testid="plan-summary">
+            <p>
+              You are starting <strong>{chosen ? chosen.name : "your plan"}</strong>. Your{" "}
+              {trialDays} free days run until {trialEnds}, and nothing is charged today.
+            </p>
+          </div>
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: { theme: "flat", variables: { colorPrimary: "#C4400C" } },
+            }}
+          >
+            <ConfirmCard
+              planName={chosen ? chosen.name : "your plan"}
+              trialDays={trialDays}
+              onDone={() => setPhase("done")}
+            />
+          </Elements>
+        </section>
       ) : null}
-    </section>
+
+      <footer className="billing__foot">
+        <p>
+          Your bank may ask you to confirm the card. That confirmation is what lets us take
+          the first payment when the trial ends, so the step cannot be skipped.
+        </p>
+        <p>
+          We store no card details. Stripe holds them and we hold a reference. You can change
+          the card or cancel at any time in Settings.
+        </p>
+      </footer>
+    </>
   );
 }
 
@@ -189,7 +278,7 @@ function ConfirmCard({ planName, trialDays, onDone }) {
           {error}
         </p>
       ) : null}
-      <button type="submit" className="btn btn--primary" disabled={!stripe || busy}>
+      <button type="submit" className="btn btn--primary btn--block" disabled={!stripe || busy}>
         {busy ? "Confirming with your bank" : `Start ${planName} free for ${trialDays} days`}
       </button>
     </form>

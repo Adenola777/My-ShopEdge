@@ -177,8 +177,68 @@ def _log_claims_to_configure(token: str, key) -> None:
     )
 
 
+# The reviewer credential, added 7 October 2026 for the TikTok Shop Go Live review.
+#
+# TikTok's reviewers sign in with an email and a password, and the product's own sign-in is
+# Google only (Stack Auth, with email/password switched off on a project nobody could
+# reach). Rather than re-platform the whole auth layer, the demo service alone accepts a
+# second kind of token: an ES256 JWT this project signs itself, carrying the demo account's
+# subject, so the reviewer lands on the demo shop with its sample data.
+#
+# This path exists only where REVIEWER_JWT_PUBLIC_JWK is set, which is the demo service and
+# nowhere else. Production never sets it, so the branch is dead there and the Stack path is
+# untouched. A reviewer token is routed here only when its `iss` matches, and it is trusted
+# only after its signature checks against the configured public key, so nothing a Stack
+# token or a forged token carries can enter this path.
+REVIEWER_ISS = os.environ.get("REVIEWER_ISS", "mse-reviewer")
+REVIEWER_AUD = os.environ.get("REVIEWER_AUD", "mse-reviewer")
+
+
+def _reviewer_public_key():
+    """The configured reviewer public key as a verifying key, or None when the path is off."""
+    raw = os.environ.get("REVIEWER_JWT_PUBLIC_JWK")
+    if not raw:
+        return None
+    try:
+        return jwt.algorithms.ECAlgorithm.from_jwk(raw)
+    except Exception as exc:  # a malformed key must not silently disable auth
+        raise Problem(503, "auth_unconfigured",
+                      "REVIEWER_JWT_PUBLIC_JWK is set but is not a valid ES256 public JWK.") from exc
+
+
+def _verify_reviewer(token: str) -> dict | None:
+    """Verifies a reviewer token, or returns None when this is not one to handle here.
+
+    None means "not a reviewer token, carry on with the real provider". A reviewer token
+    whose signature, issuer, audience or expiry is wrong raises, exactly as the Stack path
+    does, so a near-miss is refused rather than falling through.
+    """
+    key = _reviewer_public_key()
+    if key is None:
+        return None
+    try:
+        unverified = jwt.decode(token, options={"verify_signature": False})
+    except jwt.InvalidTokenError:
+        return None
+    if unverified.get("iss") != REVIEWER_ISS:
+        return None  # a Stack token, or anything else: let the provider path handle it
+    try:
+        return jwt.decode(
+            token, key, algorithms=ALGORITHMS, audience=REVIEWER_AUD, issuer=REVIEWER_ISS,
+            options={"require": ["exp", "sub"], "verify_signature": True,
+                     "verify_exp": True, "verify_aud": True, "verify_iss": True},
+        )
+    except jwt.ExpiredSignatureError as exc:
+        raise Problem(401, "token_expired", "Your session has expired. Sign in again.") from exc
+    except jwt.InvalidTokenError as exc:
+        raise Problem(401, "token_invalid", "Sign in again.") from exc
+
+
 def verify(token: str) -> dict:
     """Verifies the token and returns its claims. Raises rather than returning None."""
+    reviewer = _verify_reviewer(token)
+    if reviewer is not None:
+        return reviewer
     try:
         signing_key = _jwks_client().get_signing_key_from_jwt(token)
     except Exception as exc:

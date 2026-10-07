@@ -52,10 +52,35 @@ export const stackApp = STACK_CONFIGURED
  * @returns {Promise<string | null>}
  */
 export async function authorizationHeader() {
+  // The reviewer credential, when present, takes precedence over the provider session. It is
+  // set only on the demo deployment (see app/api/reviewer/login), so this is inert in
+  // production, where the cookie never exists.
+  const reviewer = await reviewerToken();
+  if (reviewer) return `Bearer ${reviewer}`;
   if (!stackApp) return null;
   try {
     const { accessToken } = await stackApp.getAuthJson();
     return accessToken ? `Bearer ${accessToken}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The reviewer token from its cookie, read on whichever side the caller runs, or null. In
+ * the browser it is read from `document.cookie`; on the server from the request's cookies.
+ *
+ * @returns {Promise<string | null>}
+ */
+export async function reviewerToken() {
+  if (typeof document !== "undefined") {
+    const m = document.cookie.match(/(?:^|;\s*)mse_reviewer=([^;]+)/);
+    return m && m[1] ? decodeURIComponent(m[1]) : null;
+  }
+  try {
+    const { cookies } = await import("next/headers");
+    const jar = await cookies();
+    return jar.get("mse_reviewer")?.value ?? null;
   } catch {
     return null;
   }
@@ -67,6 +92,10 @@ export async function authorizationHeader() {
  * @returns {Promise<import("@stackframe/stack").CurrentUser | null>}
  */
 export async function currentUser() {
+  // A reviewer with the credential cookie counts as signed in, so the page guards admit
+  // them. The real identity and the account come from the token the service verifies, not
+  // from this stub, which exists only to pass `if (!(await currentUser())) redirect(...)`.
+  if (await reviewerToken()) return /** @type {any} */ ({ id: "reviewer", isReviewer: true });
   if (!stackApp) return null;
   try {
     return await stackApp.getUser();

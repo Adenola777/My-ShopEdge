@@ -12,10 +12,9 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { api, fetchPlans, formatMoney } from "@/lib/api";
+import { api, fetchPlans } from "@/lib/api";
 import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
 
-/** @typedef {import("@/lib/api-types").components["schemas"]["Plan"]} Plan */
 import { PaymentForm } from "./PaymentForm";
 
 export const metadata = { title: "Start your free trial" };
@@ -66,55 +65,11 @@ export default async function BillingPage() {
     { day: "numeric", month: "long" },
   );
 
+  // The whole flow lives in PaymentForm now: the plan cards are the chooser, so the heading,
+  // the cards and the trust footer move inside it and change with the step the seller is on.
   return (
     <main className="billing">
-      <header className="billing__head">
-        <h1>Your shop is connected. Choose a plan to start.</h1>
-        <p className="billing__lede">
-          Every plan begins with {trialDays} days free. We verify your card now and take
-          nothing until {trialEnds}. You can cancel before then and you will not be charged.
-        </p>
-      </header>
-
-      <ol className="plans" aria-label="Plans">
-        {plans.map((/** @type {Plan} */ plan) => (
-          <li
-            key={plan.slug}
-            className={plan.highlight ? "plan plan--highlight" : "plan"}
-            aria-current={plan.highlight ? "true" : undefined}
-          >
-            {plan.highlight ? <p className="plan__flag">Most chosen</p> : null}
-            <h2 className="plan__name">{plan.name}</h2>
-            <p className="plan__strapline">{plan.strapline}</p>
-            <p className="plan__price">
-              <span className="plan__amount">{formatMoney(plan.price)}</span>
-              <span className="plan__period"> a month</span>
-            </p>
-            <p className="plan__limit">
-              Up to {plan.order_limit.toLocaleString("en-GB")} orders a month, and{" "}
-              {plan.history_months} months of history.
-            </p>
-            <ul className="plan__features">
-              {plan.features.map((/** @type {string} */ feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ol>
-
-      <PaymentForm plans={plans} trialDays={trialDays} />
-
-      <footer className="billing__foot">
-        <p>
-          Your bank may ask you to confirm the card. That confirmation is what lets us take
-          the first payment when the trial ends, so the step cannot be skipped.
-        </p>
-        <p>
-          We store no card details. Stripe holds them and we hold a reference. You can change
-          the card or cancel at any time in Settings.
-        </p>
-      </footer>
+      <PaymentForm plans={plans} trialDays={trialDays} trialEnds={trialEnds} />
     </main>
   );
 }
