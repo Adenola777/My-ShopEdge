@@ -216,8 +216,9 @@ a:hover { color: var(--orange-700); }
 }
 .shopframe .content { padding-bottom: calc(var(--tabbar) + var(--space-6)); }
 
-/* The tabs: five and More across the bottom of a phone, a rail down the left of a larger
-   screen (WFW 7). */
+/* The tabs: five areas across the bottom of a phone, a rail down the left of a larger
+   screen (WFW 7). Each area's pages open under it in the rail, and sit in a row at the top
+   of the page on a phone (.subnav). */
 .tabs {
   position: fixed;
   left: 0;
@@ -232,30 +233,26 @@ a:hover { color: var(--orange-700); }
   justify-content: space-around;
   padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
 }
+.tabs__area { flex: 1; max-width: 120px; display: flex; }
 .tabs__tab {
   position: relative;
   flex: 1;
-  max-width: 120px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
   min-height: 44px;
-  border: 0;
   border-radius: var(--radius);
-  background: none;
   color: var(--ink-700);
-  font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;
-  cursor: pointer;
 }
 .tabs__tab svg { width: 22px; height: 22px; }
-.tabs__tab[aria-current="page"], .tabs__more[aria-expanded="true"] { background: var(--orange-50); color: var(--orange-600); }
+.tabs__tab[aria-current] { background: var(--orange-50); color: var(--orange-600); }
 /* A7.11: the active tab carries a bar of the brand gradient. */
-.tabs__tab[aria-current="page"]::after {
+.tabs__tab[aria-current]::after {
   content: "";
   position: absolute;
   top: 0;
@@ -265,43 +262,39 @@ a:hover { color: var(--orange-700); }
   border-radius: 0 0 3px 3px;
   background: var(--brand-gradient);
 }
+/* On a phone Settings is the gear in the top bar, and an area's pages are the row above
+   the page. */
+.tabs__area--settings, .tabs__pages { display: none; }
 
-/* More, on a phone: a sheet above the tab bar. */
-.tabs__sheet {
-  display: none;
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--tabbar);
-  max-height: calc(100dvh - var(--tabbar) - 72px);
-  overflow-y: auto;
-  background: var(--white);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: 0 -8px 24px rgb(17 24 32 / 14%);
-  padding: var(--space-3) var(--space-4) var(--space-4);
-}
-.tabs--open .tabs__sheet { display: block; }
-.tabs__sheet::before { content: ""; display: block; height: 4px; margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) var(--space-3); background: var(--brand-gradient); }
-.tabs__heading { margin: 0 0 var(--space-2); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-500); }
-.tabs__sheet ul { list-style: none; margin: 0; padding: 0; }
-.tabs__sheet li + li { border-top: 1px solid var(--ink-100); }
-.tabs__group + .tabs__group { margin-top: var(--space-3); }
-.tabs__sheet a {
+/* The pages of an area, on a phone: a row of chips that scrolls sideways if it must. */
+.subnav { margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-4)) var(--space-4); }
+.subnav ul {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) var(--space-4);
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-2);
-  border-radius: var(--radius);
-  text-decoration: none;
-  color: var(--navy-900);
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.tabs__sheet a svg { flex: none; width: 20px; height: 20px; color: var(--ink-500); }
-.tabs__sheet a[aria-current="page"] svg { color: var(--orange-600); }
-.tabs__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.tabs__sheet a:hover, .tabs__sheet a[aria-current="page"] { background: var(--orange-50); }
-.tabs__label { font-weight: 650; font-size: 1rem; }
-.tabs__sheet a[aria-current="page"] .tabs__label { color: var(--orange-600); }
-.tabs__hint { color: var(--ink-500); font-size: 0.8125rem; line-height: 1.35; }
+.subnav ul::-webkit-scrollbar { display: none; }
+.subnav li { flex: none; }
+.subnav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--ink-200);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink-700);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.subnav a:hover { border-color: var(--orange-600); color: var(--orange-600); }
+.subnav a[aria-current="page"] { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
 
 /* WFW 7: on larger screens the column is centred and the tabs become a left rail. The
    column widens on a larger screen, so figures and tables are not squeezed into a phone's
@@ -310,6 +303,7 @@ a:hover { color: var(--orange-700); }
   :root { --column: 760px; }
   .shopframe { padding-left: 232px; }
   .shopframe .content { padding-bottom: var(--space-7); }
+  .subnav { display: none; }
   .tabs {
     top: 0;
     bottom: 0;
@@ -325,35 +319,30 @@ a:hover { color: var(--orange-700); }
     box-shadow: none;
     overflow-y: auto;
   }
-  .tabs__tab { flex: none; max-width: none; flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding: 0 var(--space-3); font-size: 0.9375rem; }
-  /* No side lines on a larger screen, at the owner's request: the active tab is marked by
+  .tabs__area { flex: none; max-width: none; flex-direction: column; }
+  .tabs__tab { flex: none; min-height: 40px; flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding: 0 var(--space-3); font-size: 0.9375rem; }
+  /* No side lines on a larger screen, at the owner's request: the active area is marked by
      its background and colour alone. */
-  .tabs__tab[aria-current="page"]::after { display: none; }
-  .tabs__tab[aria-current="page"] { background: var(--white); }
-  .tabs__more { display: none; }
-  .tabs__sheet {
-    display: block;
-    position: static;
-    max-height: none;
-    overflow: visible;
-    margin-top: var(--space-3);
-    padding: var(--space-4) 0 0;
-    border: 0;
-    border-top: 1px solid var(--ink-200);
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+  .tabs__tab[aria-current]::after { display: none; }
+  .tabs__tab[aria-current] { background: var(--white); }
+  /* Inside an open area the page in use carries the mark, so the area's own row is quieter. */
+  .tabs__area--open .tabs__tab[aria-current="true"] { background: transparent; }
+  .tabs__pages { display: block; list-style: none; margin: 2px 0 var(--space-2); padding: 0 0 0 34px; }
+  .tabs__pages a {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius);
+    color: var(--ink-700);
+    font-size: 0.875rem;
+    font-weight: 550;
+    text-decoration: none;
   }
-  .tabs__heading { padding: 0 var(--space-3); margin-bottom: var(--space-1); }
-  .tabs__sheet::before { display: none; }
-  .tabs__group + .tabs__group { margin-top: var(--space-4); }
-  .tabs__sheet li + li { border-top: 0; }
-  /* In the rail a secondary item is a row like a tab: icon and label, no second line. The
-     line stays on the phone sheet, and here it is the link's title. */
-  .tabs__sheet a { min-height: 40px; padding: 0 var(--space-3); color: var(--ink-700); font-weight: 600; }
-  .tabs__sheet a[aria-current="page"] { background: var(--white); }
-  .tabs__label { font-size: 0.9375rem; font-weight: 600; }
-  .tabs__hint { display: none; }
+  .tabs__pages a:hover { color: var(--orange-600); }
+  .tabs__pages a[aria-current="page"] { color: var(--orange-600); font-weight: 650; background: var(--white); }
+  /* Settings sits apart at the foot of the rail. */
+  .tabs__area--settings { display: flex; margin-top: auto; padding-top: var(--space-3); border-top: 1px solid var(--ink-200); }
 }
 
 .footer {
