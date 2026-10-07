@@ -154,3 +154,25 @@ Either way the spike now has a specific question to answer and a place to put th
 | Functionality QA | TC-REC-01 to TC-REC-08. |
 
 Requirements move from 93 to 98. Test cases move from 135 to 143. Screens move from 32 to 34, figures from 17 to 18, tables from 31 to 32.
+
+## 9.8 Answered, 7 October 2026: no API returns a seller's fee invoices
+
+**The search.** The owner asked that invoices come from TikTok's API if one exists. Every
+path in TikTok's own OpenAPI specification, as shipped in `@tts-open-toolkit/cli` 0.1.7, was
+searched for "invoice", and the owner pasted the pages he found in Partner Center. The only
+invoice endpoints are `POST /fulfillment/202502/invoice/upload` and its webhook, topic 36,
+which TikTok marks Brazil only: they carry the seller's own NF-e to TikTok, the opposite
+direction. The other mentions are the order flags `need_invoice` and `need_upload_invoice`,
+a Brazil-only `INVOICE_LABEL` shipping document, and descriptive text on Get Transactions by
+Statement and Get Tax Information. None returns a TikTok fee invoice. TikTok's partner
+finance pages confirm the invoices exist for sellers ("Fees withheld: for sellers, this is
+the amount shown on TikTok Shop invoices") without offering them through the API.
+
+**Ruling, 7 October 2026.** The seller types each invoice in from Seller Center and uploads
+its PDF. The typed invoice is built: Payouts and Payout detail list each statement, and the
+form on Payout detail records the number, type, date, period, net, VAT and gross through
+`recordSettlementInvoice`, which now writes `tiktok_invoices`, refuses a gross that is not
+net plus VAT, and links the invoice to its statement so `invoiced_gross` reconciles. The PDF
+upload is not built, because A10 holds the `invoices/` store back until it cannot be deleted,
+the R2 variables are not set on Render, and the document's key needs a column. The owner has
+not yet ruled on deletion protection.

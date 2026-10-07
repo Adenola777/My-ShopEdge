@@ -82,6 +82,8 @@ by side, except the last, which carries S15 alone.
 | S36 | That email is already in use | Account | A14 | | `account/email-in-use` (29 September). Reached from any screen that meets `email_already_linked`. No sign-in method is named, because nothing reports it |
 | S37 | Signed out | Account | A14 | | `signed-out`, with `?reason=expired` for `token_expired` (29 September) |
 | S38 | Payment did not go through | Onboarding | A14 | | `billing/payment-failed`, from `/billing` while past due (29 September). The retry date, the data retention and changing the card are not shown, because nothing holds or does them |
+| S39 | Payouts | Core | A9.8 | | `shops/[shopId]/payouts`, under More (7 October 2026). Each statement with what it says, what TikTok held back, what was paid out, and whether its fee invoice is recorded |
+| S40 | Payout detail | Core | A9.8 | | `shops/[shopId]/payouts/[settlementId]` (7 October 2026). The statement's parts, whether its orders explain it, and the fee invoice, which the seller types in from Seller Center. The PDF is not stored yet (A10) |
 
 ## Where the artwork lives, and what it is worth
 

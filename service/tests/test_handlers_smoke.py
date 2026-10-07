@@ -1563,6 +1563,75 @@ def vat_threshold_is_more_than():
 check("The VAT monitor counts a seller over the threshold only above £90,000", vat_threshold_is_more_than)
 
 
+# --- recordSettlementInvoice stores the whole invoice, and getSettlement returns it (7 Oct 2026)
+def settlement_invoice():
+    SID = UUID("33333333-3333-4333-8333-333333333333")
+    cols = ["id","tiktok_statement_id","tiktok_payment_id","settlement_reference",
+            "statement_time","activity_date","paid_at","payment_status","currency",
+            "statement_amount_minor","payable_amount_minor","total_reserve_amount_minor",
+            "tiktok_invoice_number"]
+    row = (SID, "202608A-0002", None, None, NOW, date(2026,8,15), None, "PAID", "GBP",
+           14750, 13750, -1000, "INV-1")
+    sent = []
+    class C(Conn):
+        def execute(self, sql, args=None):
+            flat = " ".join(sql.split())
+            if flat.startswith(("insert into tiktok_invoices", "update tiktok_invoices")):
+                sent.append((flat[:30], args))
+            return super().execute(sql, args)
+    def make(found=True):
+        import contextlib
+        @contextlib.contextmanager
+        def fake(_a):
+            yield C([("update settlements set", Result(cols, [row] if found else [])),
+                     ("update tiktok_invoices", Result([], [])),
+                     ("insert into tiktok_invoices", Result([], []))])
+        return fake
+    gbp = lambda n: {"amount_minor": n, "currency": "GBP"}
+    url = f"/v1/shops/{SHOP}/settlements/{SID}/invoice"
+    full = {"invoice_number": "INV-1", "invoice_type": "Platform Service Fee",
+            "issued_on": "2026-09-01", "period_start": "2026-08-01", "period_end": "2026-08-31",
+            "net": gbp(1000), "vat": gbp(200), "gross": gbp(1200)}
+
+    settlements.tenant = make()
+    r = client.put(url, json={"invoice_number": "INV-1"})
+    _assert(r.status_code == 200 and not sent, f"number only writes no invoice: {r.text[:200]} {sent}")
+
+    r = client.put(url, json=full)
+    _assert(r.status_code == 200, r.text[:300])
+    _assert([x[0].split()[0] for x in sent] == ["update", "insert"], sent)
+    ins = sent[-1][1]
+    _assert(ins[1] == "INV-1" and ins[2] == "Platform Service Fee" and ins[6:9] == (1000, 200, 1200)
+            and ins[10] == str(SID), ins)
+
+    for bad, why in ((dict(full, gross=gbp(1300)), "gross not net plus VAT"),
+                     ({"invoice_number": "INV-1", "gross": gbp(1200)}, "partial invoice"),
+                     (dict(full, vat={"amount_minor": 200, "currency": "EUR"}), "wrong currency"),
+                     (dict(full, period_start="2026-09-01", period_end="2026-08-01"), "period backwards")):
+        sent.clear()
+        r = client.put(url, json=bad)
+        _assert(r.status_code == 422 and not sent, f"{why}: {r.status_code} {r.text[:160]}")
+
+    settlements.tenant = make(found=False)
+    _assert(client.put(url, json=full).status_code == 404, "another shop's settlement")
+
+    dcols = cols + ["net_sales_minor", "fee_minor", "shipping_cost_minor", "adjustment_minor"]
+    settlements.tenant = with_conn(settlements, [
+        ("from settlements where", Result(dcols, [row + (16000, -1250, 0, 0)])),
+        ("from settlement_reconciliation", Result(["a","b","c","d"], [(1, 14750, 1200, 0)])),
+        ("from tiktok_invoices", Result(["n","t","i","ps","pe","net","vat","g","c"], [
+            ("INV-1", "Platform Service Fee", date(2026,9,1), date(2026,8,1), date(2026,8,31),
+             1000, 200, 1200, "GBP")])),
+        ("from ledger_entries le", Result(["id","t","s"], [])),
+    ])
+    r = client.get(f"/v1/shops/{SHOP}/settlements/{SID}")
+    _assert(r.status_code == 200, r.text[:300])
+    b = r.json()
+    _assert(b["invoice"]["invoice_number"] == "INV-1" and b["invoice"]["gross"]["amount_minor"] == 1200
+            and b["reconciliation"]["invoiced_gross"]["amount_minor"] == 1200, b)
+check("recordSettlementInvoice stores a whole, checked invoice and getSettlement returns it", settlement_invoice)
+
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")

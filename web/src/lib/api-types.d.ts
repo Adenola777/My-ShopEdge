@@ -1352,6 +1352,7 @@ export interface components {
             settlement: components["schemas"]["Settlement"];
             components: components["schemas"]["SettlementComponents"];
             reconciliation: components["schemas"]["SettlementReconciliation"];
+            invoice?: components["schemas"]["SettlementInvoice"];
             /** @description The orders this statement settled. */
             orders?: {
                 /** Format: uuid */
@@ -1359,6 +1360,20 @@ export interface components {
                 tiktok_order_id: string;
                 settled?: components["schemas"]["Money"];
             }[];
+        };
+        /** @description The TikTok fee invoice the seller recorded against this statement, as copied from Seller Center. Absent until one is recorded with its amounts. */
+        SettlementInvoice: {
+            invoice_number: string;
+            invoice_type: string;
+            /** Format: date */
+            issued_on: string;
+            /** Format: date */
+            period_start?: string;
+            /** Format: date */
+            period_end?: string;
+            net: components["schemas"]["Money"];
+            vat: components["schemas"]["Money"];
+            gross: components["schemas"]["Money"];
         };
         /**
          * @description Whether the payout agrees with the orders behind it. A reserve is not
@@ -4267,6 +4282,14 @@ export interface operations {
             content: {
                 "application/json": {
                     invoice_number: string;
+                    /** @description TikTok's own label for the invoice, as Seller Center shows it, for example Platform Service Fee. Kept verbatim. */
+                    invoice_type?: string;
+                    /** Format: date */
+                    issued_on?: string;
+                    /** Format: date */
+                    period_start?: string;
+                    /** Format: date */
+                    period_end?: string;
                     gross?: components["schemas"]["Money"];
                     net?: components["schemas"]["Money"];
                     vat?: components["schemas"]["Money"];
