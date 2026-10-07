@@ -214,7 +214,7 @@ def get_subscription_row(account_id: UUID | str) -> dict | None:
     """The caller's own subscription row, read under row level security, or None."""
     with tenant(account_id) as conn:
         cur = conn.execute(
-            "select plan_slug, status, stripe_customer_id, trial_end, "
+            "select plan_slug, status, stripe_customer_id, stripe_subscription_id, trial_end, "
             "current_period_end, cancel_at_period_end "
             "from subscriptions where account_id = %s",
             (str(account_id),),

@@ -15,7 +15,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-TRIAL_DAYS = 14
+# The owner ruled on 7 October 2026 that the beta trial is thirty days, for every new
+# sign-up until he changes it back. It was fourteen before. A trial already running keeps
+# the length it started with, because Stripe fixes the trial end when the subscription is
+# created.
+TRIAL_DAYS = 30
 
 
 @dataclass(frozen=True)

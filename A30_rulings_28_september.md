@@ -39,6 +39,20 @@ parts of the ruling needed a reading, recorded here so they can be corrected.
 Three things the ruling does not cover are not built: what happens to a paid Stripe plan,
 the confirmation email of A3's step 4, and a schedule that runs the erasure.
 
+**Ruling, 7 October 2026. A deletion stops the plan renewing.** When a seller asks for
+deletion, their Stripe subscription is set to end with the period already under way, or
+with the free trial, so nothing more is charged and nothing is refunded. If the seller
+cancels the deletion within the thirty days, renewal is turned back on. A seller who had
+already stopped renewal before deleting keeps that choice.
+
+**Built, 7 October 2026.** `billing.set_renewal_for_deletion` sets `cancel_at_period_end`
+and marks the subscription's metadata with `renewal_stopped_by_deletion`, and the
+cancellation clears both only where that mark is present. The Stripe call is made before the
+account is closed, and a failure refuses the deletion with 502, so a seller is never left
+closed and still being charged. S30 and the answer's `includes` say the plan stops renewing.
+It has run against a stand-in Stripe client only (`test_handlers_smoke.py`), not against the
+live account, because no test charge can be made there.
+
 ## 30.2 Checking a returned item
 
 **Ruling.** The owner accepted all four proposals. `checkReturnItem` writes to the ledger

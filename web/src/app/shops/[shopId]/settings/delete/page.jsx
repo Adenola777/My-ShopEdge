@@ -47,6 +47,7 @@ export default async function DeleteAccountPage({ params }) {
           <ul className="rows">
             <li><span>Signing in</span><strong>Stops now</strong></li>
             <li><span>Your TikTok Shop connection</span><strong>Ends now</strong></li>
+            <li><span>Your plan</span><strong>Stops renewing now, with no refund</strong></li>
             <li><span>Your name and email</span><strong>Erased after 30 days</strong></li>
             <li><span>Stored TikTok tokens</span><strong>Erased after 30 days</strong></li>
             <li><span>Files you uploaded or exported</span><strong>Deleted after 30 days</strong></li>
