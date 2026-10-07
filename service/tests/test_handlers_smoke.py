@@ -1466,6 +1466,73 @@ def renewal_follows_deletion():
 check("a deletion stops renewal at period end, and its cancellation restores only that", renewal_follows_deletion)
 
 
+# --- getExpectedPayouts groups TikTok's unsettled transactions by London week (7 October 2026)
+from app import payouts
+
+def expected_payouts():
+    import contextlib
+    from app.tiktok_api import TikTokError
+    # Shaped on the response example from TikTok's Get Unsettled Transactions page, in GBP.
+    # 1685548800 is Wednesday 31 May 2023 16:00 UTC, so its London week begins 29 May.
+    page = {"next_page_token": "", "transactions": [
+        {"type": "ORDER", "id": "t1", "currency": "GBP", "estimated_settlement": "1685548800",
+         "order_id": "576463220456522968", "est_settlement_amount": "130"},
+        {"type": "ORDER", "id": "t2", "currency": "GBP", "estimated_settlement": "1685548800",
+         "order_id": "576463220456522968", "est_settlement_amount": "0.45"},
+        {"type": "ADJUSTMENT", "id": "t3", "currency": "GBP", "estimated_settlement": "1686153600",
+         "order_id": "", "est_settlement_amount": "-6.99"},
+        {"type": "ORDER", "id": "t4", "currency": "GBP", "estimated_settlement": "",
+         "order_id": "9", "est_settlement_amount": "50"},
+    ]}
+    asked = []
+    class Client:
+        def pages(self, method, path, query):
+            asked.append((method, path, query))
+            yield page
+
+    weeks, undated = payouts.group_by_week(page["transactions"])
+    _assert([str(w.week_starting) for w in weeks] == ["2023-05-29", "2023-06-05"], weeks)
+    _assert(weeks[0].amount.amount_minor == 13045 and weeks[0].orders == 1, weeks[0])
+    _assert(weeks[1].amount.amount_minor == -699 and weeks[1].orders == 0, weeks[1])
+    _assert(undated == 1, undated)
+    try:
+        payouts.group_by_week([{"currency": "USD", "estimated_settlement": "1685548800",
+                                "est_settlement_amount": "1"}])
+        _assert(False, "a currency other than the shop's must be refused")
+    except Exception as exc:  # noqa: BLE001
+        _assert(getattr(exc, "code", "") == "tiktok_currency", repr(exc))
+
+    @contextlib.contextmanager
+    def fake(_a):
+        yield Conn([("select currency from shops", Result(["currency"], [("GBP",)]))])
+    saved = (payouts.tenant, payouts.client_for)
+    payouts.tenant = fake
+    try:
+        payouts.client_for = lambda conn, sid: Client()
+        r = client.get(f"/v1/shops/{SHOP}/payouts/expected")
+        _assert(r.status_code == 200, r.text)
+        b = r.json()
+        _assert(b["confidence"] == "estimated" and b["total"]["amount_minor"] == 12346
+                and len(b["weeks"]) == 2, b)
+        _assert(asked[-1] == ("GET", payouts.UNSETTLED_PATH,
+                              {"sort_field": "order_create_time", "sort_order": "ASC"}), asked)
+
+        def none(conn, sid): raise TikTokError("no_connection", "x")
+        payouts.client_for = none
+        _assert(client.get(f"/v1/shops/{SHOP}/payouts/expected").status_code == 409, "no connection")
+
+        class Refusing:
+            def pages(self, *a):
+                raise TikTokError("36009003", "Internal error")
+                yield  # pragma: no cover
+        payouts.client_for = lambda conn, sid: Refusing()
+        r = client.get(f"/v1/shops/{SHOP}/payouts/expected")
+        _assert(r.status_code == 502 and "tiktok_error" in r.text, r.text)
+    finally:
+        payouts.tenant, payouts.client_for = saved
+check("getExpectedPayouts groups unsettled transactions by London week and labels them estimated", expected_payouts)
+
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")

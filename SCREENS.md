@@ -135,7 +135,7 @@ written at the top of the file, and summarised here.
 | S6 Today | The VAT line, and the congratulation A15.5 keeps | A29.8 puts VAT out of scope. Nothing tells the screen that onboarding has just finished |
 | S7 Stock | The units in hand totals, and the order by what runs out first | `getStock` serves no totals and pages by variant |
 | S10 Product detail | The insight, the return rate | No insight source, no return rate in the contract |
-| S11 Money | The period switch, expected payouts by week, the export | The contract cannot name a period. Expected payouts need TikTok's unsettled orders. The export needs a file store the service can write to |
+| S11 Money | The period switch, the export | The contract cannot name a period. The export needs a file store the service can write to. Expected payouts by week are drawn since 7 October 2026 (A33) |
 | S14 Discrepancy detail | A page for one discrepancy | No endpoint for one discrepancy. The three actions were added on 24 September, and "Correct my record" appears only where the service serves `correctable` |
 | S22 Records | The discrepancy marker on affected rows | A ledger entry does not say which discrepancy touches it |
 | S26 Movements | The resulting count on each row, the opening balance, links to orders and returns | `getStockMovements` serves no balance. No order or return screen exists |
