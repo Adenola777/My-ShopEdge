@@ -2356,12 +2356,33 @@ paths:
                 invoice_number:
                   type: string
                   maxLength: 64
+                invoice_type:
+                  type: string
+                  maxLength: 120
+                  description: TikTok's own label for the invoice, as Seller Center shows it,
+                    for example Platform Service Fee. Kept verbatim.
+                issued_on:
+                  type: string
+                  format: date
+                period_start:
+                  type: string
+                  format: date
+                period_end:
+                  type: string
+                  format: date
                 gross:
                   $ref: '#/components/schemas/Money'
                 net:
                   $ref: '#/components/schemas/Money'
                 vat:
                   $ref: '#/components/schemas/Money'
+              description: 'The invoice number alone ties the statement to its invoice. Sending
+                any of the amounts records the whole invoice, and then `invoice_type`,
+                `issued_on`, `net`, `vat` and `gross` are all required, `gross` must equal
+                `net` plus `vat`, and every amount must be in the statement''s currency.
+                The invoice is held for six years from the end of its VAT period (A9).
+
+                '
       responses:
         '200':
           description: Recorded
@@ -2909,6 +2930,8 @@ components:
           $ref: '#/components/schemas/SettlementComponents'
         reconciliation:
           $ref: '#/components/schemas/SettlementReconciliation'
+        invoice:
+          $ref: '#/components/schemas/SettlementInvoice'
         orders:
           type: array
           description: The orders this statement settled.
@@ -2925,6 +2948,37 @@ components:
                 type: string
               settled:
                 $ref: '#/components/schemas/Money'
+    SettlementInvoice:
+      type: object
+      description: The TikTok fee invoice the seller recorded against this statement, as
+        copied from Seller Center. Absent until one is recorded with its amounts.
+      required:
+      - invoice_number
+      - invoice_type
+      - issued_on
+      - net
+      - vat
+      - gross
+      properties:
+        invoice_number:
+          type: string
+        invoice_type:
+          type: string
+        issued_on:
+          type: string
+          format: date
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        net:
+          $ref: '#/components/schemas/Money'
+        vat:
+          $ref: '#/components/schemas/Money'
+        gross:
+          $ref: '#/components/schemas/Money'
     SettlementReconciliation:
       type: object
       description: 'Whether the payout agrees with the orders behind it. A reserve is not

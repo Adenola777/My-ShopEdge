@@ -31,7 +31,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .auth import Account, require_account
 from .db import tenant
@@ -106,10 +106,22 @@ class SettledOrder(BaseModel):
     settled: Money | None = None
 
 
+class SettlementInvoice(BaseModel):
+    invoice_number: str
+    invoice_type: str
+    issued_on: date
+    period_start: date | None = None
+    period_end: date | None = None
+    net: Money
+    vat: Money
+    gross: Money
+
+
 class SettlementDetail(BaseModel):
     settlement: Settlement
     components: SettlementComponents
     reconciliation: SettlementReconciliation
+    invoice: SettlementInvoice | None = None
     orders: list[SettledOrder]
 
 
@@ -224,6 +236,13 @@ def get_settlement(
             (str(settlementId),),
         ).fetchone()
 
+        inv = conn.execute(
+            "select tiktok_invoice_number, invoice_type, issued_on, period_start, period_end, "
+            "net_minor, vat_minor, gross_minor, currency from tiktok_invoices "
+            "where settlement_id = %s and shop_id = %s order by created_at desc limit 1",
+            (str(settlementId), str(shop_id)),
+        ).fetchone()
+
         orders = conn.execute(
             "select o.id, o.tiktok_order_id, "
             "       sum(le.amount_minor) filter (where le.entry_type = 'sale') as settled "
@@ -264,10 +283,20 @@ def get_settlement(
         unexplained=money(int(rec[3]) if rec else 0, currency),
     )
 
+    invoice = None
+    if inv is not None:
+        icur = inv[8]
+        invoice = SettlementInvoice(
+            invoice_number=inv[0], invoice_type=inv[1], issued_on=inv[2],
+            period_start=inv[3], period_end=inv[4], net=money(int(inv[5]), icur),
+            vat=money(int(inv[6]), icur), gross=money(int(inv[7]), icur),
+        )
+
     return SettlementDetail(
         settlement=_settlement(s),
         components=components,
         reconciliation=reconciliation,
+        invoice=invoice,
         orders=[
             SettledOrder(
                 order_id=o[0],
@@ -281,22 +310,53 @@ def get_settlement(
 
 # --- recordSettlementInvoice ---------------------------------------------------------------
 #
-# Written by Emergent AI in `Adenola777/MYSHOPEDGE` (commit 3f1bd43, 27 September 2026) and
-# brought into this repository on 28 September at the owner's instruction. See
-# audit/EMERGENT_review_28_september.md.
+# The first version was written by Emergent AI in `Adenola777/MYSHOPEDGE` (commit 3f1bd43,
+# 27 September 2026) and brought into this repository on 28 September at the owner's
+# instruction. It stored the number and discarded the amounts.
 #
-# No TikTok finance endpoint returns the fee invoice number. It appears in Seller Center
-# under Finance, Bills, Invoice, and the seller enters it here so the statement ties to the
-# document their accountant asks for. Only the invoice number has a column; the optional
-# gross, net and VAT the contract accepts have nowhere to be stored on `settlements`, so
-# they are accepted and not persisted, and this is noted rather than silently dropped.
+# No TikTok API returns a seller's fee invoice. On 7 October 2026 every path in TikTok's own
+# specification (`@tts-open-toolkit/cli` 0.1.7) was searched for "invoice": the only invoice
+# endpoints are Brazil's NF-e upload and its webhook (A9.8). The owner ruled the same day that
+# the seller types the invoice in from Seller Center, and that the PDF is uploaded once the
+# store for it is settled (A10). This records the typed invoice in `tiktok_invoices`, whose
+# check constraint refuses a gross that is not net plus VAT, and links it to the statement so
+# `settlement_reconciliation.invoiced_gross_minor` carries it.
 
 
 class SettlementInvoiceIn(BaseModel):
     invoice_number: str
+    invoice_type: str | None = Field(default=None, max_length=120)
+    issued_on: date | None = None
+    period_start: date | None = None
+    period_end: date | None = None
     gross: Money | None = None
     net: Money | None = None
     vat: Money | None = None
+
+
+def _checked_invoice(body: SettlementInvoiceIn, currency: str) -> dict[str, Any] | None:
+    """The invoice to store, or None when only the number was sent. Refuses a partial one."""
+    parts = (body.gross, body.net, body.vat, body.issued_on, body.invoice_type)
+    if not any(p is not None for p in parts):
+        return None
+    if any(p is None for p in parts) or not (body.invoice_type or "").strip():
+        raise Problem(422, "validation_failed",
+                      "To record the invoice, enter its type, date, net, VAT and gross.")
+    if {body.gross.currency, body.net.currency, body.vat.currency} != {currency}:
+        raise Problem(422, "validation_failed",
+                      f"The invoice amounts must be in {currency}, the statement's currency.")
+    if body.gross.amount_minor != body.net.amount_minor + body.vat.amount_minor:
+        raise Problem(422, "validation_failed",
+                      "The gross must equal the net plus the VAT. Check the figures against "
+                      "the invoice.")
+    if body.period_start and body.period_end and body.period_start > body.period_end:
+        raise Problem(422, "validation_failed", "The period cannot end before it starts.")
+    return {
+        "invoice_type": body.invoice_type.strip(), "issued_on": body.issued_on,
+        "period_start": body.period_start, "period_end": body.period_end,
+        "net": body.net.amount_minor, "vat": body.vat.amount_minor,
+        "gross": body.gross.amount_minor,
+    }
 
 
 @router.put("/shops/{shopId}/settlements/{settlementId}/invoice", response_model=Settlement,
@@ -321,7 +381,32 @@ def record_settlement_invoice(
         )
         cols = [d.name for d in cur.description]
         row = cur.fetchone()
-    if row is None:
-        # Same answer as a settlement on another account, for the reason in shops.py.
-        raise Problem(404, "settlement_not_found", "That settlement was not found.")
-    return _settlement(dict(zip(cols, row, strict=True)))
+        if row is None:
+            # Same answer as a settlement on another account, for the reason in shops.py.
+            raise Problem(404, "settlement_not_found", "That settlement was not found.")
+        out = dict(zip(cols, row, strict=True))
+        invoice = _checked_invoice(body, out["currency"])
+        if invoice is not None:
+            # A statement carries one invoice. Another number recorded on it earlier is
+            # unlinked, so the reconciliation does not count two.
+            conn.execute(
+                "update tiktok_invoices set settlement_id = null "
+                "where settlement_id = %s and shop_id = %s and tiktok_invoice_number <> %s",
+                (str(settlementId), str(shop_id), number),
+            )
+            conn.execute(
+                "insert into tiktok_invoices (shop_id, tiktok_invoice_number, invoice_type, "
+                "issued_on, period_start, period_end, net_minor, vat_minor, gross_minor, "
+                "currency, settlement_id, source_ref) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'seller_entered') "
+                "on conflict (shop_id, tiktok_invoice_number) do update set "
+                "invoice_type = excluded.invoice_type, issued_on = excluded.issued_on, "
+                "period_start = excluded.period_start, period_end = excluded.period_end, "
+                "net_minor = excluded.net_minor, vat_minor = excluded.vat_minor, "
+                "gross_minor = excluded.gross_minor, currency = excluded.currency, "
+                "settlement_id = excluded.settlement_id",
+                (str(shop_id), number, invoice["invoice_type"], invoice["issued_on"],
+                 invoice["period_start"], invoice["period_end"], invoice["net"],
+                 invoice["vat"], invoice["gross"], out["currency"], str(settlementId)),
+            )
+    return _settlement(out)

@@ -72,6 +72,7 @@ const TABS = [
  */
 const MORE = [
   ["setup/costs", "Product costs", "Upload a cost file or type costs in"],
+  ["payouts", "Payouts", "What TikTok paid out, and each fee invoice"],
   ["returns", "Returns", "Check what came back and whether it can be resold"],
   ["records", "Records", "Every transaction behind the figures"],
   ["notifications", "Notifications", "What needs your attention"],
