@@ -278,7 +278,30 @@ export function UploadFlow({ shopId }) {
           <p className="footnote">The file goes to MyShopEdge's private file store in the EU and is kept as the record behind your costs. Nobody else can open it.</p>
         </div>
       )}
-      {upload && mapping && (
+      {upload && columns.length === 0 && (
+        <div className="card stack" data-testid="upload-unreadable">
+          <h2>We could not read your columns</h2>
+          <p>
+            {upload.error
+              ?? "We could not find a row of column headings in this file. The first row should name each column, such as a code column and a product cost column."}
+          </p>
+          <p className="footnote">
+            Cost files are Excel (.xlsx) or CSV. The first row names the columns, every column
+            in it needs a heading, and no two columns share a heading.
+          </p>
+          <p>
+            <button
+              type="button"
+              className="btn btn--primary btn--block"
+              onClick={() => { setUpload(null); setMapping(null); setMatch(null); setError(null); }}
+              data-testid="try-another-file"
+            >
+              Choose a different file
+            </button>
+          </p>
+        </div>
+      )}
+      {upload && mapping && columns.length > 0 && (
         <div className="card stack">
           <h2>Column mapping</h2>
           <div>
