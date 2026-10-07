@@ -11,6 +11,10 @@
  * neither is built. Emergent's version offered deletion and told the seller their data was
  * erased when nothing was. Deletion was built on 28 September to A30.1 and is linked at the
  * foot as S30. The privacy notice sentence is left out because the notice does not exist.
+ *
+ * On 7 October 2026 Settings became an area with its own pages (`lib/nav.js`), and this
+ * page became its shop page. The data download moved to Your data and the deletion to
+ * Profile and plan, where the area's row of pages reaches them.
  */
 
 import Link from "next/link";
@@ -18,7 +22,7 @@ import { api, fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { chipClass } from "@/lib/terms";
 
-export const metadata = { title: "Settings and data" };
+export const metadata = { title: "Shop connection" };
 
 /** @type {Record<string, [string, string]>} */
 const CONNECTION = {
@@ -74,7 +78,8 @@ export default async function SettingsPage({ params }) {
   return (
     <section data-testid="settings-page">
       <header className="page-head">
-        <h1>Settings and data</h1>
+        <h1>Shop connection</h1>
+        <p>How this shop is connected to TikTok, and what it is set up with.</p>
       </header>
       <div className="stack">
         <div className="card" data-testid="settings-connection">
@@ -109,7 +114,7 @@ export default async function SettingsPage({ params }) {
           <h2>Your set-up</h2>
           <ul className="rows">
             <li>
-              <span><Link href={`${base}/products`}>Product costs</Link></span>
+              <span><Link href={`${base}/setup/costs`}>Product costs</Link></span>
               {coverage ? <strong>{costWords(coverage)}</strong> : unavailable}
             </li>
             <li>
@@ -137,16 +142,6 @@ export default async function SettingsPage({ params }) {
           </Link>
         </p>
         <p className="footnote">Disconnecting stops updates. Nothing you already have is deleted.</p>
-        <p>
-          <Link className="btn btn--quiet btn--block" href={`${base}/settings/data`} data-testid="settings-data">
-            Download my data
-          </Link>
-        </p>
-        <p>
-          <Link className="btn btn--quiet btn--block" href={`${base}/settings/delete`} data-testid="settings-delete">
-            Delete my account
-          </Link>
-        </p>
       </div>
     </section>
   );

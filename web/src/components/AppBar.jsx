@@ -3,7 +3,8 @@
  * Updated stamp and the notification bell on the right.
  *
  * Settings sits here rather than among the tabs, as wireframe sheet 09 places it, so the
- * five tabs stay the five the wireframes carry.
+ * five tabs stay the five the wireframes carry. Since 7 October 2026 the gear opens the
+ * Settings area at its first page, Profile and plan.
  *
  * The logo is `mse-logo-horizontal-notagline.svg` from `brand/`, drawn at 48 px high, which
  * makes it 129 px wide. A7.6 allows the lockup without the tagline from 110 px wide, and
@@ -83,8 +84,8 @@ export async function AppBar({ shopId, shopsLink = false }) {
             </a>
             <a
               className="bell"
-              href={`/shops/${encodeURIComponent(shopId)}/settings`}
-              aria-label="Settings and data"
+              href={`/shops/${encodeURIComponent(shopId)}/settings/profile`}
+              aria-label="Settings"
               data-testid="appbar-settings"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -58,7 +58,7 @@ by side, except the last, which carries S15 alone.
 | S12 | Tax | Core | Wireframes | 07 | `shops/[shopId]/tax`, the fifth tab (28 September). A threshold monitor, the set-aside estimate of A30.3 with its basis lines, and the tax dates. Each card empties on its own when its reference rules are missing, and production held none on 28 September |
 | S13 | Notifications | Core | Wireframes | 08 | `shops/[shopId]/notifications`, reached from the bell. Each open notice can be marked read or done, and the bell's count falls with it (25 September). Rows are not links yet, because a notification carries no address |
 | S14 | Discrepancy detail | Core | Wireframes, revised A18 | 08 | `shops/[shopId]/discrepancies`, as a list |
-| S15 | Settings and data | Settings | Wireframes | 09 | `shops/[shopId]/settings`, from the top bar (28 September). The "Your data" card is left out, because export, download and deletion are not built |
+| S15 | Settings and data | Settings | Wireframes | 09 | `shops/[shopId]/settings`, from the top bar (28 September). Since 7 October 2026 it is the Shop connection page of the Settings area, and the data download and deletion sit on their own pages in that area (S31, S41) |
 | S16 | Product transactions | Products | A3 | | `shops/[shopId]/products/[productId]/transactions` (28 September) |
 | S17 | Start | Account | A3 as Sign up, renamed A14 | | `start`, handing off to Stack's pages at `handler/[...stack]`. No privacy or terms link yet, because neither page exists |
 | ~~S18~~ | ~~Return~~ | | **Cut by A15.3** | | |
@@ -82,8 +82,9 @@ by side, except the last, which carries S15 alone.
 | S36 | That email is already in use | Account | A14 | | `account/email-in-use` (29 September). Reached from any screen that meets `email_already_linked`. No sign-in method is named, because nothing reports it |
 | S37 | Signed out | Account | A14 | | `signed-out`, with `?reason=expired` for `token_expired` (29 September) |
 | S38 | Payment did not go through | Onboarding | A14 | | `billing/payment-failed`, from `/billing` while past due (29 September). The retry date, the data retention and changing the card are not shown, because nothing holds or does them |
-| S39 | Payouts | Core | A9.8 | | `shops/[shopId]/payouts`, under More (7 October 2026). Each statement with what it says, what TikTok held back, what was paid out, and whether its fee invoice is recorded |
+| S39 | Payouts | Core | A9.8 | | `shops/[shopId]/payouts`, under Money (7 October 2026). Each statement with what it says, what TikTok held back, what was paid out, and whether its fee invoice is recorded |
 | S40 | Payout detail | Core | A9.8 | | `shops/[shopId]/payouts/[settlementId]` (7 October 2026). The statement's parts, whether its orders explain it, and the fee invoice, which the seller types in from Seller Center. The PDF is not stored yet (A10) |
+| S41 | Profile and plan | Settings | Owner, 7 October 2026 | | `shops/[shopId]/settings/profile`, the first page of the Settings area and the top bar's gear. Name, email and shop count from getMe, the plan from getSubscription, sign out, and the way to S30. Card changes are not offered, because the contract has no operation for them |
 
 ## Where the artwork lives, and what it is worth
 
