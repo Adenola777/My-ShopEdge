@@ -121,7 +121,7 @@ def get_me(
     if row is None:
         # The token verified and resolved to this id, so a missing row means the account
         # was removed between the two. Treated as signed out rather than as a server fault.
-        raise Problem(401, "account_not_found", "Please sign in again.")
+        raise Problem(401, "account_not_found", "We could not find your account. Sign in again.")
     return _with_etag(AccountOut(**dict(zip(cols, row, strict=True))), response, if_none_match)
 
 

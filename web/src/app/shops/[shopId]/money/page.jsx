@@ -33,7 +33,7 @@ import { fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
 import { Figure } from "@/components/Figure";
-import { BEFORE_OVERHEADS, CONFIDENCE, chipClass, keptReason } from "@/lib/terms";
+import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, keptReason } from "@/lib/terms";
 
 /** Lines whose label states their direction, shown without the ledger's sign. */
 const UNSIGNED = new Set(["settlement", "reserve_withheld"]);
@@ -86,8 +86,9 @@ export default async function MoneyPage({ params, searchParams }) {
       <header className="page-head">
         <h1>Money</h1>
         <p>
-          Where every pound went, {day ? formatDate(day) : `${formatDate(period.from)} to ${formatDate(period.to)}`}.{" "}
-          <span className={chipClass(tone)}>{confidence}</span>
+          This shows where every pound went{" "}
+          {day ? `on ${formatDate(day)}` : `from ${formatDate(period.from)} to ${formatDate(period.to)}`}.{" "}
+          <span className={chipClass(tone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
         </p>
       </header>
 
@@ -99,6 +100,9 @@ export default async function MoneyPage({ params, searchParams }) {
         <Link href={href(day ? { day } : {})} aria-current={basis === "sales" ? "true" : undefined}>Sales basis</Link>
         <Link href={href({ basis: "cash", ...(day ? { day } : {}) })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
       </nav>
+      <p className="rows__sub">
+        {basis === "sales" ? "Sales basis counts money on the day of the sale." : "Cash basis counts money in the month TikTok settled it."}
+      </p>
       <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts`} data-testid="money-payouts">
         Payouts and fee invoices
       </Link></p>
@@ -107,9 +111,12 @@ export default async function MoneyPage({ params, searchParams }) {
         <div className="note note--warn" role="status">
           <p>
             {m.unmapped_fee_count === 1
-              ? "One fee in this period has a name we do not recognise."
-              : `${m.unmapped_fee_count} fees in this period have names we do not recognise.`}{" "}
-            The money is counted in full, under the name TikTok gave it.
+              ? "One fee in this period has a name MyShopEdge does not recognise."
+              : `${m.unmapped_fee_count} fees in this period have names MyShopEdge does not recognise.`}{" "}
+            The money is counted in full, under the name TikTok gave it.{" "}
+            <Link href={recordsHref({ category: "unmapped_fee" })}>
+              {m.unmapped_fee_count === 1 ? "See the fee" : "See the fees"}
+            </Link>
           </p>
         </div>
       )}
@@ -136,10 +143,9 @@ export default async function MoneyPage({ params, searchParams }) {
         ))}
       </div>
 
-      <ExpectedPayouts result={expected} />
+      <ExpectedPayouts result={expected} shopId={shopId} />
 
       <p className="footnote">
-        {basis === "sales" ? "Sales basis counts money on the day of the sale." : "Cash basis counts money in the month TikTok settled it."}{" "}
         {m.kept ? BEFORE_OVERHEADS : keptReason(m.kept_reason)}
       </p>
       <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/money/export`} data-testid="money-export">Export this for your accountant</Link></p>
@@ -151,17 +157,21 @@ export default async function MoneyPage({ params, searchParams }) {
  * TikTok's unsettled transactions grouped by the week TikTok expects to pay them. The
  * service does the grouping and the sums; this only lays them out.
  *
- * @param {{ result: import("@/lib/api").ApiResult }} props
+ * @param {{ result: import("@/lib/api").ApiResult, shopId: string }} props
  */
-function ExpectedPayouts({ result }) {
+function ExpectedPayouts({ result, shopId }) {
   if (!result.ok || !result.data) {
     return (
       <div className="card" data-testid="expected-payouts">
         <h2>Expected payouts</h2>
         <p className="card__why">
-          {result.status === 409
-            ? "This shop is not connected to TikTok, so there is nothing to read."
-            : "TikTok did not answer just now, so expected payouts are not shown. The figures above are unaffected."}
+          {result.status === 409 ? (
+            <>
+              This shop is not connected to TikTok, so MyShopEdge cannot ask TikTok what it
+              expects to pay.{" "}
+              <Link href={`/shops/${shopId}/connection-problem`}>Reconnect your shop</Link>
+            </>
+          ) : "TikTok did not answer just now, so expected payouts are not shown. The figures above are unaffected."}
         </p>
       </div>
     );
@@ -191,10 +201,16 @@ function ExpectedPayouts({ result }) {
           </li>
         </ul>
       )}
+      {p.weeks.length > 0 && (
+        <p className="card__why">
+          These are TikTok&apos;s own estimates of {formatMoney(p.total)} still to come, and they can
+          change before TikTok settles. An order leaves this list once it is settled and appears in
+          the figures above.
+        </p>
+      )}
       <p className="card__why">
-        These are TikTok&apos;s own estimates of {formatMoney(p.total)} still to come, and they can
-        change before TikTok settles. An order leaves this list once it is settled and appears in
-        the figures above.
+        TikTok works these figures out itself, so they can differ from Awaiting settlement on
+        Today, which MyShopEdge counts from its own records.
       </p>
     </div>
   );

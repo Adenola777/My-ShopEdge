@@ -12,7 +12,7 @@ export function LineLabel({ line }) {
   if (!line.tiktok_fee_type) return line.label;
   return (
     <span>
-      {line.category === "platform_adjustment" ? "TikTok adjustment" : "Fee we do not recognise"}
+      {line.category === "platform_adjustment" ? "TikTok adjustment" : "Fee MyShopEdge does not recognise"}
       <span className="rows__sub" style={{ display: "block" }}>TikTok calls it {line.tiktok_fee_type}</span>
     </span>
   );

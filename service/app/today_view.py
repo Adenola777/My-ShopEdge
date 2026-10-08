@@ -251,26 +251,30 @@ def _needs_you(r: dict[str, Any], now: datetime, currency: str) -> tuple[bool, l
                 "Your TikTok Shop needs reconnecting")
         if refresh_failed:
             add("refresh_failed", 1, "critical",
-                f"TikTok refused to refresh the connection ({r['refresh_failure_code']})")
+                "TikTok would not renew MyShopEdge's access to your shop. Reconnect the shop to "
+                "keep your figures up to date.")
         if missing:
             add("missing_scope", len(missing), "critical",
-                "TikTok has not granted " + ", ".join(sorted(missing)))
+                "TikTok has not given MyShopEdge all the access it needs. Reconnect the shop and "
+                "approve every permission on TikTok's page.")
         if (not broken and r["refresh_expires_at"] is not None
                 and r["refresh_expires_at"] - now <= EXPIRING_WITHIN):
             days = max((r["refresh_expires_at"] - now).days, 0)
             add("connection_expiring", 1, "warning",
-                f"Your TikTok connection expires in {_plural(days, 'day', 'days')}")
+                f"Your TikTok Shop connection expires in {_plural(days, 'day', 'days')}")
 
     # Sync health, A29.5. The latest run for each domain.
     latest = list(r["latest_sync_statuses"] or [])
     add("sync_needs_reconnect", latest.count("needs_reconnect"), "critical",
-        "A sync stopped because TikTok needs reconnecting")
+        "An update stopped because your shop needs reconnecting to TikTok")
     add("sync_failed", latest.count("failed"), "warning",
-        _plural(latest.count("failed"), "part of the last sync failed",
-                "parts of the last sync failed"))
+        _plural(latest.count("failed"),
+                "part of the last update from TikTok failed, so some figures may be missing",
+                "parts of the last update from TikTok failed, so some figures may be missing"))
     add("sync_partial", latest.count("partial"), "warning",
-        _plural(latest.count("partial"), "part of the last sync was incomplete",
-                "parts of the last sync were incomplete"))
+        _plural(latest.count("partial"),
+                "part of the last update from TikTok was incomplete, so some figures may be missing",
+                "parts of the last update from TikTok were incomplete, so some figures may be missing"))
 
     last = r["last_synced_at"]
     stale = freshness(last, now).status == "stale"
@@ -279,20 +283,22 @@ def _needs_you(r: dict[str, Any], now: datetime, currency: str) -> tuple[bool, l
     elif stale:
         hours = int((now - last).total_seconds() // 3600)
         add("stale_data", 1, "warning",
-            f"Figures may be out of date. Last synced {hours} hours ago")
+            f"Your figures may be out of date. MyShopEdge last brought them up to date "
+            f"{_plural(hours, 'hour', 'hours')} ago.")
 
     add("open_discrepancies", int(r["open_discrepancies"]), "warning",
         _plural(int(r["open_discrepancies"]), "figure disagrees with TikTok",
                 "figures disagree with TikTok"))
     add("unmapped_fees", int(r["unmapped_fees"]), "warning",
-        _plural(int(r["unmapped_fees"]), "fee this month has no category",
-                "fees this month have no category"),
+        _plural(int(r["unmapped_fees"]), "fee this month has a name MyShopEdge does not recognise",
+                "fees this month have names MyShopEdge does not recognise"),
         int(r["unmapped_fee_minor"]))
     add("returns_to_check", int(r["returns_to_check"]), "warning",
-        _plural(int(r["returns_to_check"]), "return to check", "returns to check"))
+        _plural(int(r["returns_to_check"]), "return is waiting to be checked",
+                "returns are waiting to be checked"))
     add("missing_costs", int(r["missing_costs"]), "info",
-        _plural(int(r["missing_costs"]), "product variant has no cost",
-                "product variants have no cost"))
+        _plural(int(r["missing_costs"]), "product variant has no cost price",
+                "product variants have no cost price"))
     add("out_of_stock", int(r["out_of_stock"]), "info",
         _plural(int(r["out_of_stock"]), "product variant is out of stock",
                 "product variants are out of stock"))

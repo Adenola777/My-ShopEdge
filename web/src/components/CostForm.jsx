@@ -10,8 +10,8 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
 
-/** @param {{ shopId: string, skuId: string, currency?: string }} props */
-export function CostForm({ shopId, skuId, currency = "GBP" }) {
+/** @param {{ shopId: string, skuId: string, currency?: string, variantName?: string }} props */
+export function CostForm({ shopId, skuId, currency = "GBP", variantName }) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [error, setError] = useState(/** @type {string | null} */ (null));
@@ -43,11 +43,13 @@ export function CostForm({ shopId, skuId, currency = "GBP" }) {
 
   return (
     <form onSubmit={save} className="inline-form">
-      <label className="visually-hidden" htmlFor={`cost-${skuId}`}>Cost price per unit</label>
+      <label className="visually-hidden" htmlFor={`cost-${skuId}`}>
+        {variantName ? `Cost price per unit for ${variantName}` : "Cost price per unit"}
+      </label>
       <input
         id={`cost-${skuId}`}
         inputMode="decimal"
-        placeholder="£3.40"
+        placeholder="0.00"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         aria-describedby={error ? `cost-${skuId}-error` : undefined}

@@ -1460,7 +1460,8 @@ def stripe_refusal_logged():
     try:
         r = client.post("/v1/billing/subscription", json={"plan": "starter"})
         _assert(r.status_code == 502 and r.json()["detail"] ==
-                "We could not start the trial. Nobody has been charged.", r.text)
+                "Our payment provider did not complete the request, so the trial has not "
+                "started and nothing was charged. Try again in a few minutes.", r.text)
         line = records[-1].getMessage() if records else ""
         for part in ("find_or_create_customer", "PermissionError", "http=403", "type=invalid_request_error",
                      "code=secret_key_required", "request=req_test", "required permissions"):

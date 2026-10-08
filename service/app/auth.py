@@ -232,7 +232,7 @@ def _verify_reviewer(token: str) -> dict | None:
     except jwt.ExpiredSignatureError as exc:
         raise Problem(401, "token_expired", "Your session has expired. Sign in again.") from exc
     except jwt.InvalidTokenError as exc:
-        raise Problem(401, "token_invalid", "Sign in again.") from exc
+        raise Problem(401, "token_invalid", "We could not confirm your sign-in. Sign in again.") from exc
 
 
 def verify(token: str) -> dict:
@@ -243,7 +243,7 @@ def verify(token: str) -> dict:
     try:
         signing_key = _jwks_client().get_signing_key_from_jwt(token)
     except Exception as exc:
-        raise Problem(401, "token_unverifiable", "Sign in again.") from exc
+        raise Problem(401, "token_unverifiable", "We could not confirm your sign-in. Sign in again.") from exc
 
     # Issuer and audience are configured and never guessed.
     #
@@ -285,7 +285,7 @@ def verify(token: str) -> dict:
         # edge case. A seller sitting through the first sync will meet it. S37 covers it.
         raise Problem(401, "token_expired", "Your session has expired. Sign in again.") from exc
     except jwt.InvalidTokenError as exc:
-        raise Problem(401, "token_invalid", "Sign in again.") from exc
+        raise Problem(401, "token_invalid", "We could not confirm your sign-in. Sign in again.") from exc
 
 
 def require_account(request: Request) -> Account:
@@ -301,10 +301,13 @@ def require_account(request: Request) -> Account:
     if account.status == "deleted":
         raise Problem(
             403, "account_closing",
-            "This account is being deleted. You can cancel the deletion from the sign-in page.",
+            "This account is being deleted. You can cancel the deletion on the account closing "
+            "page until it is erased.",
         )
     if account.status != "active":
-        raise Problem(403, "account_suspended", "This account is suspended.")
+        raise Problem(403, "account_suspended",
+                      "This account is suspended, so it cannot be used. Email "
+                      "info@inspirecraftglobal.com and we will tell you why and what happens next.")
     return account
 
 
@@ -330,7 +333,7 @@ def require_signed_in(request: Request) -> Account:
         raise Problem(
             403,
             "email_unverified",
-            "Verify your email address with your sign-in provider, then come back.",
+            "Your sign-in provider has not verified this email address yet. Verify it there, then sign in again.",
         )
 
     account_id = resolve_account_id(subject)
@@ -378,7 +381,8 @@ def require_signed_in(request: Request) -> Account:
         raise Problem(
             403,
             "email_required",
-            "Your account has no verified email address, so we cannot set up your shop.",
+            "Your sign-in gave us no verified email address, so we cannot set up your account. "
+            "Sign in with an account whose email address is verified.",
         )
 
     try:
@@ -388,8 +392,8 @@ def require_signed_in(request: Request) -> Account:
             raise Problem(
                 409,
                 "email_already_linked",
-                "That email address already belongs to an account created with a "
-                "different sign-in method. Use the original method, then link this one.",
+                "That email address already belongs to an account that signs in another way. "
+                "Sign in that way instead.",
             ) from exc
         raise
 

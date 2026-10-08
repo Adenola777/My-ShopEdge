@@ -30,10 +30,22 @@ export const CONFIDENCE = {
   incomplete: ["Incomplete", "strong"],
 };
 
+/**
+ * What each confidence chip means, for its title. The rule is the service's
+ * (service/app/money_view.py): incomplete when a product sold has no cost price, estimated
+ * on the sales basis when some sales are not yet settled, and confirmed otherwise.
+ *
+ * @type {Record<string, string>}
+ */
+export const CONFIDENCE_MEANING = {
+  estimated: "Estimated means TikTok has not yet settled some of these sales.",
+  incomplete: "Incomplete means not every product sold has a cost price yet.",
+};
+
 /** @type {Record<string, [string, string]>} */
 export const FRESHNESS = {
   fresh: ["Up to date", "quiet"],
-  getting_old: ["Getting old", "strong"],
+  getting_old: ["Not current", "strong"],
   stale: ["Out of date", "critical"],
 };
 
@@ -61,7 +73,7 @@ export const MOVEMENT = {
   return_resellable: "Returned, back in stock",
   write_off: "Stock written off",
   manual_adjustment: "Adjusted by you",
-  adjustment_absorbed: "Your adjustment absorbed by TikTok's count",
+  adjustment_absorbed: "TikTok's count rose, so MyShopEdge reduced your adjustment",
 };
 
 /** @type {Record<string, string>} */
@@ -72,7 +84,7 @@ export const DISCREPANCY_KIND = {
   amount: "Amount differs",
   return_unmatched: "Return not matched to an order",
   duplicate: "Recorded twice",
-  unmapped_fee: "Fee we do not recognise",
+  unmapped_fee: "Fee MyShopEdge does not recognise",
 };
 
 /** @type {Record<string, string>} */
@@ -80,6 +92,14 @@ export const RESOLUTION = {
   accepted_tiktok: "TikTok's value accepted",
   corrected_seller: "Your record corrected",
   explained: "Marked as explained",
+};
+
+/** Where a record came from, from the ledger's `source` column. */
+/** @type {Record<string, string>} */
+export const RECORD_SOURCE = {
+  tiktok: "From TikTok",
+  seller: "Entered by you",
+  system: "Worked out by MyShopEdge",
 };
 
 /** @type {Record<string, string>} */

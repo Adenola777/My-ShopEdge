@@ -51,11 +51,13 @@ export function AdjustForm({ shopId, skuId }) {
     <form onSubmit={save} className="card stack">
       <h2>Adjust the count</h2>
       <p className="rows__sub">
-        This changes your count in MyShopEdge only. TikTok&rsquo;s own figure stays as it is,
-        and the difference is kept as your adjustment.
+        This changes your count in MyShopEdge only, and TikTok&rsquo;s own figure stays as it
+        is. If you add units here and TikTok&rsquo;s count later rises by no more than your
+        alert setting allows, MyShopEdge takes those units off your adjustment so they are not
+        counted twice. A larger rise is flagged in Discrepancies for you to check.
       </p>
       <div>
-        <label htmlFor="adj-qty">Units</label>
+        <label htmlFor="adj-qty">Units to add, or a minus number to remove</label>
         <input id="adj-qty" inputMode="numeric" placeholder="-2" value={quantity}
                onChange={(e) => setQuantity(e.target.value)} />
       </div>

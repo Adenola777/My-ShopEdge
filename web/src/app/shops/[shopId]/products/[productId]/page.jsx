@@ -20,10 +20,11 @@
  */
 
 import Link from "next/link";
-import { fetchShop } from "@/lib/api";
+import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { CostForm } from "@/components/CostForm";
 import { Figure } from "@/components/Figure";
+import { LineLabel } from "@/components/LineLabel";
 import { BEFORE_OVERHEADS, STOCK_STATE, chipClass } from "@/lib/terms";
 
 export const metadata = { title: "Product" };
@@ -59,14 +60,23 @@ export default async function ProductDetailPage({ params, searchParams }) {
     : ["", "quiet"];
 
   const sections = /** @type {any[]} */ (d.sections);
+  const period = /** @type {{ from?: string, to?: string, basis?: string } | undefined} */ (d.period);
+  const periodWords = period?.from && period?.to
+    ? `from ${formatDate(period.from)} to ${formatDate(period.to)}`
+    : "in this period";
+  const recordsQuery = new URLSearchParams({
+    ...(period?.from ? { from: period.from } : {}),
+    ...(period?.to ? { to: period.to } : {}),
+    ...(period?.basis ? { basis: period.basis } : {}),
+  }).toString();
   return (
     <section>
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/products`}>Products</Link></p>
-        <h1>{p.title || p.tiktok_product_id || "Untitled product"}</h1>
+        <h1>{p.title || "Untitled product"}</h1>
         <p>
-          {p.units} {p.units === 1 ? "unit" : "units"} sold in this period
-          {stock ? `. ${stock.on_shelf} on the shelf. ` : ". "}
+          {p.units} {p.units === 1 ? "unit" : "units"} sold {periodWords}
+          {stock ? `. Stock on hand is ${stock.on_shelf}. ` : ". "}
           {stock && <span className={chipClass(stateTone)}>{stateLabel}</span>}
         </p>
       </header>
@@ -80,18 +90,15 @@ export default async function ProductDetailPage({ params, searchParams }) {
           ) : (
             <>
             <ul className="rows" data-testid="per-unit">
-              {perUnit.sections.flatMap((s, n) => [
+              {perUnit.sections.flatMap((s) => [
                 ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
                   <li key={`${s.key}-${l.category}-${i}`}>
-                    <span>{l.label}</span>
+                    <span><LineLabel line={l} /></span>
                     <Figure amount={l.amount} />
                   </li>
                 )),
                 <li key={`${s.key}-total`} className="rows__total">
-                  <span>
-                    {s.subtotal_label ?? "Subtotal"}
-                    {n === perUnit.sections.length - 1 ? " per unit" : ""}
-                  </span>
+                  <span>{s.subtotal_label ?? "Subtotal"}</span>
                   <Figure amount={s.subtotal} />
                 </li>,
               ])}
@@ -112,13 +119,13 @@ export default async function ProductDetailPage({ params, searchParams }) {
         </div>
 
         <div className="card">
-          <h2>This period</h2>
+          <h2>{period?.from && period?.to ? `${formatDate(period.from)} to ${formatDate(period.to)}` : "This period"}</h2>
           <p className="card__why">Every sale of this product, and what came off it.</p>
           <ul className="rows">
             {sections.flatMap((s) => [
               ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
                 <li key={`${s.key}-${l.category}-${i}`}>
-                  <span>{l.label}</span>
+                  <span><LineLabel line={l} /></span>
                   <Figure amount={l.amount} />
                 </li>
               )),
@@ -132,7 +139,11 @@ export default async function ProductDetailPage({ params, searchParams }) {
 
         <div className="card">
           <h2>Product cost</h2>
-          <p className="card__why">What one unit costs you. It drives every profit figure here.</p>
+          <p className="card__why">
+            What one unit costs you. It drives every profit figure here. A cost you save here
+            applies to units sold from today. Units sold before today keep the cost that applied
+            then, or stay without one.
+          </p>
           <ul className="rows">
             {(d.skus ?? []).map((s) => (
               <li key={s.sku_id} style={{ flexWrap: "wrap" }}>
@@ -141,13 +152,14 @@ export default async function ProductDetailPage({ params, searchParams }) {
                     {s.variant_label || s.seller_sku || "Variant"}
                   </Link>
                   <div className="rows__sub">
-                    {s.seller_sku ?? "No seller SKU. Add a cost on this screen."}
+                    {s.seller_sku ?? "This variant has no seller SKU."}
                   </div>
                 </span>
                 <Figure amount={s.cost} reason="Not provided" />
                 {s.sku_id && (
                   <div style={{ flexBasis: "100%" }}>
                     <CostForm shopId={shopId} skuId={s.sku_id}
+                              variantName={s.variant_label || s.seller_sku || p.title || undefined}
                               currency={s.cost?.currency ?? p.gross_sales.currency ?? "GBP"} />
                   </div>
                 )}
@@ -165,7 +177,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
 
       {/* The link to S16 is Emergent AI's, brought across on 28 September 2026. */}
       <p className="card__foot">
-        <Link data-testid="product-transactions-link" href={`/shops/${shopId}/products/${productId}/transactions`}>
+        <Link data-testid="product-transactions-link" href={`/shops/${shopId}/products/${productId}/transactions${recordsQuery ? `?${recordsQuery}` : ""}`}>
           See every record behind these figures
         </Link>
       </p>

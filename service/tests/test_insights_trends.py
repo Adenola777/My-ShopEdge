@@ -51,8 +51,8 @@ loser = row("Glass Jar", 4, 1000, 1400)
 got = build([loser], {}, period, "GBP")
 loss = [i for i in got if i.rule_key == "negative_contribution"]
 check(len(loss) == 1 and "lost £4.00 on 4 units" in loss[0].headline, f"a loss of £4.00 on 4 units: {loss[0].headline if loss else got}")
-check("Options:" in (loss[0].detail or ""), "the loss insight offers options rather than an instruction")
-contribution = [v for v in loss[0].evidence.values if v.label == "Contribution"][0]
+check("You can check" in (loss[0].detail or ""), "the loss insight offers options rather than an instruction")
+contribution = [v for v in loss[0].evidence.values if v.label == "Net proceeds less cost of goods sold"][0]
 check(contribution.amount.amount_minor == -400, "the evidence shows the contribution the headline states")
 check(not [i for i in got if i.rule_key == "postage_share"], "no postage figures, so no postage insight")
 

@@ -145,6 +145,13 @@ KEPT_REASONS = {
     "no_sales": "Nothing sold in this period.",
 }
 
+# The confidence code in words, by the rules in money_view.calculate.
+CONFIDENCE_WORDS = {
+    "confirmed": "Confirmed",
+    "estimated": "Estimated, because TikTok has not yet settled some amounts in the period.",
+    "incomplete": "Incomplete, because not every product sold in the period has a cost price.",
+}
+
 
 def _month_summary(conn, shop_id: UUID, start: date, end: date, basis: str) -> list[list[Any]]:
     view = calculate(conn, shop_id, start, end, basis)
@@ -161,7 +168,7 @@ def _month_summary(conn, shop_id: UUID, start: date, end: date, basis: str) -> l
         ["Totals", "Net proceeds", "", _pounds(t.net_proceeds.amount_minor)],
         ["Totals", "Gross profit after returns", "", _pounds(view.kept.amount_minor) if view.kept else
          KEPT_REASONS.get(view.kept_reason or "", "Not known.")],
-        ["Totals", "Confidence", "", view.confidence],
+        ["Totals", "Confidence", "", CONFIDENCE_WORDS.get(view.confidence, view.confidence)],
     ]
     return rows
 
@@ -305,11 +312,11 @@ def build_shop_export(account_id: UUID, export_id: UUID) -> None:
                 "expires_at = %s, size_bytes = %s, row_count = %s where id = %s",
                 (key, built, built + LIFE, len(data), max(len(table) - 2, 0), str(export_id)),
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         log.exception("export %s failed", export_id)
-        reason = ("File storage is not configured on this deployment."
-                  if isinstance(exc, Problem) and exc.code == "storage_unconfigured"
-                  else "The file could not be built.")
+        reason = ("We could not prepare this download because of a fault at our end. Your "
+                  "records are unaffected. Request it again later, or email "
+                  "info@inspirecraftglobal.com.")
         with tenant(account_id) as conn:
             conn.execute("update exports set status = 'failed', failure_reason = %s "
                          "where id = %s and status = 'queued'", (reason, str(export_id)))
@@ -469,11 +476,11 @@ def build_account_export(account_id: UUID, export_id: UUID) -> None:
             conn.execute("update account_exports set status = 'ready', storage_key = %s, "
                          "ready_at = %s, expires_at = %s, size_bytes = %s where id = %s",
                          (key, built, built + LIFE, len(data), str(export_id)))
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         log.exception("account export %s failed", export_id)
-        reason = ("File storage is not configured on this deployment."
-                  if isinstance(exc, Problem) and exc.code == "storage_unconfigured"
-                  else "The archive could not be built.")
+        reason = ("We could not prepare this download because of a fault at our end. Your "
+                  "records are unaffected. Request it again later, or email "
+                  "info@inspirecraftglobal.com.")
         with tenant(account_id) as conn:
             conn.execute("update account_exports set status = 'failed', failure_reason = %s "
                          "where id = %s and status = 'queued'", (reason, str(export_id)))

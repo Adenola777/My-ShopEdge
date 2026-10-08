@@ -78,7 +78,7 @@ export function InvoiceForm({ shopId, settlementId, currency, invoice }) {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? "The invoice was not saved."));
+      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? "The invoice was not saved. Check the figures and try again."));
       return;
     }
     setOpen(false);
@@ -88,7 +88,7 @@ export function InvoiceForm({ shopId, settlementId, currency, invoice }) {
   if (!open) {
     return (
       <p><button type="button" className="btn btn--quiet btn--block" onClick={() => setOpen(true)} data-testid="edit-invoice">
-        Correct this invoice
+        Edit this invoice
       </button></p>
     );
   }
@@ -97,7 +97,7 @@ export function InvoiceForm({ shopId, settlementId, currency, invoice }) {
     <form onSubmit={save} className="stack" data-testid="invoice-form">
       <div><label htmlFor="invoice-invoice_number">Invoice number</label><input {...bind("invoice_number")} maxLength={64} /></div>
       <div><label htmlFor="invoice-invoice_type">Type, as the invoice names it</label>
-        <input {...bind("invoice_type")} maxLength={120} placeholder="For example Platform Service Fee" /></div>
+        <input {...bind("invoice_type")} maxLength={120} /></div>
       <div><label htmlFor="invoice-issued_on">Date issued</label><input type="date" {...bind("issued_on")} /></div>
       <div><label htmlFor="invoice-period_start">Period from (optional)</label><input type="date" {...bind("period_start")} /></div>
       <div><label htmlFor="invoice-period_end">Period to (optional)</label><input type="date" {...bind("period_end")} /></div>
@@ -108,7 +108,7 @@ export function InvoiceForm({ shopId, settlementId, currency, invoice }) {
       <p><button className="btn btn--primary btn--block" disabled={busy} data-testid="save-invoice">
         {busy ? "Saving" : "Save invoice"}
       </button></p>
-      <p className="footnote">MyShopEdge checks that the gross equals the net plus the VAT, and keeps the invoice for six years.</p>
+      <p className="footnote">MyShopEdge checks that the gross equals the net plus the VAT, and keeps these figures. It does not keep a copy of the PDF.</p>
     </form>
   );
 }

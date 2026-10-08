@@ -45,16 +45,19 @@ export default async function PayoutPage({ params }) {
           <ul className="rows">
             <li><span>Net sales</span><Figure amount={c.net_sales} /></li>
             <li><span>Fees</span><Figure amount={c.fees} /></li>
-            <li><span>Shipping</span><Figure amount={c.shipping_cost} /></li>
-            <li><span>Adjustments</span><Figure amount={c.adjustments} /></li>
-            <li className="rows__total"><span>Statement</span><Figure amount={s.statement_amount} /></li>
+            <li><span>Shipping cost charged by TikTok</span><Figure amount={c.shipping_cost} /></li>
+            <li><span>TikTok adjustments</span><Figure amount={c.adjustments} /></li>
+            {c.difference && c.difference.amount_minor !== 0 && (
+              <li><span>Not explained by TikTok</span><Figure amount={c.difference} /></li>
+            )}
+            <li className="rows__total"><span>Statement total</span><Figure amount={s.statement_amount} /></li>
             <li><span>Reserve withheld</span><Figure amount={s.total_reserve} unsigned /></li>
             <li className="rows__total"><span>Paid out</span><Figure amount={s.payable_amount} /></li>
           </ul>
         </div>
 
         <div className="card">
-          <h2>Does it reconcile?</h2>
+          <h2>Do the orders add up to this statement?</h2>
           <ul className="rows">
             <li><span>Orders settled</span><strong>{r.orders_settled}</strong></li>
             <li><span>Net proceeds from those orders</span><Figure amount={r.net_proceeds} /></li>

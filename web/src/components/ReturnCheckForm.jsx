@@ -2,17 +2,17 @@
 
 /**
  * The form on S8 Return check, drawn to wireframe sheet 05: the seller says whether the
- * item came back usable, enters any return postage they paid, sees what the check will do,
- * and confirms. Checking is one way, so the button says so by what it does.
+ * item came back usable, enters any return shipping they paid, sees what the check will do,
+ * and records it. Checking is one way, so no choice is made for the seller in advance.
  *
- * What each choice writes is the service's rule (checkReturnItem, A30.2), and the "This will"
+ * What each choice writes is the service's rule (checkReturnItem, A30.2), and the "What this check records"
  * card describes it without working out any money here: a write-off is valued by the service
  * at the cost in force when the unit sold, so the card names the rule rather than a figure.
  */
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { api, formatMoney } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
 
 /** @typedef {"resellable" | "unsellable" | "not_applicable"} CheckStatus */
@@ -20,22 +20,27 @@ import { newKey, parsePounds } from "@/lib/money-input";
 /** @param {{ shopId: string, itemId: string, quantity: number, currency: string }} props */
 export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
   const router = useRouter();
-  const [status, setStatus] = useState(/** @type {CheckStatus} */ ("resellable"));
+  const [status, setStatus] = useState(/** @type {CheckStatus | null} */ (null));
   const [postage, setPostage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [key] = useState(() => newKey());
 
   const units = `${quantity} ${quantity === 1 ? "unit" : "units"}`;
+  const shownPostage = postage.trim() === "" ? null : parsePounds(postage);
 
   /** @param {import("react").FormEvent} e */
   async function confirm(e) {
     e.preventDefault();
+    if (status === null) {
+      setError("Say how the item came back before you record the check.");
+      return;
+    }
     let postageMinor = null;
     if (status !== "not_applicable" && postage.trim() !== "") {
       postageMinor = parsePounds(postage);
       if (postageMinor === null) {
-        setError("Enter the postage in pounds, for example 2.85.");
+        setError("Enter the return shipping in pounds, for example 2.85.");
         return;
       }
     }
@@ -59,7 +64,8 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
 
   return (
     <form onSubmit={confirm} className="stack" data-testid={`check-form-${itemId}`}>
-      <fieldset className="segmented" aria-label="How it came back">
+      <p id={`how-${itemId}`} style={{ margin: 0 }}><strong>How did it come back?</strong></p>
+      <fieldset className="segmented" aria-labelledby={`how-${itemId}`}>
         {/** @type {[CheckStatus, string][]} */ ([
           ["resellable", "Resellable"],
           ["unsellable", "Unsellable"],
@@ -73,30 +79,37 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
         ))}
       </fieldset>
 
-      {status !== "not_applicable" && (
+      {status !== null && status !== "not_applicable" && (
         <div>
-          <label htmlFor={`postage-${itemId}`}>Return postage you paid (£)</label>
+          <label htmlFor={`postage-${itemId}`}>Return shipping you paid (£)</label>
           <input id={`postage-${itemId}`} inputMode="decimal" placeholder="0.00" value={postage}
                  onChange={(e) => setPostage(e.target.value)} data-testid="return-postage" />
         </div>
       )}
 
-      <div className="card">
-        <h3>This will</h3>
-        <ul className="rows">
-          {status === "resellable" && <li><span>Stock</span><strong>+{units}</strong></li>}
-          {status === "unsellable" && <li><span>Write off</span><strong>{units} at its cost when it sold</strong></li>}
-          {status === "not_applicable" && <li><span>Stock</span><strong>No change</strong></li>}
-          {status !== "not_applicable" && postage.trim() !== "" && (
-            <li><span>Return postage</span><strong>£{postage.trim()}</strong></li>
-          )}
-        </ul>
-      </div>
+      {status !== null && (
+        <div className="card">
+          <h3>What this check records</h3>
+          <ul className="rows">
+            {status === "resellable" && <li><span>Stock</span><strong>+{units}</strong></li>}
+            {status === "unsellable" && (
+              <li>
+                <span>Write off</span>
+                <strong>{units} at the cost in force when {quantity === 1 ? "it" : "they"} sold</strong>
+              </li>
+            )}
+            {status === "not_applicable" && <li><span>Stock</span><strong>No change</strong></li>}
+            {status !== "not_applicable" && shownPostage !== null && (
+              <li><span>Return shipping you paid</span><strong>{formatMoney({ amount_minor: shownPostage, currency })}</strong></li>
+            )}
+          </ul>
+        </div>
+      )}
 
       {error && <p className="form-error" role="alert">{error}</p>}
       <p>
         <button className="btn btn--primary btn--block" disabled={busy} data-testid="confirm-return">
-          {busy ? "Recording" : "Confirm return"}
+          {busy ? "Recording" : "Record this check"}
         </button>
       </p>
       <p className="footnote">A check is recorded once and cannot be changed.</p>

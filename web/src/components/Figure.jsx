@@ -9,8 +9,8 @@
  * unknown, not nil. Rendering it as "£0.00" would be a lie with a currency symbol on it,
  * and it is the kind of lie a seller would act on.
  *
- * So an absent figure renders as an em-rule with the reason attached, in a muted colour,
- * and it is announced to a screen reader as the reason rather than as a dash.
+ * So an absent figure renders as the words "Not known" in a muted colour, with the reason
+ * attached, and it is announced to a screen reader as the reason.
  */
 
 import { formatMoney } from "@/lib/api";
@@ -31,10 +31,10 @@ import { formatMoney } from "@/lib/api";
  */
 export function Figure({ amount, reason, className = "", unsigned = false }) {
   if (amount == null) {
-    const why = reason || "Not known yet";
+    const why = reason || "Not known";
     return (
       <span className={`money money--unknown ${className}`} title={why}>
-        <span aria-hidden="true">—</span>
+        <span aria-hidden="true">Not known</span>
         <span className="visually-hidden">{why}</span>
       </span>
     );

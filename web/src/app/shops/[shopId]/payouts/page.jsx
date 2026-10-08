@@ -45,10 +45,10 @@ export default async function PayoutsPage({ params, searchParams }) {
             <Link key={s.id} href={`/shops/${shopId}/payouts/${s.id}`} className="card rowlink" data-testid="payout-row">
               <h2>{formatDate(s.statement_time)}</h2>
               <ul className="rows">
-                <li><span>Statement</span><Figure amount={s.statement_amount} /></li>
+                <li><span>Statement total</span><Figure amount={s.statement_amount} /></li>
                 <li><span>Reserve withheld</span><Figure amount={s.total_reserve} unsigned /></li>
                 <li className="rows__total"><span>Paid out</span><Figure amount={s.payable_amount} /></li>
-                <li><span>Status</span><strong>{STATUS[/** @type {keyof typeof STATUS} */ (s.payment_status)] ?? s.payment_status}</strong></li>
+                <li><span>Status</span><strong>{STATUS[/** @type {keyof typeof STATUS} */ (s.payment_status)] ?? "Status not known"}</strong></li>
                 <li>
                   <span>Fee invoice</span>
                   <strong>{s.tiktok_invoice_number ?? "Not recorded"}</strong>

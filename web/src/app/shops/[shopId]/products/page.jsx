@@ -22,7 +22,7 @@
  */
 
 import Link from "next/link";
-import { fetchProducts } from "@/lib/api";
+import { fetchProducts, formatDate } from "@/lib/api";
 import { Figure } from "@/components/Figure";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
@@ -59,6 +59,15 @@ export default async function ProductsPage({ params, searchParams }) {
   /** @typedef {import("@/lib/api-types").components["schemas"]["ProductRanking"]} Ranking */
   /** @type {{ products: ProductRow[], total?: any, measure?: string, others?: { count: number, amount: any }, unattributed?: Ranking["unattributed"], shop_total?: any }} */
   const { products = [], total, measure = "kept", others, unattributed, shop_total } = result.data;
+  /** @type {{ from?: string, to?: string } | undefined} */
+  const period = result.data.period;
+  const dates = period?.from && period?.to ? `, ${formatDate(period.from)} to ${formatDate(period.to)}` : "";
+  /** @type {Record<string, string>} */
+  const FIGURE_NAME = {
+    kept: "Gross profit after returns",
+    units: "Units sold",
+    returns: "Units returned",
+  };
   const base = `/shops/${shopId}/products`;
 
   const ranked = products.filter((p) => p.cost_known || measure !== "kept");
@@ -68,7 +77,7 @@ export default async function ProductsPage({ params, searchParams }) {
     <section>
       <header className="page-head">
         <h1>Products</h1>
-        <p>{RANKED_BY[measure] ?? "Ranked"}</p>
+        <p>{RANKED_BY[measure] ?? "Ranked"}{dates}.</p>
       </header>
 
       <nav className="switch" aria-label="Rank by">
@@ -105,32 +114,38 @@ export default async function ProductsPage({ params, searchParams }) {
               <li key={p.product_id}>
                 <span>
                   <Link className="rowlink" href={`${base}/${p.product_id}`}>
-                    {p.title || p.tiktok_product_id || "Untitled product"}
+                    {p.title || "Untitled product"}
                   </Link>
                   <div className="rows__sub">
                     {p.units} sold{p.returns_units ? `, ${p.returns_units} returned` : ""}. Net proceeds{" "}
                     <Figure amount={p.net_proceeds} />
                   </div>
                 </span>
-                {measure === "units" ? <strong className="money">{p.units}</strong>
-                  : measure === "returns" ? <strong className="money">{p.returns_units || 0}</strong>
-                  : <Figure amount={p.kept} reason={p.kept_reason} />}
+                <span>
+                  <span className="visually-hidden">{FIGURE_NAME[measure] ?? "Figure"}: </span>
+                  {measure === "units" ? <strong className="money">{p.units}</strong>
+                    : measure === "returns" ? <strong className="money">{p.returns_units || 0}</strong>
+                    : <Figure amount={p.kept} reason={p.kept_reason} />}
+                </span>
               </li>
             ))}
             {uncosted.map((p) => (
               <li key={p.product_id}>
                 <span>
                   <Link className="rowlink" href={`${base}/${p.product_id}`}>
-                    {p.title || p.tiktok_product_id || "Untitled product"}
+                    {p.title || "Untitled product"}
                   </Link>
-                  <div className="rows__sub">Product cost: not provided. Net proceeds <Figure amount={p.net_proceeds} /></div>
+                  <div className="rows__sub">
+                    This product has no cost price for some of its sales in this period. Its net
+                    proceeds are <Figure amount={p.net_proceeds} />.
+                  </div>
                 </span>
                 <Link className="chip chip--strong" href={`${base}/${p.product_id}`}>Add cost</Link>
               </li>
             ))}
             {total && measure === "kept" && (
               <li className="rows__total">
-                <span>{unattributed ? "Total across products" : "Total"}</span>
+                <span>{unattributed ? "Total across products" : "Total gross profit after returns"}</span>
                 <Figure amount={total} />
               </li>
             )}
@@ -152,8 +167,9 @@ export default async function ProductsPage({ params, searchParams }) {
           </ul>
           {others && others.count > 0 && (
             <p className="rows__sub" style={{ marginTop: "var(--space-2)" }}>
-              {others.count} further {others.count === 1 ? "product" : "products"}, together{" "}
-              <Figure amount={others.amount} />.
+              {others.count} more {others.count === 1 ? "product came" : "products came"} to{" "}
+              <Figure amount={others.amount} />{others.count === 1 ? "." : " between them."}
+              {total && measure === "kept" ? " The total above includes them." : ""}
             </p>
           )}
         </div>
