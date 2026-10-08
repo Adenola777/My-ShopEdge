@@ -140,9 +140,10 @@ export default async function ProductDetailPage({ params, searchParams }) {
         <div className="card">
           <h2>Product cost</h2>
           <p className="card__why">
-            What one unit costs you. It drives every profit figure here. A cost you save here
-            applies to units sold from today. Units sold before today keep the cost that applied
-            then, or stay without one.
+            What one unit costs you. It drives every profit figure here. Each unit is costed at
+            the cost in force on the day it sold, so choose the first day the cost applies to.
+            To cost earlier sales that have no cost, choose a date on or before the first of
+            them. A cost already set from a later date still applies from that date.
           </p>
           <ul className="rows">
             {(d.skus ?? []).map((s) => (
