@@ -677,6 +677,9 @@ def _callback_with(shop, written):
     def fake(_account_id):
         yield Writer([])
     connections.tenant = fake
+    # The first read after connecting runs as a background task; recorded, not run.
+    connections._first_sync = lambda shop_id, account_id: written.setdefault("first_sync", []).append(
+        (str(shop_id), str(account_id)))
     return client.get("/v1/connections/tiktok/callback", params={"code": "c", "state": "s"})
 
 
@@ -701,6 +704,8 @@ def callback_connects_a_gb_shop():
     # lasted until 2083 and was never refreshed.
     _assert(written["conn"][4] == datetime(2026, 10, 6, 17, 52, 42, tzinfo=timezone.utc), written["conn"][4])
     _assert(written["conn"][5] == datetime(2125, 9, 5, 17, 6, 31, tzinfo=timezone.utc), written["conn"][5])
+    # The shop is read straight away, once (8 October 2026).
+    _assert(written.get("first_sync") == [(str(SHOP), str(ACCOUNT.id))], written.get("first_sync"))
 check("GET callback connects a GB shop and stores nothing readable", callback_connects_a_gb_shop)
 
 
@@ -709,12 +714,14 @@ def callback_lists_but_refuses_an_unsupported_shop():
     # would lose the authorisation the seller just granted.
     for field, value, reason in [("region", "ID", "region_unsupported"),
                                  ("seller_type", "CROSS_BORDER", "seller_type_unsupported")]:
-        r = _callback_with({**GB_SHOP, field: value}, {})
+        w = {}
+        r = _callback_with({**GB_SHOP, field: value}, w)
         _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
         b = r.json()
         _assert(b["accepted"] is False, b)
         _assert(b["rejection_reason"] == reason, b)
         _assert(b["shop"] is not None, "the shop must still be listed")
+        _assert(not w.get("first_sync"), "an unsupported shop must not be read")
 check("GET callback stores an unsupported shop but marks it not accepted", callback_lists_but_refuses_an_unsupported_shop)
 
 

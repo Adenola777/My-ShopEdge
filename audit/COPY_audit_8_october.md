@@ -50,7 +50,7 @@ Most of the blocking findings are not wording faults. They are promises the prod
 |---|---|---|
 | "We will email you three days before the first payment" | `billing/PaymentForm.jsx:101`, `billing/confirmed/page.jsx:47, 50` | Nothing sends email. Stripe's own reminder setting has not been checked |
 | "Cancel before then in Settings" and "change the card in Settings" | `PaymentForm.jsx:101-102, 121, 179-181, 230-231` | Settings has no cancel and no change-card action. Deleting the account is the only way to stop renewal |
-| "We are reading your orders, returns and payouts now" and "This can take a few minutes" | `connections/tiktok/callback/page.jsx:123-124`, `shops/[shopId]/sync/page.jsx:37` | No sync starts on connection. The LivaHome shop, connected on 7 October, had still not been read on 8 October |
+| "We are reading your orders, returns and payouts now" and "This can take a few minutes" | `connections/tiktok/callback/page.jsx:123-124`, `shops/[shopId]/sync/page.jsx:37` | No sync started on connection. The LivaHome shop, connected at 17:35 UTC on 7 October, was first read by the daily run at 05:47 UTC on 8 October, about twelve hours later. Fixed the same day: the callback now starts the first read straight away |
 | "Scheduled exports" (Pro), "Priority support" (Growth, Pro) | `service/app/plans.py:76, 92, 93` | Neither exists. No code gates any feature by plan, so Starter already has everything sold as a Growth or Pro extra |
 | "You can leave this screen and come back" | `components/SetupForms.jsx:368` | No screen lists past exports, so a seller who leaves loses the job |
 | "Coming back window (days)" | `components/SettingsForms.jsx:75` | The value is saved and nothing reads it |
