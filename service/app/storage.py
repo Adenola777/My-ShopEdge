@@ -55,7 +55,7 @@ SIGNED_URL_LIFE = timedelta(minutes=15)
 def _bucket() -> str:
     bucket = os.environ.get("S3_BUCKET")
     if not bucket:
-        raise Problem(503, "storage_unconfigured", "File storage is not configured on this deployment.")
+        raise Problem(503, "storage_unconfigured", "Files cannot be uploaded or downloaded just now. Nothing you saved has been lost. Please try again later.")
     return bucket
 
 

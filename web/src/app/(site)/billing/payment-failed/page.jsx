@@ -4,10 +4,10 @@
  * A14 rules that the seller keeps read access to their figures while the account is past
  * due, and every screen does, because nothing in the service refuses a past-due account.
  * Two things A14 lists are not stated, because nothing holds them: when Stripe will try the
- * card again, and how long the data is kept if the payment never goes through. Changing the
- * card is not built, because the contract has no operation for it, so the screen says so
- * rather than offering a button that does nothing, and it names no contact route, because
- * none exists.
+ * card again, and how long the data is kept if the payment never goes through. Since
+ * 8 October 2026 the screen offers /billing/card, which makes a new card the one the plan
+ * charges. Whether Stripe's next retry of the failed invoice uses that card is unverified,
+ * so the screen does not promise it.
  */
 
 import Link from "next/link";
@@ -29,8 +29,8 @@ export default async function PaymentFailedPage() {
       <p>Your bank did not accept the last payment for your {sub.data.plan ?? ""} plan. This is often a bank being cautious rather than a problem with your account.</p>
       {sub.data.current_period_end && <p>The period it was for ends on {formatDate(sub.data.current_period_end)}.</p>}
       <p>Your figures stay open to you while this is sorted.</p>
-      <p className="note">To update your card, email <a href="mailto:info@inspirecraftglobal.com">info@inspirecraftglobal.com</a> and we will send you a secure link.</p>
-      <p><Link className="btn btn--primary btn--block" href="/shops">Go to your shop</Link></p>
+      <p><Link className="btn btn--primary btn--block" href="/billing/card" data-testid="payment-failed-card">Use a different card</Link></p>
+      <p><Link className="btn btn--quiet btn--block" href="/shops">Go to your shop</Link></p>
     </main>
   );
 }

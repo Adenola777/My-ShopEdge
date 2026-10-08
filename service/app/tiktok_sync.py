@@ -653,22 +653,41 @@ def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]
     now = now or datetime.now(timezone.utc)
     with unscoped() as conn:
         due = conn.execute("select shop_id, account_id from shops_due_for_sync()").fetchall()
-    results = []
-    for shop_id, account_id in due:
-        result: dict[str, Any] = {"shop_id": str(shop_id)}
-        try:
-            with tenant(account_id) as conn:
-                result["refresh"] = refresh_connection(conn, shop_id, now, transport)
-            with tenant(account_id) as conn:
-                status = conn.execute("select connection_status from shops where id = %s",
-                                      (str(shop_id),)).fetchone()[0]
-                if status == "needs_reconnect":
-                    result["sync"] = "skipped: needs_reconnect"
-                else:
-                    since, until, kind = window(conn, str(shop_id), now)
-                    client = client_for(conn, shop_id, transport)
-                    result["sync"] = sync_shop(conn, shop_id, client, since, until, kind)
-        except Exception as err:  # noqa: BLE001  one shop's fault must not stop the others
-            result["error"] = f"{type(err).__name__}: {err}"
-        results.append(result)
-    return results
+    return [run_one(shop_id, account_id, transport, now, refresh_connection, client_for, tenant)
+            for shop_id, account_id in due]
+
+
+def run_one(shop_id, account_id, transport=None, now: datetime | None = None,
+            refresh_connection=None, client_for=None, tenant=None) -> dict[str, Any]:
+    """Refresh and sync one shop, as the daily run does for each due shop.
+
+    Also run in the background straight after a shop connects (connections.tiktok_callback),
+    so a new seller's figures start arriving within minutes rather than at the next 05:47 UTC
+    run. Added 8 October 2026: the connection screen said "We are reading your orders,
+    returns and payouts now" while nothing was. Never raises; a fault is returned in "error".
+    """
+    from .db import tenant as _tenant
+    from .tiktok_api import client_for as _client_for, http_transport
+    from .tiktok_api import refresh_connection as _refresh
+
+    transport = transport or http_transport
+    now = now or datetime.now(timezone.utc)
+    refresh_connection = refresh_connection or _refresh
+    client_for = client_for or _client_for
+    tenant = tenant or _tenant
+    result: dict[str, Any] = {"shop_id": str(shop_id)}
+    try:
+        with tenant(account_id) as conn:
+            result["refresh"] = refresh_connection(conn, shop_id, now, transport)
+        with tenant(account_id) as conn:
+            status = conn.execute("select connection_status from shops where id = %s",
+                                  (str(shop_id),)).fetchone()[0]
+            if status == "needs_reconnect":
+                result["sync"] = "skipped: needs_reconnect"
+            else:
+                since, until, kind = window(conn, str(shop_id), now)
+                client = client_for(conn, shop_id, transport)
+                result["sync"] = sync_shop(conn, shop_id, client, since, until, kind)
+    except Exception as err:  # noqa: BLE001  one shop's fault must not stop the others
+        result["error"] = f"{type(err).__name__}: {err}"
+    return result

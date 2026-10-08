@@ -11,6 +11,13 @@
  * Stripe appends setup_intent and redirect_status to the return URL. The status in the URL
  * is a hint for what to show first and nothing more. It arrives from the browser, so it is
  * never trusted as the record of what happened: the subscription state comes from the API.
+ *
+ * The reminder this page promises is Stripe's own trial ending email, which Stripe's
+ * documentation says goes seven days before a trial ends, or at once for a trial shorter
+ * than seven days. The service sends no email of its own. The promise holds only while
+ * "Send a reminder email 7 days before a free trial ends" is on in the live account's
+ * Billing settings, which the owner turns on (ruled 8 October 2026). Stripe sends no such
+ * email in a sandbox.
  */
 
 import Link from "next/link";
@@ -44,10 +51,10 @@ export default async function ConfirmedPage({ searchParams }) {
         <h1>Your card is confirmed and your trial has started.</h1>
         {firstPayment ? (
           <p>
-            We take nothing until {firstPayment}. We will email you three days before that.
+            We take nothing until {firstPayment}. We will email you seven days before that.
           </p>
         ) : (
-          <p>We will email you three days before the first payment.</p>
+          <p>We will email you seven days before the first payment.</p>
         )}
         <Link className="btn btn--primary" href="/">
           Continue

@@ -120,6 +120,28 @@ def plans():
 check("GET /v1/billing/plans lists three plans in order", plans)
 
 
+# --- a request the service cannot read answers as a problem whose detail is a sentence
+# (8 October 2026: FastAPI's own answer put an array in detail, which forms render as text)
+def validation_is_a_sentence():
+    r = client.post("/v1/billing/subscription", json={"plan": "gold"})
+    b = r.json()
+    _assert(r.status_code == 422 and b["code"] == "validation_failed", r.text)
+    _assert(isinstance(b["detail"], str) and b["detail"] == "Plan must be one of the choices offered.", b)
+    _assert(b["title"] == "Some details need checking." and b["type"].endswith("/validation_failed"), b)
+    r = client.post("/v1/billing/subscription", json={})
+    _assert(r.status_code == 422 and r.json()["detail"] == "Plan is needed.", r.text)
+check("an unreadable request gets a problem with a sentence, not an array", validation_is_a_sentence)
+
+
+# --- titles are for people; the code stays in code and type
+def titles_are_words():
+    from app.problems import problem_response, TITLES
+    import json as _json
+    body = _json.loads(problem_response(409, "subscription_exists", "x").body)
+    _assert(body["title"] == TITLES[409] and body["code"] == "subscription_exists", body)
+check("a problem's title is words, and its code stays in code", titles_are_words)
+
+
 # --- settlements list
 def settlements_list():
     cols = ["id","tiktok_statement_id","tiktok_payment_id","settlement_reference",
@@ -655,6 +677,9 @@ def _callback_with(shop, written):
     def fake(_account_id):
         yield Writer([])
     connections.tenant = fake
+    # The first read after connecting runs as a background task; recorded, not run.
+    connections._first_sync = lambda shop_id, account_id: written.setdefault("first_sync", []).append(
+        (str(shop_id), str(account_id)))
     return client.get("/v1/connections/tiktok/callback", params={"code": "c", "state": "s"})
 
 
@@ -679,6 +704,8 @@ def callback_connects_a_gb_shop():
     # lasted until 2083 and was never refreshed.
     _assert(written["conn"][4] == datetime(2026, 10, 6, 17, 52, 42, tzinfo=timezone.utc), written["conn"][4])
     _assert(written["conn"][5] == datetime(2125, 9, 5, 17, 6, 31, tzinfo=timezone.utc), written["conn"][5])
+    # The shop is read straight away, once (8 October 2026).
+    _assert(written.get("first_sync") == [(str(SHOP), str(ACCOUNT.id))], written.get("first_sync"))
 check("GET callback connects a GB shop and stores nothing readable", callback_connects_a_gb_shop)
 
 
@@ -687,12 +714,14 @@ def callback_lists_but_refuses_an_unsupported_shop():
     # would lose the authorisation the seller just granted.
     for field, value, reason in [("region", "ID", "region_unsupported"),
                                  ("seller_type", "CROSS_BORDER", "seller_type_unsupported")]:
-        r = _callback_with({**GB_SHOP, field: value}, {})
+        w = {}
+        r = _callback_with({**GB_SHOP, field: value}, w)
         _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
         b = r.json()
         _assert(b["accepted"] is False, b)
         _assert(b["rejection_reason"] == reason, b)
         _assert(b["shop"] is not None, "the shop must still be listed")
+        _assert(not w.get("first_sync"), "an unsupported shop must not be read")
 check("GET callback stores an unsupported shop but marks it not accepted", callback_lists_but_refuses_an_unsupported_shop)
 
 
@@ -1493,6 +1522,87 @@ def real_stripe_objects_read():
         (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
          billing.db.apply_subscription_event) = saved
 check("startTrial and the renewal switch read real stripe-python objects", real_stripe_objects_read)
+
+
+# --- stopping renewal and changing the card from Settings (8 October 2026)
+def renewal_and_card_change():
+    from types import SimpleNamespace as NS
+    import stripe as _stripe_mod
+
+    calls = []
+
+    def real_sub(**over):
+        data = {"object": "subscription", "id": "sub_real", "customer": "cus_real", "status": "trialing",
+                "trial_end": 1792000000, "cancel_at_period_end": False, "metadata": {"plan": "starter"}}
+        data.update(over)
+        return _stripe_mod.Subscription.construct_from(data, "sk_test_x")
+
+    def real_intent(**over):
+        data = {"object": "setup_intent", "id": "seti_9", "customer": "cus_real", "status": "succeeded",
+                "payment_method": "pm_9", "client_secret": "seti_9_secret_z"}
+        data.update(over)
+        return _stripe_mod.SetupIntent.construct_from(data, "sk_test_x")
+
+    intent = {"value": real_intent()}
+
+    class Subs:
+        def update(self, sid, params):
+            calls.append(("sub.update", sid, params))
+            return real_sub(cancel_at_period_end=params.get("cancel_at_period_end", False))
+
+    class Intents:
+        def create(self, params): calls.append(("si.create", params)); return real_intent(status="requires_payment_method")
+        def retrieve(self, sid): calls.append(("si.retrieve", sid)); return intent["value"]
+
+    class Customers:
+        def update(self, cid, params): calls.append(("cus.update", cid, params)); return NS(id=cid)
+
+    state = {"row": {"plan_slug": "starter", "status": "trialing", "stripe_customer_id": "cus_real",
+                     "stripe_subscription_id": "sub_real", "trial_end": None, "current_period_end": None,
+                     "cancel_at_period_end": False}}
+
+    def apply(**kw):
+        state["row"] = dict(state["row"], cancel_at_period_end=kw["cancel_at_period_end"])
+
+    saved = (billing._stripe, billing.db.get_subscription_row, billing.db.apply_subscription_event)
+    billing._stripe = lambda: NS(subscriptions=Subs(), setup_intents=Intents(), customers=Customers())
+    billing.db.get_subscription_row = lambda _a: state["row"]
+    billing.db.apply_subscription_event = apply
+    try:
+        r = client.patch("/v1/billing/subscription", json={"cancel_at_period_end": True})
+        _assert(r.status_code == 200 and r.json()["cancel_at_period_end"] is True, r.text)
+        _assert(calls[-1] == ("sub.update", "sub_real", {"cancel_at_period_end": True}), calls[-1])
+        r = client.patch("/v1/billing/subscription", json={"cancel_at_period_end": False})
+        _assert(r.status_code == 200 and r.json()["cancel_at_period_end"] is False, r.text)
+        _assert(calls[-1][2]["metadata"] == {billing.DELETION_FLAG: ""}, calls[-1])
+
+        r = client.post("/v1/billing/card")
+        _assert(r.status_code == 200 and r.json()["client_secret"] == "seti_9_secret_z", r.text)
+        _assert(calls[-1][1]["customer"] == "cus_real" and calls[-1][1]["usage"] == "off_session", calls[-1])
+
+        n = len(calls)
+        r = client.put("/v1/billing/card", json={"setup_intent_id": "seti_9"})
+        _assert(r.status_code == 200, r.text)
+        _assert(("cus.update", "cus_real", {"invoice_settings": {"default_payment_method": "pm_9"}}) in calls[n:], calls[n:])
+        _assert(("sub.update", "sub_real", {"default_payment_method": "pm_9"}) in calls[n:], calls[n:])
+
+        for bad in (real_intent(customer="cus_other"), real_intent(status="requires_action")):
+            intent["value"] = bad
+            n = len(calls)
+            r = client.put("/v1/billing/card", json={"setup_intent_id": "seti_9"})
+            _assert(r.status_code == 409 and r.json()["code"] == "card_not_confirmed", r.text)
+            _assert(not any(c[0] in ("cus.update", "sub.update") for c in calls[n:]), "nothing may change")
+
+        for row, code in ((None, "no_live_subscription"),
+                          (dict(state["row"], status="canceled"), "no_live_subscription"),
+                          (dict(state["row"], stripe_customer_id="demo_1"), "demo_subscription")):
+            billing.db.get_subscription_row = lambda _a, r_=row: r_
+            n = len(calls)
+            r = client.patch("/v1/billing/subscription", json={"cancel_at_period_end": True})
+            _assert(r.status_code == 409 and r.json()["code"] == code and len(calls) == n, r.text)
+    finally:
+        billing._stripe, billing.db.get_subscription_row, billing.db.apply_subscription_event = saved
+check("renewal can be stopped and restored, and the card changed, only on a live plan", renewal_and_card_change)
 
 
 # --- a deletion stops renewal, and cancelling it restores only what it stopped (7 October 2026)

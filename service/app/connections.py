@@ -46,7 +46,7 @@ from uuid import UUID
 
 import httpx
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -101,10 +101,7 @@ def _config(name: str) -> str:
         # Named rather than generic, because the three are obtained from different places
         # in Partner Center and A23.2 records that service_id and app_key are routinely
         # confused for each other.
-        raise Problem(
-            503, "tiktok_unconfigured",
-            "Connecting a TikTok shop is not configured on this deployment.",
-        )
+        raise Problem(503, "tiktok_unconfigured", "Connecting a TikTok shop is not available just now. Nothing has changed on your account or your shop. Please try again later.")
     return value
 
 
@@ -320,21 +317,25 @@ def _encrypt(value: str) -> bytes:
     """
     raw = os.environ.get("TIKTOK_TOKEN_KEY")
     if not raw:
-        raise Problem(
-            503, "token_encryption_unconfigured",
-            "Connecting a shop is not available on this deployment.",
-        )
+        raise Problem(503, "token_encryption_unconfigured", "Connecting a TikTok shop is not available just now. Nothing has changed on your account or your shop. Please try again later.")
     key = base64.b64decode(raw)
     if len(key) != 32:
-        raise Problem(
-            503, "token_encryption_unconfigured",
-            "Connecting a shop is not available on this deployment.",
-        )
+        raise Problem(503, "token_encryption_unconfigured", "Connecting a TikTok shop is not available just now. Nothing has changed on your account or your shop. Please try again later.")
     nonce = secrets.token_bytes(12)
     return nonce + AESGCM(key).encrypt(nonce, value.encode("utf-8"), None)
 
 
 KEY_VERSION = 1
+
+
+def _first_sync(shop_id, account_id) -> None:
+    """The first read of a newly connected shop, run as a background task. The same refresh
+    and sync the daily run does (tiktok_sync.run_one), which records each domain in sync_runs
+    and never raises. Replaced in the smoke test."""
+    from .tiktok_sync import run_one
+
+    result = run_one(shop_id, account_id)
+    log.warning("first sync after connection: %s", result)
 
 
 class ConnectionResultOut(BaseModel):
@@ -348,6 +349,7 @@ class ConnectionResultOut(BaseModel):
 def tiktok_callback(
     code: Annotated[str, Query()],
     state: Annotated[str, Query()],
+    background: BackgroundTasks,
 ) -> ConnectionResultOut:
     """Receive the seller back from TikTok. Traces CON-1.
 
@@ -463,6 +465,13 @@ def tiktok_callback(
     # Names and codes only, never a token or a cipher, so the log says which shops came back.
     log.warning("tiktok callback stored %d shop(s): %s", len(results),
              ", ".join(f"{s.get('code')} {s.get('name')} {r} {t}" for s, _, r, t, _ in results))
+
+    # Each accepted shop is read straight away, after the answer is sent, rather than at the
+    # next daily run. Until 8 October 2026 the connection screen said "We are reading your
+    # orders, returns and payouts now" while nothing was read until 05:47 UTC the next day.
+    for _shop, accepted_id, _region, _type, reason in results:
+        if reason is None:
+            background.add_task(_first_sync, accepted_id, account_id)
 
     # The contract returns one shop. It is the first accepted one, or the first if none is.
     shop, shop_id, region, seller_type, rejection_reason = next(

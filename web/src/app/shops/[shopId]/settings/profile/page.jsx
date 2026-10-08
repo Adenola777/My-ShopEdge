@@ -4,15 +4,17 @@
  * getSubscription, and gathers the things that belong to the account rather than to a shop:
  * changing plan, signing out and deleting the account.
  *
- * The name and email come from the sign-in provider, so nothing here edits them. Changing
- * the card is not offered, because the contract has no operation for it (as S38 says). A
- * value whose request fails is shown as not available rather than guessed.
+ * The name and email come from the sign-in provider, so nothing here edits them. Since
+ * 8 October 2026 a live plan also shows PlanControls, which stops or restores renewal through
+ * updateSubscription and links to /billing/card for a new card. A value whose request fails
+ * is shown as not available rather than guessed.
  */
 
 import Link from "next/link";
 import { api, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { chipClass } from "@/lib/terms";
+import { PlanControls } from "@/components/PlanControls";
 
 export const metadata = { title: "Profile and plan" };
 
@@ -98,6 +100,7 @@ export default async function ProfilePage({ params }) {
           {sub?.status === "past_due" ? (
             <p><Link className="btn btn--primary btn--block" href="/billing/payment-failed">See what happened</Link></p>
           ) : null}
+          {sub && ["trialing", "active", "past_due"].includes(sub.status) ? <PlanControls sub={sub} /> : null}
         </div>
 
         <p><a className="btn btn--quiet btn--block" href="/handler/sign-out" data-testid="profile-sign-out">Sign out</a></p>

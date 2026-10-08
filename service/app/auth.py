@@ -142,11 +142,11 @@ def _jwks_client() -> jwt.PyJWKClient:
     """
     url = os.environ.get("NEON_AUTH_JWKS_URL")
     if not url:
-        raise Problem(
-            503, "auth_unconfigured",
-            "Authentication is not configured. Set NEON_AUTH_JWKS_URL to the jwks_url "
-            "from the project's Neon Auth configuration.",
-        )
+        # The operator's fix goes to the log; the seller reads what it means for them.
+        _log.error(
+            "auth_unconfigured: set NEON_AUTH_JWKS_URL to the jwks_url from the project's "
+            "Neon Auth configuration")
+        raise Problem(503, "auth_unconfigured", "Signing in is not available just now. Nothing on your account has changed. Please try again later.")
     # The client caches the keys and refetches when it meets a key id it does not hold,
     # which is what makes provider key rotation a non-event.
     return jwt.PyJWKClient(url, cache_keys=True, lifespan=600)
@@ -202,8 +202,9 @@ def _reviewer_public_key():
     try:
         return jwt.algorithms.ECAlgorithm.from_jwk(raw)
     except Exception as exc:  # a malformed key must not silently disable auth
-        raise Problem(503, "auth_unconfigured",
-                      "REVIEWER_JWT_PUBLIC_JWK is set but is not a valid ES256 public JWK.") from exc
+        _log.error(
+            "auth_unconfigured: REVIEWER_JWT_PUBLIC_JWK is set but is not a valid ES256 public JWK")
+        raise Problem(503, "auth_unconfigured", "Signing in is not available just now. Nothing on your account has changed. Please try again later.") from exc
 
 
 def _verify_reviewer(token: str) -> dict | None:
@@ -258,11 +259,9 @@ def verify(token: str) -> dict:
     issuer = os.environ.get("NEON_AUTH_ISSUER")
     if not audience or not issuer:
         _log_claims_to_configure(token, signing_key.key)
-        raise Problem(
-            503, "auth_unconfigured",
-            "Authentication is not configured. Set NEON_AUTH_AUDIENCE and "
-            "NEON_AUTH_ISSUER from a real token's aud and iss claims.",
-        )
+        # _log_claims_to_configure has told the operator what to set, and only for a token
+        # whose signature verified, so a forged token leaves nothing in the log.
+        raise Problem(503, "auth_unconfigured", "Signing in is not available just now. Nothing on your account has changed. Please try again later.")
 
     try:
         return jwt.decode(

@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, formatDate, formatMoney } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
 
@@ -348,24 +348,58 @@ export function UploadFlow({ shopId }) {
 // ---------------------------------------------------------------------------------- S23 and S31
 
 /**
+ * Fetches a fresh signed link for a ready file and follows it. A link lives fifteen minutes,
+ * so one taken when the screen opened can be dead by the time the seller clicks; asking the
+ * single read at the click means the button works however long the screen sat open.
+ * Added 8 October 2026.
+ *
+ * @param {string} path  The job's single read, getExport or getAccountExport.
+ * @returns {Promise<string | null>}  An error to show, or null when the download began.
+ */
+async function openFile(path) {
+  const r = await api(path, { cache: "no-store" });
+  if (r.ok && r.data?.status === "ready" && r.data.download_url) {
+    window.location.assign(r.data.download_url);
+    return null;
+  }
+  if (r.ok && r.data?.status === "expired") return "This file has expired. Build it again at no cost.";
+  return r.unreachable ? "MyShopEdge could not be reached, so the file did not download." : "The file could not be fetched. Please try again.";
+}
+
+/** @param {{ path: string, label?: string, testId?: string }} props */
+function DownloadButton({ path, label = "Download", testId = "download" }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
+  return (
+    <>
+      <button className="btn btn--primary btn--block" disabled={busy} data-testid={testId}
+        onClick={async () => { setBusy(true); setError(null); setError(await openFile(path)); setBusy(false); }}>
+        {busy ? "Getting the file" : label}
+      </button>
+      {error && <span className="form-error" role="alert">{error}</span>}
+    </>
+  );
+}
+
+/**
  * Polls a job until it leaves `queued`, then offers the file. Shared by S23 and S31, because
  * A3 S31 says the data download "reuses the export flow rather than defining a second one".
  *
- * @param {{ path: string, job: any, onReset: () => void }} props
+ * @param {{ path: string, job: any, onReset: () => void, onSettled?: () => void }} props
  */
-function JobStatus({ path, job: first, onReset }) {
+function JobStatus({ path, job: first, onReset, onSettled }) {
   const [job, setJob] = useState(first);
   useEffect(() => {
-    if (job.status !== "queued") return;
+    if (job.status !== "queued") { onSettled?.(); return; }
     const t = setTimeout(async () => {
       const r = await api(path, { cache: "no-store" });
       if (r.ok) setJob(r.data);
     }, 1500);
     return () => clearTimeout(t);
-  }, [job, path]);
+  }, [job, path, onSettled]);
 
   if (job.status === "queued") {
-    return <p className="note" role="status" data-testid="job-queued">Building your file. You can leave this screen and come back.</p>;
+    return <p className="note" role="status" data-testid="job-queued">Building your file. You can leave this screen and come back: the file will be in the list below.</p>;
   }
   if (job.status === "failed") {
     return (
@@ -389,10 +423,66 @@ function JobStatus({ path, job: first, onReset }) {
         {job.size_bytes != null && <li><span>Size</span><strong>{(job.size_bytes / 1024).toFixed(1)} KB</strong></li>}
         {job.row_count != null && <li><span>Rows</span><strong>{job.row_count}</strong></li>}
         {job.ready_at && <li><span>Built</span><strong>{formatDate(job.ready_at)}</strong></li>}
-        {job.expires_at && <li><span>Link works until</span><strong>{formatDate(job.expires_at)}</strong></li>}
+        {job.expires_at && <li><span>Kept until</span><strong>{formatDate(job.expires_at)}</strong></li>}
       </ul>
-      <p><a className="btn btn--primary btn--block" href={job.download_url} data-testid="download">Download</a></p>
-      <p className="footnote">The file lasts seven days. After that it can be built again at no cost.</p>
+      <p><DownloadButton path={path} /></p>
+      <p className="footnote">We keep the file for seven days. After that it can be built again at no cost.</p>
+      <p><button className="btn btn--quiet btn--block" onClick={onReset}>Build another file</button></p>
+    </div>
+  );
+}
+
+/** @type {Record<string, string>} */
+const JOB_STATE = { queued: "Being built", ready: "Ready", failed: "Could not be built", expired: "Expired" };
+
+/**
+ * The recent files, from listExports or listAccountExports, so a seller who left the screen
+ * can come back to one. Added 8 October 2026. A list carries no link, so each Download asks
+ * the single read for a fresh one, which also builds a job left queued by a restart.
+ *
+ * @param {{ listPath: string, itemPath: (id: string) => string, describe: (job: any) => string, version: number }} props
+ */
+function RecentFiles({ listPath, itemPath, describe, version }) {
+  const [jobs, setJobs] = useState(/** @type {any[] | null} */ (null));
+  const [failed, setFailed] = useState(false);
+  const [checks, setChecks] = useState(0);
+  useEffect(() => {
+    let live = true;
+    api(listPath, { cache: "no-store" }).then((r) => {
+      if (!live) return;
+      setFailed(!r.ok);
+      if (r.ok) setJobs(r.data.exports);
+    });
+    return () => { live = false; };
+  }, [listPath, version, checks]);
+
+  if (failed) return <p className="muted" data-testid="recent-files-error">Your earlier files cannot be shown just now.</p>;
+  if (!jobs || jobs.length === 0) return null;
+  return (
+    <div className="card" data-testid="recent-files">
+      <h2>Your recent files</h2>
+      <ul className="rows">
+        {jobs.map((job) => (
+          <li key={job.id} data-testid="recent-file">
+            <span>
+              {describe(job)}
+              <br />
+              <span className="muted">Asked for {formatDate(job.requested_at)}. {JOB_STATE[job.status] ?? job.status}.</span>
+            </span>
+            {job.status === "ready" ? (
+              <span><DownloadButton path={itemPath(job.id)} testId="recent-download" /></span>
+            ) : job.status === "queued" ? (
+              <span>
+                <button className="btn btn--quiet" data-testid="recent-check"
+                  onClick={async () => { await api(itemPath(job.id), { cache: "no-store" }); setChecks((n) => n + 1); }}>
+                  Check again
+                </button>
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <p className="footnote">Files are kept for seven days and then expire. An expired file can be built again at no cost.</p>
     </div>
   );
 }
@@ -401,6 +491,9 @@ function JobStatus({ path, job: first, onReset }) {
 function iso({ date }) {
   return date.toISOString().slice(0, 10);
 }
+
+/** @type {Record<string, string>} */
+const KINDS = { month_summary: "Month summary", ledger: "Ledger, every entry", transactions: "Transactions, one row per order line" };
 
 /** @param {{ shopId: string, today: string }} props */
 export function ExportForm({ shopId, today }) {
@@ -423,6 +516,8 @@ export function ExportForm({ shopId, today }) {
   const [job, setJob] = useState(/** @type {any} */ (null));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [version, setVersion] = useState(0);
+  const settled = useCallback(() => setVersion((n) => n + 1), []);
 
   const range = period === "custom" ? [from, to] : /** @type {any} */ (periods)[period].slice(1);
 
@@ -436,18 +531,28 @@ export function ExportForm({ shopId, today }) {
     setBusy(false);
     if (!r.ok) { setError(failure(r, "The export did not start.")); return; }
     setJob(r.data);
+    setVersion((n) => n + 1);
   }
 
+  const shopPath = `/shops/${encodeURIComponent(shopId)}/exports`;
+  const recent = (
+    <RecentFiles listPath={shopPath} itemPath={(id) => `${shopPath}/${id}`} version={version}
+      describe={(j) => `${KINDS[j.kind] ?? j.kind}, ${j.period_start} to ${j.period_end}, ${j.basis} basis, ${j.format === "xlsx" ? "Excel" : "CSV"}`} />
+  );
   if (job) {
-    return <JobStatus path={`/shops/${encodeURIComponent(shopId)}/exports/${job.id}`} job={job} onReset={() => setJob(null)} />;
+    return (
+      <div className="stack">
+        <JobStatus path={`${shopPath}/${job.id}`} job={job} onReset={() => setJob(null)} onSettled={settled} />
+        {recent}
+      </div>
+    );
   }
-  const kinds = { month_summary: "Month summary", ledger: "Ledger, every entry", transactions: "Transactions, one row per order line" };
   return (
     <div className="stack" data-testid="export-form">
       <div>
         <label htmlFor="kind">What to export</label>
         <select id="kind" value={kind} onChange={(e) => setKind(e.target.value)} data-testid="kind">
-          {Object.entries(kinds).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          {Object.entries(KINDS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
         </select>
       </div>
       <div>
@@ -480,6 +585,7 @@ export function ExportForm({ shopId, today }) {
       <p className="note">The file covers {range[0]} to {range[1]} on the {basis} basis, and its totals equal the screen for the same period.</p>
       {error && <p className="form-error" role="alert">{error}</p>}
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-export">{busy ? "Starting" : "Build the file"}</button></p>
+      {recent}
     </div>
   );
 }
@@ -488,6 +594,12 @@ export function DataDownload() {
   const [job, setJob] = useState(/** @type {any} */ (null));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [version, setVersion] = useState(0);
+  const settled = useCallback(() => setVersion((n) => n + 1), []);
+  const recent = (
+    <RecentFiles listPath="/me/export" itemPath={(id) => `/me/export/${id}`} version={version}
+      describe={() => "All your data, as CSV and JSON in one zip file"} />
+  );
 
   async function start() {
     setBusy(true);
@@ -496,13 +608,22 @@ export function DataDownload() {
     setBusy(false);
     if (!r.ok) { setError(failure(r, "The download did not start.")); return; }
     setJob(r.data);
+    setVersion((n) => n + 1);
   }
 
-  if (job) return <JobStatus path={`/me/export/${job.id}`} job={job} onReset={() => setJob(null)} />;
+  if (job) {
+    return (
+      <div className="stack">
+        <JobStatus path={`/me/export/${job.id}`} job={job} onReset={() => setJob(null)} onSettled={settled} />
+        {recent}
+      </div>
+    );
+  }
   return (
     <div className="stack">
       {error && <p className="form-error" role="alert">{error}</p>}
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-download">{busy ? "Starting" : "Prepare my data"}</button></p>
+      {recent}
     </div>
   );
 }

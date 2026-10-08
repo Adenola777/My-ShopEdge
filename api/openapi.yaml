@@ -172,6 +172,34 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
   /me/export:
+    get:
+      tags:
+      - Account
+      summary: The account's recent data downloads
+      description: |
+        Added on 8 October 2026, because the download screen said a seller could leave and
+        come back, and nothing listed a download once the screen was left. Returns the
+        twenty most recent downloads, newest first. A download whose seven days have passed
+        reads `expired`. `download_url` is always absent here, because a signed link lives
+        fifteen minutes and a list can sit open longer than that: getAccountExport gives a
+        fresh link.
+      operationId: listAccountExports
+      responses:
+        '200':
+          description: The downloads
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - exports
+                properties:
+                  exports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExportJob'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
     post:
       tags:
       - Account
@@ -1306,6 +1334,38 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
   /shops/{shopId}/exports:
+    get:
+      tags:
+      - Exports
+      summary: The shop's recent exports
+      description: |
+        Added on 8 October 2026, because the export screen said a seller could leave and
+        come back, and nothing listed an export once the screen was left. Returns the
+        twenty most recent exports of the shop, newest first. An export whose seven days
+        have passed reads `expired`. `download_url` is always absent here, because a signed
+        link lives fifteen minutes and a list can sit open longer than that: getExport gives
+        a fresh link.
+      operationId: listExports
+      parameters:
+      - $ref: '#/components/parameters/ShopId'
+      responses:
+        '200':
+          description: The exports
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - exports
+                properties:
+                  exports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShopExportJob'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenShop'
     post:
       tags:
       - Exports
@@ -2620,6 +2680,121 @@ paths:
             refused: the same subscription is returned, so the seller can finish confirming
             the card. Added 29 September 2026, when a second request was found to start a
             second subscription at Stripe.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    patch:
+      operationId: updateSubscription
+      summary: Stop the plan renewing, or turn renewal back on
+      description: |
+        Sets whether the subscription ends at the close of the trial or period under way.
+        Stopping renewal during a trial means the first payment is never taken. Nothing is
+        refunded. Added 8 October 2026, when the billing screens told sellers they could
+        cancel in Settings and Settings had no way to.
+
+        Refused with 409 when the account has no live subscription, and with 403
+        `account_closing` while a deletion is pending, because the deletion already
+        decides renewal (A30.1).
+      tags:
+      - Billing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - cancel_at_period_end
+              properties:
+                cancel_at_period_end:
+                  type: boolean
+      responses:
+        '200':
+          description: The subscription as it now stands
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: A deletion is pending, so renewal is already decided
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The account has no live subscription to change
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /billing/card:
+    post:
+      operationId: startCardChange
+      summary: Start replacing the card the plan charges
+      description: |
+        Creates a SetupIntent for the account's Stripe customer and returns its client
+        secret. The browser confirms it, which is where the bank may ask the seller to
+        approve the card, and then calls setCard. Nothing is charged.
+      tags:
+      - Billing
+      responses:
+        '200':
+          description: The client secret to confirm in the browser
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - client_secret
+                properties:
+                  client_secret:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The account has no live subscription
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    put:
+      operationId: setCard
+      summary: Make a confirmed card the one the plan charges
+      description: |
+        Takes the SetupIntent the browser confirmed, checks that it belongs to this
+        account's customer and succeeded, and makes its card the default for the
+        customer and the subscription.
+      tags:
+      - Billing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - setup_intent_id
+              properties:
+                setup_intent_id:
+                  type: string
+      responses:
+        '200':
+          description: The subscription as it now stands
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The card check did not finish, or belongs to another customer
           content:
             application/problem+json:
               schema:
