@@ -181,6 +181,23 @@ Neon's sample table `playing_with_neon`. Its closing check raises if either role
 table right or a SECURITY DEFINER function. The product never uses the Data API: the front
 end calls the service and the service connects as `mse_app`. Do not switch it back on.
 
+**It was found switched on again on 8 October 2026**, and nobody has established when or how.
+Neon's API answered `status: active` for production's Data API, serving `public` with
+`anonymous` as the anonymous role. It had re-created the default privileges on `mse_migrator`,
+given `authenticated` SELECT, INSERT, UPDATE and DELETE on 42 tables in `public`, and EXECUTE on
+all nine SECURITY DEFINER functions, including `create_subscription`, `apply_subscription_event`
+and `accounts_due_for_erasure`. Development and staging had no Data API. It came to light only
+because 0028's closing check refused to apply on production. With the owner's approval it was
+deleted through Neon's API the same day (`DELETE /projects/super-mouse-64697125/branches/
+br-plain-sea-zaphlsmw/data-api/myshopedge`, after which a GET answered "data api not found"),
+and migration 0029 repeated 0024's revocations and closing check. Queried afterwards on
+production: 30 migrations recorded, and `authenticated` and `anonymous` hold no table right, can
+call no SECURITY DEFINER function, and are granted nothing by default. To check it at any time,
+a GET on that path answers 404 when the Data API is off. Turning row level security on for
+`reference_rules` and `schema_migrations` is not the answer to the console's warning: the
+service reads `reference_rules` as `mse_app` with no policy, so RLS there would hide every tax
+rule.
+
 ## Faults that cost real time, so they are not repeated
 
 Each of these was found by running something, and each survived reading.
@@ -365,8 +382,12 @@ was done. The email is in the owner's inbox.
    contract, auth and smoke tests, ruff, and 0028 applied on a local PostgreSQL 16 where the
    de-duplication, the shop resolution and the grants behaved as designed. **Unverified**: the
    payload field names, because TikTok's payload schema is not in the repository, and the real
-   data-update behaviour, because no real TikTok event has reached the receiver yet. 0028 is
-   **not yet applied to any Neon branch**, which is the owner's authority. The owner sets the
+   data-update behaviour, because no real TikTok event has reached the receiver yet. 0028 was
+   **applied on 8 October 2026** with the owner's authority, to development and then
+   production, each in one transaction with its record and the file's SHA-256, over Neon's
+   SQL-over-HTTPS endpoint. Production refused it at first, because its closing check found
+   the Data API role granted on the new table; see the Data API section. It is not on staging,
+   which also lacks 0026 and 0027. The owner sets the
    webhook URL `https://my-shopedge-1.onrender.com/v1/webhooks/tiktok` and the topics in
    Partner Center; the receiver uses the `TIKTOK_APP_KEY` and `TIKTOK_APP_SECRET` already on the
    service.
