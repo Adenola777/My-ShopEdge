@@ -243,7 +243,7 @@ def set_renewal_for_deletion(account_id, closing: bool) -> str:
 
     client = _stripe()
     try:
-        sub = client.subscriptions.retrieve(row["stripe_subscription_id"])
+        sub = _plain(client.subscriptions.retrieve(row["stripe_subscription_id"]))
         flagged = (sub.get("metadata") or {}).get(DELETION_FLAG) == "true"
         if closing and not sub.get("cancel_at_period_end"):
             params = {"cancel_at_period_end": True, "metadata": {DELETION_FLAG: "true"}}
@@ -355,7 +355,7 @@ async def stripe_webhook(request: Request, stripe_signature: Annotated[str | Non
         raise Problem(400, "signature_invalid", "The signature did not verify.") from exc
 
     etype = event["type"]
-    obj = event["data"]["object"]
+    obj = _plain(event["data"]["object"])
 
     try:
         if etype in {
@@ -465,8 +465,20 @@ def _sub_periods(sub) -> tuple[datetime | None, datetime | None]:
     return _dt(start), _dt(end)
 
 
+def _plain(obj):
+    """A Stripe object as a plain dict, so the readers below can use `.get`.
+
+    Found 8 October 2026 by the first trial start to reach Stripe with a valid key: in
+    stripe-python 16 a StripeObject is not a dict, and `sub.get("customer")` raised, so every
+    trial start failed after Stripe had created the subscription. `to_dict()` converts nested
+    objects too. Anything else, such as the stand-ins in the smoke test, is returned as is.
+    """
+    return obj.to_dict() if isinstance(obj, stripe.StripeObject) else obj
+
+
 def _apply_stripe_subscription(sub) -> None:
     """Writes a Stripe subscription's current state through the one write path."""
+    sub = _plain(sub)
     customer = sub.get("customer")
     if isinstance(customer, dict):
         customer = customer.get("id")

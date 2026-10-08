@@ -1442,6 +1442,59 @@ def stripe_refusal_logged():
 check("a Stripe refusal is logged with its step, type, code and request id", stripe_refusal_logged)
 
 
+# --- real Stripe objects reach the readers (8 October 2026: stripe-python 16 objects have no
+# .get, the stand-ins above did, and every live trial start failed after Stripe had made it)
+def real_stripe_objects_read():
+    from types import SimpleNamespace as NS
+    import stripe as _stripe_mod
+
+    def real_sub(**over):
+        data = {"object": "subscription", "id": "sub_real", "customer": "cus_real",
+                "status": "incomplete", "trial_end": 1792000000, "cancel_at_period_end": False,
+                "metadata": {"plan": "starter", "account_id": "a"},
+                "items": {"object": "list", "data": [{"object": "subscription_item",
+                          "price": {"object": "price", "id": "price_test"},
+                          "current_period_start": 1790000000, "current_period_end": 1792000000}]},
+                "pending_setup_intent": {"object": "setup_intent", "id": "seti_1",
+                                         "client_secret": "seti_1_secret_x"}}
+        data.update(over)
+        return _stripe_mod.Subscription.construct_from(data, "sk_test_x")
+
+    written = []
+
+    class Subs:
+        def create(self, params, options=None): return real_sub()
+        def list(self, params): return NS(data=[])
+        def retrieve(self, sid): return real_sub(status="trialing")
+        def update(self, sid, params): return real_sub(status="trialing", **params)
+
+    class Customers:
+        def search(self, params): return NS(data=[])
+        def create(self, params, options=None): return NS(id="cus_real")
+
+    os.environ["STRIPE_PRICE_STARTER"] = "price_test"
+    saved = (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
+             billing.db.apply_subscription_event)
+    billing._stripe = lambda: NS(subscriptions=Subs(), customers=Customers())
+    billing.db.create_subscription_row = lambda *a: None
+    billing.db.apply_subscription_event = lambda **kw: written.append(kw)
+    try:
+        billing.db.get_subscription_row = lambda _a: None
+        r = client.post("/v1/billing/subscription", json={"plan": "starter"})
+        _assert(r.status_code == 200 and r.json()["client_secret"] == "seti_1_secret_x", r.text)
+        w = written[-1]
+        _assert(w["stripe_customer_id"] == "cus_real" and w["plan_slug"] == "starter"
+                and w["status"] == "incomplete" and w["period_end"] is not None, w)
+
+        billing.db.get_subscription_row = lambda _a: {"status": "trialing", "stripe_customer_id": "cus_real",
+                                                      "stripe_subscription_id": "sub_real"}
+        _assert(billing.set_renewal_for_deletion(ACCOUNT.id, True) == "stopped", "renewal")
+    finally:
+        (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
+         billing.db.apply_subscription_event) = saved
+check("startTrial and the renewal switch read real stripe-python objects", real_stripe_objects_read)
+
+
 # --- a deletion stops renewal, and cancelling it restores only what it stopped (7 October 2026)
 def renewal_follows_deletion():
     from types import SimpleNamespace as NS
