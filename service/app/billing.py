@@ -322,6 +322,10 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
         if refreshed is not None:
             row = refreshed
 
+    return _subscription_out(row)
+
+
+def _subscription_out(row: dict) -> SubscriptionOut:
     status = row["status"]
     return SubscriptionOut(
         status="none" if status == "incomplete" else status,
@@ -331,6 +335,115 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
         card_last4=None,
         cancel_at_period_end=bool(row["cancel_at_period_end"]),
     )
+
+
+# --- stopping renewal and changing the card (8 October 2026) ----------------------------------
+#
+# The billing screens told sellers they could cancel and change the card "in Settings", and
+# Settings had neither. The owner chose on 8 October to build both in the app rather than use
+# Stripe's hosted portal. **Unverified against Stripe**: only the live account is reachable,
+# so these have run against stand-in clients in the smoke test only.
+
+
+class RenewalRequest(BaseModel):
+    cancel_at_period_end: bool
+
+
+class CardSetupOut(BaseModel):
+    client_secret: str
+
+
+class CardSetRequest(BaseModel):
+    setup_intent_id: str
+
+
+def _live_row(account_id) -> dict:
+    """The account's live subscription row, or a 409 that says nothing was changed."""
+    row = db.get_subscription_row(account_id)
+    if row is None or row["status"] not in LIVE or not row.get("stripe_subscription_id"):
+        raise Problem(409, "no_live_subscription",
+                      "This account has no plan running, so nothing was changed.")
+    # The demo shop's plan was written straight into the database (testdata/load_demo.py);
+    # Stripe has never heard of it.
+    if str(row.get("stripe_customer_id") or "").startswith("demo_"):
+        raise Problem(409, "demo_subscription",
+                      "This is the demo shop's sample plan, so it cannot be changed.")
+    return row
+
+
+@router.patch("/billing/subscription", response_model=SubscriptionOut,
+              summary="Stop the plan renewing, or turn renewal back on")
+def update_subscription(
+    body: RenewalRequest,
+    account: Annotated[Account, Depends(require_account)],
+) -> SubscriptionOut:
+    row = _live_row(account.id)
+    params: dict = {"cancel_at_period_end": body.cancel_at_period_end}
+    if not body.cancel_at_period_end:
+        # A seller turning renewal back on owns the choice from now, so a flag a deletion
+        # left is cleared. Stripe removes a metadata key that is set to an empty string.
+        params["metadata"] = {DELETION_FLAG: ""}
+    try:
+        sub = _stripe().subscriptions.update(row["stripe_subscription_id"], params=params)
+    except stripe.StripeError as exc:
+        _log_stripe_error(account.id, "update_subscription", exc)
+        raise Problem(502, "stripe_error",
+                      "We could not reach our payment provider, so nothing was changed. "
+                      "Please try again in a moment.") from exc
+    _apply_stripe_subscription(sub)
+    return _subscription_out(db.get_subscription_row(account.id))
+
+
+@router.post("/billing/card", response_model=CardSetupOut,
+             summary="Start replacing the card the plan charges")
+def start_card_change(account: Annotated[Account, Depends(require_account)]) -> CardSetupOut:
+    row = _live_row(account.id)
+    try:
+        intent = _stripe().setup_intents.create(params={
+            "customer": row["stripe_customer_id"],
+            "usage": "off_session",
+            "metadata": {"account_id": str(account.id), "purpose": "card_change"},
+        })
+    except stripe.StripeError as exc:
+        _log_stripe_error(account.id, "start_card_change", exc)
+        raise Problem(502, "stripe_error",
+                      "We could not reach our payment provider, so your card was not changed. "
+                      "Please try again in a moment.") from exc
+    return CardSetupOut(client_secret=intent.client_secret)
+
+
+@router.put("/billing/card", response_model=SubscriptionOut,
+            summary="Make a confirmed card the one the plan charges")
+def set_card(
+    body: CardSetRequest,
+    account: Annotated[Account, Depends(require_account)],
+) -> SubscriptionOut:
+    row = _live_row(account.id)
+    client = _stripe()
+    try:
+        intent = _plain(client.setup_intents.retrieve(body.setup_intent_id))
+        # The intent must be this account's own, and the bank must have finished with it.
+        # Another customer's intent is refused with the same words as an unfinished one, so
+        # the answer says nothing about intents that are not this seller's.
+        method = intent.get("payment_method")
+        if isinstance(method, dict):
+            method = method.get("id")
+        if (intent.get("customer") != row["stripe_customer_id"]
+                or intent.get("status") != "succeeded" or not method):
+            raise Problem(409, "card_not_confirmed",
+                          "That card was not confirmed, so the card on your plan is unchanged. "
+                          "Please try again.")
+        client.customers.update(row["stripe_customer_id"], params={
+            "invoice_settings": {"default_payment_method": method}})
+        sub = client.subscriptions.update(row["stripe_subscription_id"], params={
+            "default_payment_method": method})
+    except stripe.StripeError as exc:
+        _log_stripe_error(account.id, "set_card", exc)
+        raise Problem(502, "stripe_error",
+                      "We could not reach our payment provider, so your card was not changed. "
+                      "Please try again in a moment.") from exc
+    _apply_stripe_subscription(sub)
+    return _subscription_out(db.get_subscription_row(account.id))
 
 
 @router.post("/webhooks/stripe", summary="Stripe events", include_in_schema=True)

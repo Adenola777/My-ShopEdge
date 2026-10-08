@@ -2626,6 +2626,121 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+    patch:
+      operationId: updateSubscription
+      summary: Stop the plan renewing, or turn renewal back on
+      description: |
+        Sets whether the subscription ends at the close of the trial or period under way.
+        Stopping renewal during a trial means the first payment is never taken. Nothing is
+        refunded. Added 8 October 2026, when the billing screens told sellers they could
+        cancel in Settings and Settings had no way to.
+
+        Refused with 409 when the account has no live subscription, and with 403
+        `account_closing` while a deletion is pending, because the deletion already
+        decides renewal (A30.1).
+      tags:
+      - Billing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - cancel_at_period_end
+              properties:
+                cancel_at_period_end:
+                  type: boolean
+      responses:
+        '200':
+          description: The subscription as it now stands
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: A deletion is pending, so renewal is already decided
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The account has no live subscription to change
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /billing/card:
+    post:
+      operationId: startCardChange
+      summary: Start replacing the card the plan charges
+      description: |
+        Creates a SetupIntent for the account's Stripe customer and returns its client
+        secret. The browser confirms it, which is where the bank may ask the seller to
+        approve the card, and then calls setCard. Nothing is charged.
+      tags:
+      - Billing
+      responses:
+        '200':
+          description: The client secret to confirm in the browser
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - client_secret
+                properties:
+                  client_secret:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The account has no live subscription
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    put:
+      operationId: setCard
+      summary: Make a confirmed card the one the plan charges
+      description: |
+        Takes the SetupIntent the browser confirmed, checks that it belongs to this
+        account's customer and succeeded, and makes its card the default for the
+        customer and the subscription.
+      tags:
+      - Billing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - setup_intent_id
+              properties:
+                setup_intent_id:
+                  type: string
+      responses:
+        '200':
+          description: The subscription as it now stands
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The card check did not finish, or belongs to another customer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /webhooks/stripe:
     post:
       operationId: receiveStripeWebhook

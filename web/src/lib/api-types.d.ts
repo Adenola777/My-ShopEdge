@@ -1275,6 +1275,45 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Stop the plan renewing, or turn renewal back on
+         * @description Sets whether the subscription ends at the close of the trial or period under way.
+         *     Stopping renewal during a trial means the first payment is never taken. Nothing is
+         *     refunded. Added 8 October 2026, when the billing screens told sellers they could
+         *     cancel in Settings and Settings had no way to.
+         *
+         *     Refused with 409 when the account has no live subscription, and with 403
+         *     `account_closing` while a deletion is pending, because the deletion already
+         *     decides renewal (A30.1).
+         */
+        patch: operations["updateSubscription"];
+        trace?: never;
+    };
+    "/billing/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Make a confirmed card the one the plan charges
+         * @description Takes the SetupIntent the browser confirmed, checks that it belongs to this
+         *     account's customer and succeeded, and makes its card the default for the
+         *     customer and the subscription.
+         */
+        put: operations["setCard"];
+        /**
+         * Start replacing the card the plan charges
+         * @description Creates a SetupIntent for the account's Stripe customer and returns its client
+         *     secret. The browser confirms it, which is where the bank may ask the seller to
+         *     approve the card, and then calls setCard. Nothing is charged.
+         */
+        post: operations["startCardChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -1296,6 +1335,33 @@ export interface paths {
          *     Delivery is at least once, so every handler is idempotent on the event id.
          */
         post: operations["receiveStripeWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/tiktok": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * TikTok Shop events
+         * @description Authenticated by the webhook signature in the Authorization header rather
+         *     than by a bearer token, which is why the security requirement is empty. The
+         *     signature is HMAC-SHA256 of the app key followed by the raw body, keyed by the
+         *     app secret, compared as lowercase hex. The receiver acknowledges with 200 within
+         *     three seconds and processes the event in the background, so an order, return or
+         *     product event triggers a scoped sync of that shop, a seller deauthorisation
+         *     disconnects the shop, and an upcoming authorisation expiry marks it for reconnect.
+         *     Delivery is at least once, so every event is de-duplicated on its notification id.
+         */
+        post: operations["receiveTikTokWebhook"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4522,6 +4588,121 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    updateSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    cancel_at_period_end: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The subscription as it now stands */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description A deletion is pending, so renewal is already decided */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The account has no live subscription to change */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    setCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    setup_intent_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The subscription as it now stands */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description The card check did not finish, or belongs to another customer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    startCardChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The client secret to confirm in the browser */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        client_secret: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description The account has no live subscription */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     receiveStripeWebhook: {
         parameters: {
             query?: never;
@@ -4550,6 +4731,35 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
+            };
+        };
+    };
+    receiveTikTokWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Received */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The signature did not verify */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
