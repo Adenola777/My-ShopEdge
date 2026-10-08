@@ -46,14 +46,47 @@ const SET_LABEL = {
  */
 function describe(value) {
   if (value && typeof value === "object") {
-    const v = /** @type {{ label?: string, amount_minor?: number, currency?: string }} */ (value);
+    const v = /** @type {any} */ (value);
     if (v.label) return v.label;
     if (typeof v.amount_minor === "number") {
       return formatMoney({ amount_minor: v.amount_minor, currency: v.currency ?? "GBP" });
     }
+    // Class 4 (reference/class4_nic_2026_27.sql). Until 8 October these two shapes fell
+    // through to String(value) and the screen printed "[object Object]".
+    if (typeof v.lower_minor === "number" && typeof v.main_rate_bp === "number") {
+      return `${pct(v.main_rate_bp)} on profits between ${gbp(v.lower_minor)} and ${gbp(v.upper_minor)}, `
+        + `and ${pct(v.upper_rate_bp)} on profits above ${gbp(v.upper_minor)}`;
+    }
+    // Income Tax bands above the Personal Allowance (reference/income_tax_2026_27.sql).
+    if (Array.isArray(v.bands)) {
+      return v.bands
+        .map((/** @type {{ width_minor: number | null, rate_bp: number }} */ b) =>
+          b.width_minor == null ? `${pct(b.rate_bp)} on the rest` : `${pct(b.rate_bp)} on the next ${gbp(b.width_minor)}`)
+        .join(", then ");
+    }
+    return "";
   }
   return String(value ?? "");
 }
+
+/** @param {number} minor */
+function gbp(minor) {
+  return formatMoney({ amount_minor: minor, currency: "GBP" });
+}
+
+/** @param {number} bp */
+function pct(bp) {
+  return `${bp / 100}%`;
+}
+
+/** The name a seller reads for each rule, in place of its internal key. */
+/** @type {Record<string, string>} */
+const RULE_LABEL = {
+  income_tax_personal_allowance: "Personal Allowance",
+  income_tax_bands: "Income Tax rates above the Personal Allowance (England, Wales and Northern Ireland)",
+  class4_nic: "Class 4 National Insurance",
+  registration_threshold: "VAT registration threshold",
+};
 
 export default async function GlossaryPage() {
   const result = await api("/rules", { cache: "no-store" });
@@ -94,7 +127,7 @@ export default async function GlossaryPage() {
                 {items.map((r) => (
                   <li key={`${r.rule_set}-${r.rule_key}-${r.effective_from}`}>
                     <span>
-                      {r.rule_key}
+                      {RULE_LABEL[r.rule_key] ?? r.rule_key}
                       <div className="rows__sub">
                         {[describe(r.value),
                           `from ${formatDate(r.effective_from)}`,

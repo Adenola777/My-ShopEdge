@@ -101,10 +101,7 @@ def _config(name: str) -> str:
         # Named rather than generic, because the three are obtained from different places
         # in Partner Center and A23.2 records that service_id and app_key are routinely
         # confused for each other.
-        raise Problem(
-            503, "tiktok_unconfigured",
-            "Connecting a TikTok shop is not configured on this deployment.",
-        )
+        raise Problem(503, "tiktok_unconfigured", "Connecting a TikTok shop is not available just now. Nothing has changed on your account or your shop. Please try again later.")
     return value
 
 
@@ -320,16 +317,10 @@ def _encrypt(value: str) -> bytes:
     """
     raw = os.environ.get("TIKTOK_TOKEN_KEY")
     if not raw:
-        raise Problem(
-            503, "token_encryption_unconfigured",
-            "Connecting a shop is not available on this deployment.",
-        )
+        raise Problem(503, "token_encryption_unconfigured", "Connecting a TikTok shop is not available just now. Nothing has changed on your account or your shop. Please try again later.")
     key = base64.b64decode(raw)
     if len(key) != 32:
-        raise Problem(
-            503, "token_encryption_unconfigured",
-            "Connecting a shop is not available on this deployment.",
-        )
+        raise Problem(503, "token_encryption_unconfigured", "Connecting a TikTok shop is not available just now. Nothing has changed on your account or your shop. Please try again later.")
     nonce = secrets.token_bytes(12)
     return nonce + AESGCM(key).encrypt(nonce, value.encode("utf-8"), None)
 

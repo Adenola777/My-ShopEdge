@@ -9,6 +9,7 @@ import logging
 import os
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -39,7 +40,7 @@ from . import (
     today_view,
     trends,
 )
-from .problems import problem_handler, problem_response
+from .problems import problem_handler, problem_response, validation_handler
 
 logger = logging.getLogger("myshopedge")
 
@@ -84,6 +85,7 @@ if _origins:
         max_age=600,
     )
 
+app.add_exception_handler(RequestValidationError, validation_handler)
 app.add_exception_handler(HTTPException, problem_handler)
 app.add_exception_handler(Exception, problem_handler)
 

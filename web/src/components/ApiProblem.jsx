@@ -52,6 +52,34 @@ export function apiProblem(result, { what, notFound }) {
     // meets the refusal sends the seller to the page that offers it.
     redirect("/account/closing");
   }
+  // Until 8 October every other 403 read "That shop is not on your account.", including the
+  // refusals that are about the account itself, which /me and every shop route can answer.
+  const code = String(result.data?.code ?? "");
+  if (result.status === 403 && code === "email_unverified") {
+    return (
+      <Problem
+        title="Your email address is not verified yet."
+        note="Verify it with the provider you sign in with, such as Google, then come back to this page."
+      />
+    );
+  }
+  if (result.status === 403 && code === "email_required") {
+    return (
+      <Problem
+        title="Your sign-in has no email address."
+        note="MyShopEdge needs a verified email address to set up your shop. Sign in with an account that has one."
+        signIn
+      />
+    );
+  }
+  if (result.status === 403 && code === "account_suspended") {
+    return (
+      <Problem
+        title="This account is suspended."
+        note="Nothing in it has been deleted. Please contact MyShopEdge to find out why and what happens next."
+      />
+    );
+  }
   if (result.status === 403) {
     return (
       <Problem

@@ -49,7 +49,8 @@ LIVE = ("trialing", "active", "past_due")
 def _stripe() -> stripe.StripeClient:
     key = os.environ.get("STRIPE_SECRET_KEY")
     if not key:
-        raise Problem(503, "billing_unconfigured", "Billing is not configured.")
+        raise Problem(503, "billing_unconfigured",
+                      "Plans cannot be started or changed just now. Nobody has been charged. Please try again later.")
     return stripe.StripeClient(key)
 
 

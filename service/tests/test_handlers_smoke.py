@@ -120,6 +120,28 @@ def plans():
 check("GET /v1/billing/plans lists three plans in order", plans)
 
 
+# --- a request the service cannot read answers as a problem whose detail is a sentence
+# (8 October 2026: FastAPI's own answer put an array in detail, which forms render as text)
+def validation_is_a_sentence():
+    r = client.post("/v1/billing/subscription", json={"plan": "gold"})
+    b = r.json()
+    _assert(r.status_code == 422 and b["code"] == "validation_failed", r.text)
+    _assert(isinstance(b["detail"], str) and b["detail"] == "Plan must be one of the choices offered.", b)
+    _assert(b["title"] == "Some details need checking." and b["type"].endswith("/validation_failed"), b)
+    r = client.post("/v1/billing/subscription", json={})
+    _assert(r.status_code == 422 and r.json()["detail"] == "Plan is needed.", r.text)
+check("an unreadable request gets a problem with a sentence, not an array", validation_is_a_sentence)
+
+
+# --- titles are for people; the code stays in code and type
+def titles_are_words():
+    from app.problems import problem_response, TITLES
+    import json as _json
+    body = _json.loads(problem_response(409, "subscription_exists", "x").body)
+    _assert(body["title"] == TITLES[409] and body["code"] == "subscription_exists", body)
+check("a problem's title is words, and its code stays in code", titles_are_words)
+
+
 # --- settlements list
 def settlements_list():
     cols = ["id","tiktok_statement_id","tiktok_payment_id","settlement_reference",

@@ -205,8 +205,8 @@ def get_vat_monitor(
 
     if rule is None:
         raise Problem(503, "vat_unconfigured",
-                      "The VAT registration threshold is not configured, so the monitor "
-                      "cannot say where you stand against it.")
+                      "The VAT registration threshold has not been loaded yet, so this "
+                      "screen cannot say where you stand against it.")
     rule_key, value, reviewed_at = rule
     threshold_minor = int(value["amount_minor"])
     currency = value.get("currency", "GBP")
