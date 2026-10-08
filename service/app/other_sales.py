@@ -119,7 +119,7 @@ def put_other_channel_sales(
     if not channel:
         raise Problem(422, "validation_failed", "A channel name is required.")
     if len(channel) > 100:
-        raise Problem(422, "validation_failed", "The channel name is too long.")
+        raise Problem(422, "validation_failed", "The channel name can be up to 100 characters.")
     if body.gross.amount_minor < 0:
         raise Problem(422, "validation_failed", "A monthly total cannot be negative.")
 

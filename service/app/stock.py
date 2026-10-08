@@ -139,7 +139,7 @@ def _decode_sku_cursor(cursor: str) -> str:
         padded = cursor + "=" * (-len(cursor) % 4)
         return str(UUID(json.loads(base64.urlsafe_b64decode(padded))["i"]))
     except Exception as exc:
-        raise Problem(400, "invalid_cursor", "That page cursor is not valid.") from exc
+        raise Problem(400, "invalid_cursor", "That list could not be loaded. Refresh the page.") from exc
 
 
 # The state is computed in SQL rather than in Python so that the `state` filter and the
@@ -375,7 +375,8 @@ def create_stock_adjustment(
         if pos[0] + body.quantity < 0:
             raise Problem(
                 422, "validation_failed",
-                f"That would take stock on hand below zero. {pos[0]} are on hand now.",
+                f"That would take stock on hand below zero, because only {pos[0]} "
+                f"{'unit is' if pos[0] == 1 else 'units are'} on hand.",
             )
 
         cur = conn.execute(

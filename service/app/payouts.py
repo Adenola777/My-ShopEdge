@@ -115,8 +115,9 @@ def read_unsettled(client) -> list[dict[str, Any]]:
         found.extend(page.get("transactions") or [])
         if n >= MAX_PAGES and page.get("next_page_token"):
             raise Problem(502, "too_many_unsettled",
-                          "TikTok holds more unsettled transactions than this screen reads, "
-                          "so no total is shown rather than a partial one.")
+                          "TikTok holds more unsettled transactions than MyShopEdge can total "
+                          "here, so no figure is shown rather than a partial one. Your "
+                          "figures in Money are unaffected.")
     return found
 
 
@@ -141,7 +142,8 @@ def get_expected_payouts(
     except TikTokError as err:
         log.warning("unsettled read for shop %s refused: %s %s", shop_id, err.code, err.message)
         raise Problem(502, "tiktok_error",
-                      "TikTok did not answer just now, so no expected payouts are shown.") from err
+                      "TikTok did not answer just now, so no expected payouts are shown. "
+                      "Try again in a few minutes.") from err
 
     weeks, undated = group_by_week(transactions, currency)
     if undated:

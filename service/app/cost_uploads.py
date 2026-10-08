@@ -169,7 +169,7 @@ def _read_file(storage_key: str):
     """The stored file parsed, or (None, reason). A missing object is not yet uploaded."""
     try:
         if storage.size_of(storage_key) > MAX_BYTES:
-            return None, "The file is larger than 10 MB."
+            return None, "The file is larger than 10 MB. Remove unused rows or columns and upload it again."
         data = storage.get_bytes(storage_key)
     except storage.NotStored:
         return None, None
@@ -210,7 +210,7 @@ def _decode_cursor(cursor: str) -> tuple[str, str]:
         data = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
         return data["t"], str(UUID(data["i"]))
     except Exception as exc:
-        raise Problem(400, "invalid_cursor", "That page cursor is not valid.") from exc
+        raise Problem(400, "invalid_cursor", "That list could not be loaded. Refresh the page.") from exc
 
 
 @router.get("/shops/{shopId}/cost-uploads", response_model=CostUploadList)
@@ -313,7 +313,7 @@ def put_cost_upload_mapping(
             raise Problem(422, "validation_failed", "These costs are already applied. Upload the file again to change them.")
         parsed, error = _read_file(row["storage_key"])
         if parsed is None:
-            raise Problem(422, "validation_failed", error or "The file has not been uploaded yet.")
+            raise Problem(422, "validation_failed", error or "The file has not finished uploading. Upload it again, then continue.")
         for field in ("key_column", "cost_column", "packing_column", "postage_column"):
             name = getattr(body, field)
             if name and name not in parsed.columns:
@@ -322,7 +322,8 @@ def put_cost_upload_mapping(
         if body.currency != currency:
             raise Problem(
                 422, "validation_failed",
-                f"The costs are in {body.currency} and this shop sells in {currency}.",
+                f"The costs are in {body.currency} and this shop sells in {currency}. "
+                f"Choose {currency} for this file.",
             )
         conn.execute(
             "update cost_uploads set column_mapping = %s, status = 'mapped', rows_total = null, "
@@ -368,13 +369,13 @@ def match_cost_upload(
             return JSONResponse(status_code=again[0], content=again[1])
         row = _load(conn, shop_id, uploadId)
         if row["status"] == "applied":
-            raise Problem(422, "validation_failed", "These costs are already applied.")
+            raise Problem(422, "validation_failed", "These costs are already applied. Upload the file again to change them.")
         mapping = row.get("column_mapping")
         if not mapping:
             raise Problem(422, "validation_failed", "Confirm which column is which before matching.")
         parsed, error = _read_file(row["storage_key"])
         if parsed is None:
-            raise Problem(422, "validation_failed", error or "The file has not been uploaded yet.")
+            raise Problem(422, "validation_failed", error or "The file has not finished uploading. Upload it again, then continue.")
         variants = [
             Variant(sku_id=r[0], seller_sku=r[1], tiktok_sku_id=r[2])
             for r in conn.execute(
@@ -440,7 +441,8 @@ def apply_cost_upload(
         if unknown:
             raise Problem(
                 422, "validation_failed",
-                f"{len(unknown)} of the rows chosen are not matched rows of this upload.",
+                f"{len(unknown)} of the rows you chose could not be matched to a product, so no costs "
+                "were applied. Choose only matched rows.",
             )
         currency = _shop_currency(conn, shop_id)
         today = business_today()

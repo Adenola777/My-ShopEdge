@@ -367,7 +367,8 @@ def check_return_item(
             raise Problem(409, "already_checked", "This item has already been checked. Checking is one way.")
         if postage is not None and postage.currency != currency:
             raise Problem(422, "validation_failed",
-                          f"The postage is in {postage.currency} and this shop sells in {currency}.")
+                          f"The postage is in {postage.currency} and this shop sells in {currency}. "
+                          f"Enter it in {currency}.")
 
         writes_ledger = status == "unsellable" or (postage is not None and postage.amount_minor > 0)
         line = None
@@ -380,7 +381,8 @@ def check_return_item(
             ).fetchone()
             if line is None:
                 raise Problem(422, "no_order_line",
-                              "The order holds no line for this variant, so nothing can be recorded against it.")
+                              "This variant is not on the original order, so the return cannot be "
+                              "recorded against it.")
 
         write_off_minor = None
         if status == "unsellable":

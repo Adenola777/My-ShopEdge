@@ -97,7 +97,8 @@ def _check_amounts(body: CostIn, currency: str) -> None:
         if m.currency != currency:
             raise Problem(
                 422, "validation_failed",
-                f"The {name} is in {m.currency} and this shop sells in {currency}.",
+                f"The {name} is in {m.currency} and this shop sells in {currency}. "
+                f"Enter it in {currency}.",
             )
 
 

@@ -118,7 +118,11 @@ async def problem_handler(_request: Request, exc: Exception) -> JSONResponse:
     if isinstance(exc, Problem):
         return problem_response(exc.status_code, exc.code, str(exc.detail))
     if isinstance(exc, HTTPException):
-        return problem_response(exc.status_code, "http_error", str(exc.detail))
+        # Starlette's own "Not Found" and "Method Not Allowed" are framework English, so a
+        # seller reads a sentence instead (copy audit, 8 October 2026).
+        detail = ("That page or action does not exist in MyShopEdge."
+                  if exc.status_code in (404, 405) else str(exc.detail))
+        return problem_response(exc.status_code, "http_error", detail)
     # An unhandled exception must not leak a stack trace or a connection string to a
     # seller. It is logged by the server and reported as one line here.
     return problem_response(500, "internal_error", "Something went wrong at our end.")
