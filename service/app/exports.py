@@ -1,4 +1,5 @@
-"""Exports: `createExport`, `getExport`, `requestAccountExport` and `getAccountExport`.
+"""Exports: `createExport`, `getExport`, `listExports`, `requestAccountExport`,
+`getAccountExport` and `listAccountExports`.
 
 Built 29 September 2026. The file store is decided (A10.8 as amended, `storage.py`), and this
 module is the worker that A10.8 and CLAUDE.md said both operations were waiting for.
@@ -31,6 +32,14 @@ A zip with one JSON file and one CSV file for every table that holds the account
 read through `tenant()`, so row level security decides what is included. The stored TikTok
 tokens are left out, because they are secrets, and so is the idempotency cache, which is
 replayed answers kept for 24 hours. The archive lives seven days, the same as a shop file.
+
+THE TWO LISTS (8 October 2026)
+
+`listExports` and `listAccountExports` return the twenty most recent jobs, newest first, so a
+seller who leaves the screen can come back to a file. A list carries no signed link, because
+a link lives fifteen minutes and a list can sit open longer; the screen asks the single read
+for a fresh one. A list only reads: a job past its seven days reads `expired` without being
+written, and a job stranded in `queued` is built by the single read, as before.
 
 **Unverified against AWS.** Like `storage.py`, this has run against a local stand-in for S3.
 """
@@ -71,6 +80,10 @@ Kind = Literal["month_summary", "ledger", "transactions"]
 Fmt = Literal["xlsx", "csv"]
 
 
+class ExportList(BaseModel):
+    exports: list[ExportJob]
+
+
 class ExportIn(BaseModel):
     kind: Kind
     format: Fmt
@@ -87,6 +100,16 @@ class ExportJob(BaseModel):
     expires_at: datetime | None = None
     download_url: str | None = None
     size_bytes: int | None = None
+
+
+LIST_LIMIT = 20
+
+
+def _shown_status(status: str, expires_at: datetime | None) -> str:
+    """What a list reports, without writing: a ready file past its seven days is expired."""
+    if status == "ready" and expires_at is not None and expires_at <= now_utc():
+        return "expired"
+    return status
 
 
 class ShopExportJob(ExportJob):
@@ -284,6 +307,28 @@ def build_shop_export(account_id: UUID, export_id: UUID) -> None:
                          "where id = %s and status = 'queued'", (reason, str(export_id)))
 
 
+class ShopExportList(BaseModel):
+    exports: list[ShopExportJob]
+
+
+@router.get("/shops/{shopId}/exports", response_model=ShopExportList, tags=["Exports"],
+            summary="The shop's recent exports")
+def list_exports(
+    account: Annotated[Account, Depends(require_account)],
+    shop_id: Annotated[UUID, Depends(require_shop)],
+) -> ShopExportList:
+    with tenant(account.id) as conn:
+        rows = conn.execute(f"select {JOB_COLS} from exports where shop_id = %s "
+                            "order by created_at desc, id desc limit %s",
+                            (str(shop_id), LIST_LIMIT)).fetchall()
+    jobs = []
+    for row in rows:
+        job = _job(row)
+        job.status = _shown_status(job.status, job.expires_at)
+        jobs.append(job)
+    return ShopExportList(exports=jobs)
+
+
 @router.post("/shops/{shopId}/exports", status_code=202, response_model=ShopExportJob,
              tags=["Exports"], summary="Request an export")
 def create_export(
@@ -424,6 +469,21 @@ def build_account_export(account_id: UUID, export_id: UUID) -> None:
         with tenant(account_id) as conn:
             conn.execute("update account_exports set status = 'failed', failure_reason = %s "
                          "where id = %s and status = 'queued'", (reason, str(export_id)))
+
+
+@router.get("/me/export", response_model=ExportList, tags=["Account"],
+            summary="The account's recent data downloads")
+def list_account_exports(account: Annotated[Account, Depends(require_account)]) -> ExportList:
+    with tenant(account.id) as conn:
+        rows = conn.execute(f"select {ACCOUNT_COLS} from account_exports where account_id = %s "
+                            "order by requested_at desc, id desc limit %s",
+                            (str(account.id), LIST_LIMIT)).fetchall()
+    jobs = []
+    for row in rows:
+        job = _account_job(row)
+        job.status = _shown_status(job.status, job.expires_at)
+        jobs.append(job)
+    return ExportList(exports=jobs)
 
 
 @router.post("/me/export", status_code=202, response_model=ExportJob, tags=["Account"],

@@ -75,7 +75,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * The account's recent data downloads
+         * @description Added on 8 October 2026, because the download screen said a seller could leave and
+         *     come back, and nothing listed a download once the screen was left. Returns the
+         *     twenty most recent downloads, newest first. A download whose seven days have passed
+         *     reads `expired`. `download_url` is always absent here, because a signed link lives
+         *     fifteen minutes and a list can sit open longer than that: getAccountExport gives a
+         *     fresh link.
+         */
+        get: operations["listAccountExports"];
         put?: never;
         /**
          * Request a download of the account's data
@@ -619,7 +628,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * The shop's recent exports
+         * @description Added on 8 October 2026, because the export screen said a seller could leave and
+         *     come back, and nothing listed an export once the screen was left. Returns the
+         *     twenty most recent exports of the shop, newest first. An export whose seven days
+         *     have passed reads `expired`. `download_url` is always absent here, because a signed
+         *     link lives fifteen minutes and a list can sit open longer than that: getExport gives
+         *     a fresh link.
+         */
+        get: operations["listExports"];
         put?: never;
         /**
          * Request an export
@@ -2608,6 +2626,29 @@ export interface operations {
             429: components["responses"]["RateLimited"];
         };
     };
+    listAccountExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The downloads */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        exports: components["schemas"]["ExportJob"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+        };
+    };
     requestAccountExport: {
         parameters: {
             query?: never;
@@ -3471,6 +3512,33 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The exports */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        exports: components["schemas"]["ShopExportJob"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
         };
     };
     createExport: {

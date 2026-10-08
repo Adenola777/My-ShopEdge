@@ -172,6 +172,34 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
   /me/export:
+    get:
+      tags:
+      - Account
+      summary: The account's recent data downloads
+      description: |
+        Added on 8 October 2026, because the download screen said a seller could leave and
+        come back, and nothing listed a download once the screen was left. Returns the
+        twenty most recent downloads, newest first. A download whose seven days have passed
+        reads `expired`. `download_url` is always absent here, because a signed link lives
+        fifteen minutes and a list can sit open longer than that: getAccountExport gives a
+        fresh link.
+      operationId: listAccountExports
+      responses:
+        '200':
+          description: The downloads
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - exports
+                properties:
+                  exports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExportJob'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
     post:
       tags:
       - Account
@@ -1306,6 +1334,38 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
   /shops/{shopId}/exports:
+    get:
+      tags:
+      - Exports
+      summary: The shop's recent exports
+      description: |
+        Added on 8 October 2026, because the export screen said a seller could leave and
+        come back, and nothing listed an export once the screen was left. Returns the
+        twenty most recent exports of the shop, newest first. An export whose seven days
+        have passed reads `expired`. `download_url` is always absent here, because a signed
+        link lives fifteen minutes and a list can sit open longer than that: getExport gives
+        a fresh link.
+      operationId: listExports
+      parameters:
+      - $ref: '#/components/parameters/ShopId'
+      responses:
+        '200':
+          description: The exports
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - exports
+                properties:
+                  exports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ShopExportJob'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenShop'
     post:
       tags:
       - Exports
