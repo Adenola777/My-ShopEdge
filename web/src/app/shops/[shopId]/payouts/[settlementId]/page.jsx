@@ -48,7 +48,7 @@ export default async function PayoutPage({ params }) {
             <li><span>Shipping</span><Figure amount={c.shipping_cost} /></li>
             <li><span>Adjustments</span><Figure amount={c.adjustments} /></li>
             <li className="rows__total"><span>Statement</span><Figure amount={s.statement_amount} /></li>
-            <li><span>Held back by TikTok</span><Figure amount={s.total_reserve} /></li>
+            <li><span>Reserve withheld</span><Figure amount={s.total_reserve} unsigned /></li>
             <li className="rows__total"><span>Paid out</span><Figure amount={s.payable_amount} /></li>
           </ul>
         </div>

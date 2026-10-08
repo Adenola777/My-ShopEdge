@@ -32,7 +32,7 @@ export const metadata = { title: "Products" };
 
 /** The switch on the sheet, in A8's words. */
 const SWITCH = [
-  ["kept", "Gross profit"],
+  ["kept", "Gross profit after returns"],
   ["units", "Units"],
   ["returns", "Returns"],
 ];

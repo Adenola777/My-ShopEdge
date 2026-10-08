@@ -253,7 +253,7 @@ def get_return_metrics(
     start = period_from or today.replace(day=1)
     end = period_to or today
     if start > end:
-        raise Problem(422, "validation_failed", "The period starts after it ends.")
+        raise Problem(422, "validation_failed", "The period ends before it starts. Choose an end date on or after the start date.")
 
     with tenant(account.id) as conn:
         cur = conn.execute(METRICS_SQL, {"shop": str(shop_id), "from": start, "to": end})

@@ -114,14 +114,14 @@ def _includes(erase_at: datetime, plan_stopped: bool = False) -> list[str]:
         "turns renewal back on.",
     ] if plan_stopped else [])
     return [
-        "Sign-in stops working for this account now.",
-        "Every connected shop is disconnected now, and its TikTok tokens are marked revoked.",
+        "You can no longer use MyShopEdge with this account, except to cancel the deletion.",
+        "Every connected shop is disconnected now, and MyShopEdge stops using its TikTok sign-in details.",
         *plan,
         f"Until {day} you can cancel the deletion by signing in again. Nothing is erased before then.",
-        f"On {day} your name and email are erased, the stored TikTok tokens are erased, "
-        "and every file you uploaded or exported is deleted.",
-        "Your ledger stays, attached to no person, for the period financial records must be "
-        "kept. Your name and email are not kept with it.",
+        f"After {day} your name and email are erased, your TikTok sign-in details are "
+        "erased, and every file you uploaded or exported is deleted.",
+        "Your ledger stays, with your name and email removed, because financial records must "
+        "be kept. MyShopEdge has not yet set when it is deleted.",
     ]
 
 

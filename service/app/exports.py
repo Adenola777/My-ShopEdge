@@ -138,6 +138,14 @@ def _header(shop_name: str, start: date, end: date, basis: str, built: datetime)
     ]
 
 
+# The same sentences the Money screen shows (web/src/lib/terms.js, keptReason), so a file
+# handed to an accountant never carries a code. Added 8 October 2026.
+KEPT_REASONS = {
+    "incomplete_costs": "Not known, because not every product sold in the period has a cost price.",
+    "no_sales": "Nothing sold in this period.",
+}
+
+
 def _month_summary(conn, shop_id: UUID, start: date, end: date, basis: str) -> list[list[Any]]:
     view = calculate(conn, shop_id, start, end, basis)
     rows: list[list[Any]] = [["Section", "Line", "TikTok field", "Amount (£)"]]
@@ -151,8 +159,8 @@ def _month_summary(conn, shop_id: UUID, start: date, end: date, basis: str) -> l
         ["Totals", "Gross sales", "", _pounds(t.gross_sales.amount_minor)],
         ["Totals", "Net sales", "", _pounds(t.net_sales.amount_minor)],
         ["Totals", "Net proceeds", "", _pounds(t.net_proceeds.amount_minor)],
-        ["Totals", "You keep", "", _pounds(view.kept.amount_minor) if view.kept else
-         f"Not known: {view.kept_reason or 'no reason given'}"],
+        ["Totals", "Gross profit after returns", "", _pounds(view.kept.amount_minor) if view.kept else
+         KEPT_REASONS.get(view.kept_reason or "", "Not known.")],
         ["Totals", "Confidence", "", view.confidence],
     ]
     return rows
@@ -339,7 +347,7 @@ def create_export(
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
     if body.period_end < body.period_start:
-        raise Problem(422, "validation_failed", "The period ends before it starts.")
+        raise Problem(422, "validation_failed", "The period ends before it starts. Choose an end date on or after the start date.")
     if (body.period_end - body.period_start).days > MAX_SPAN_DAYS:
         raise Problem(422, "validation_failed", "An export covers at most twenty four months.")
     if body.period_start > business_today():

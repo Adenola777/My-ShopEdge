@@ -46,7 +46,7 @@ export default async function PayoutsPage({ params, searchParams }) {
               <h2>{formatDate(s.statement_time)}</h2>
               <ul className="rows">
                 <li><span>Statement</span><Figure amount={s.statement_amount} /></li>
-                <li><span>Held back by TikTok</span><Figure amount={s.total_reserve} /></li>
+                <li><span>Reserve withheld</span><Figure amount={s.total_reserve} unsigned /></li>
                 <li className="rows__total"><span>Paid out</span><Figure amount={s.payable_amount} /></li>
                 <li><span>Status</span><strong>{STATUS[/** @type {keyof typeof STATUS} */ (s.payment_status)] ?? s.payment_status}</strong></li>
                 <li>

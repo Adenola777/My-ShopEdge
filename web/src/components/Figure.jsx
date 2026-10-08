@@ -22,9 +22,14 @@ import { formatMoney } from "@/lib/api";
  *   amount: Money | null | undefined,
  *   reason?: string | null,
  *   className?: string,
+ *   unsigned?: boolean,
  * }} props
+ *
+ * `unsigned` shows the amount without its ledger sign, for money whose direction its label
+ * already states. Added 8 October 2026 for the payout and the reserve, which the ledger
+ * stores negative and a seller read as money taken.
  */
-export function Figure({ amount, reason, className = "" }) {
+export function Figure({ amount, reason, className = "", unsigned = false }) {
   if (amount == null) {
     const why = reason || "Not known yet";
     return (
@@ -35,10 +40,11 @@ export function Figure({ amount, reason, className = "" }) {
     );
   }
 
-  const negative = amount.amount_minor < 0;
+  const negative = !unsigned && amount.amount_minor < 0;
+  const shown = unsigned ? { ...amount, amount_minor: Math.abs(amount.amount_minor) } : amount;
   return (
     <span className={`money ${negative ? "money--neg" : ""} ${className}`}>
-      {formatMoney(amount)}
+      {formatMoney(shown)}
     </span>
   );
 }

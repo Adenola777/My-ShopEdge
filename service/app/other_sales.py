@@ -129,7 +129,7 @@ def put_other_channel_sales(
         if body.gross.currency != currency:
             raise Problem(
                 422, "validation_failed",
-                f"Enter the total in {currency}, the currency this shop reports in.",
+                f"The total is in {body.gross.currency} and this shop sells in {currency}. Enter it in {currency}.",
             )
         row = conn.execute(
             "insert into other_channel_sales (shop_id, channel, month, gross_minor, entered_at) "

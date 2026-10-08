@@ -350,7 +350,7 @@ def _checked_invoice(body: SettlementInvoiceIn, currency: str) -> dict[str, Any]
                       "The gross must equal the net plus the VAT. Check the figures against "
                       "the invoice.")
     if body.period_start and body.period_end and body.period_start > body.period_end:
-        raise Problem(422, "validation_failed", "The period cannot end before it starts.")
+        raise Problem(422, "validation_failed", "The period ends before it starts. Choose an end date on or after the start date.")
     return {
         "invoice_type": body.invoice_type.strip(), "issued_on": body.issued_on,
         "period_start": body.period_start, "period_end": body.period_end,

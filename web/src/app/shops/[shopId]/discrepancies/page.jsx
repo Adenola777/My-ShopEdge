@@ -121,7 +121,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
                 <>
                   <h3 className="card__sub">Effect</h3>
                   <p className="rows__sub" style={{ marginTop: 0 }}>
-                    Your totals use TikTok&rsquo;s figure until this is resolved. Your own figure is kept alongside.
+                    Your totals use TikTok&rsquo;s figure. Resolving this records your decision and does not change any total.
                   </p>
                   <ResolveActions shopId={shopId} id={d.id} correctable={Boolean(d.correctable)} />
                 </>

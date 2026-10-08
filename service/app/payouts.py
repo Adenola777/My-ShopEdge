@@ -92,7 +92,7 @@ def group_by_week(transactions: list[dict[str, Any]], currency: str = "GBP") -> 
         if (txn.get("currency") or currency) != currency:
             raise Problem(502, "tiktok_currency",
                           f"TikTok sent an unsettled amount in {txn.get('currency')}, "
-                          f"and this shop is read in {currency}.")
+                          f"and this shop sells in {currency}, so the expected payouts cannot be shown.")
         when = _settles_at(txn.get("estimated_settlement"))
         if when is None:
             undated += 1

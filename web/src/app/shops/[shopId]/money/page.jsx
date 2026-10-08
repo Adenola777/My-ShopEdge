@@ -15,7 +15,9 @@
  *
  * Held and paid out is shown as A18.3 orders it, net proceeds, then the reserve held, then
  * the payout, with no subtotal: adding a payout to a reserve gives a figure with no meaning
- * a seller can use, and the screen showed one until 24 September.
+ * a seller can use, and the screen showed one until 24 September. The ledger stores the
+ * payout and the reserve withheld as negatives, so since 8 October 2026 both are shown
+ * without that sign: "-£453.88" beside "Payout" read as money taken from the seller.
  *
  * A fee TikTok names in a way MyShopEdge does not recognise is shown under that heading
  * with TikTok's own name beneath it (A18.4), never as a bare code.
@@ -32,6 +34,9 @@ import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
 import { Figure } from "@/components/Figure";
 import { BEFORE_OVERHEADS, CONFIDENCE, chipClass, keptReason } from "@/lib/terms";
+
+/** Lines whose label states their direction, shown without the ledger's sign. */
+const UNSIGNED = new Set(["settlement", "reserve_withheld"]);
 
 export const metadata = { title: "Money" };
 
@@ -117,7 +122,7 @@ export default async function MoneyPage({ params, searchParams }) {
               {s.lines.map((l, i) => (
                 <li key={`${l.category}-${l.tiktok_fee_type ?? i}`}>
                   <Link className="rowlink rowlink--quiet" href={recordsHref(l)}><LineLabel line={l} /></Link>
-                  <Figure amount={l.amount} />
+                  <Figure amount={l.amount} unsigned={UNSIGNED.has(l.category ?? "")} />
                 </li>
               ))}
               {s.key !== "payout" && (
