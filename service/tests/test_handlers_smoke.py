@@ -1401,6 +1401,47 @@ def trial_once():
 check("startTrial refuses a live subscription, reuses an unfinished one, and starts a first", trial_once)
 
 
+# --- a Stripe refusal is logged with Stripe's reason, and the seller still sees the plain 502
+# (8 October 2026: seven refusals on 7 October left no reason anywhere)
+def stripe_refusal_logged():
+    import logging
+    from types import SimpleNamespace as NS
+    import stripe as _stripe_mod
+
+    class Customers:
+        def search(self, params):
+            raise _stripe_mod.PermissionError(
+                "The provided key does not have the required permissions.",
+                http_status=403,
+                json_body={"error": {"type": "invalid_request_error", "code": "secret_key_required",
+                                     "message": "The provided key does not have the required permissions."}},
+                headers={"request-id": "req_test"},
+                code="secret_key_required",
+            )
+
+    records = []
+    handler = logging.Handler()
+    handler.emit = records.append
+    log = logging.getLogger("myshopedge.billing")
+    log.addHandler(handler)
+    os.environ["STRIPE_PRICE_STARTER"] = "price_test"
+    saved = (billing._stripe, billing.db.get_subscription_row)
+    billing._stripe = lambda: NS(customers=Customers())
+    billing.db.get_subscription_row = lambda _a: None
+    try:
+        r = client.post("/v1/billing/subscription", json={"plan": "starter"})
+        _assert(r.status_code == 502 and r.json()["detail"] ==
+                "We could not start the trial. Nobody has been charged.", r.text)
+        line = records[-1].getMessage() if records else ""
+        for part in ("find_or_create_customer", "PermissionError", "http=403", "type=invalid_request_error",
+                     "code=secret_key_required", "request=req_test", "required permissions"):
+            _assert(part in line, f"{part!r} missing from {line!r}")
+    finally:
+        log.removeHandler(handler)
+        billing._stripe, billing.db.get_subscription_row = saved
+check("a Stripe refusal is logged with its step, type, code and request id", stripe_refusal_logged)
+
+
 # --- a deletion stops renewal, and cancelling it restores only what it stopped (7 October 2026)
 def renewal_follows_deletion():
     from types import SimpleNamespace as NS

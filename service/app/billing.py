@@ -141,6 +141,8 @@ def start_trial(
     client = _stripe()
     key = f"sub:{account.id}:{plan.slug}:{idempotency_key}" if idempotency_key else None
 
+    # Named so a Stripe failure can be logged against the call that failed.
+    step = "open_subscription"
     try:
         # A trial started earlier and never confirmed is still open at Stripe. Handing it
         # back lets the seller finish confirming the card without a second subscription.
@@ -149,7 +151,9 @@ def start_trial(
             if open_sub is not None:
                 return _trial_start(open_sub)
 
+        step = "find_or_create_customer"
         customer = _find_or_create_customer(client, account, key, existing)
+        step = "create_subscription"
         # The row is written before the Stripe subscription exists, so a webhook that
         # arrives the instant the subscription is created finds a customer to attach to.
         # It carries status 'incomplete' until an event confirms the trial has started.
@@ -174,8 +178,10 @@ def start_trial(
             options={"idempotency_key": key} if key else None,
         )
     except stripe.CardError as exc:
+        _log_stripe_error(account.id, step, exc)
         raise Problem(402, "card_declined", exc.user_message or "Your bank declined the card.") from exc
     except stripe.StripeError as exc:
+        _log_stripe_error(account.id, step, exc)
         raise Problem(502, "stripe_error", "We could not start the trial. Nobody has been charged.") from exc
 
     # The subscription Stripe just returned already carries its status and trial end, so
@@ -183,6 +189,29 @@ def start_trial(
     # remains the authority and repeats this write when it arrives; the write is idempotent.
     _apply_stripe_subscription(subscription)
     return _trial_start(subscription)
+
+
+def _log_stripe_error(account_id, step: str, exc: stripe.StripeError) -> None:
+    """Records why Stripe refused a call, which the seller's message deliberately does not say.
+
+    Added on 8 October 2026: seven trial starts on 7 October answered 502 and left no trace
+    of Stripe's reason. The fields are the ones stripe-python 16 sets on every StripeError.
+    Stripe's message masks an API key to its last four characters, and no card detail
+    reaches this call, so nothing logged here is a secret.
+    """
+    err = exc.error
+    logger.error(
+        "stripe refused %s for account %s: %s http=%s type=%s code=%s param=%s request=%s message=%s",
+        step,
+        account_id,
+        type(exc).__name__,
+        exc.http_status,
+        getattr(err, "type", None),
+        exc.code,
+        getattr(err, "param", None),
+        exc.request_id,
+        exc.user_message,
+    )
 
 
 # Set on the Stripe subscription when a deletion stopped its renewal, so that cancelling the
