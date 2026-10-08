@@ -111,7 +111,7 @@ def parse(data: bytes, content_type: str) -> ParsedFile:
         raise FileUnreadable("Two columns in the first row have the same heading.")
     body = table[1:]
     if len(body) > MAX_ROWS:
-        raise FileUnreadable(f"The file has more than {MAX_ROWS} rows.")
+        raise FileUnreadable(f"The file has more than {MAX_ROWS:,} rows. Split it into smaller files and upload each one.")
     rows = [
         {h: (r[i] if i < len(r) else "") for i, h in enumerate(header)}
         for r in body
@@ -127,7 +127,7 @@ def _read_csv(data: bytes) -> list[list[str]]:
             # Excel on Windows saves CSV in Windows-1252 unless told otherwise.
             text = data.decode("cp1252")
         except UnicodeDecodeError as exc:
-            raise FileUnreadable("The CSV file's text encoding could not be read.") from exc
+            raise FileUnreadable("MyShopEdge could not read the text in this CSV file. Save it again as CSV UTF-8 and upload it.") from exc
     return [[c.strip() for c in row] for row in csv.reader(io.StringIO(text))]
 
 
@@ -265,14 +265,18 @@ def match(parsed: ParsedFile, mapping: dict[str, Any], variants: list[Variant]) 
             out.append(o)
             continue
 
+        # The column being read, so a bad packing or postage cell is not reported as a bad
+        # cost (copy audit, 8 October 2026).
+        reading = mapping["cost_column"]
         try:
             o.unit_cost_minor = read_amount(_cell_text(row.get(mapping["cost_column"], "")))
             for col, attr in (("packing_column", "packing_minor"), ("postage_column", "postage_minor")):
                 if mapping.get(col) and _cell_text(row.get(mapping[col], "")) != "":
+                    reading = mapping[col]
                     setattr(o, attr, read_amount(_cell_text(row[mapping[col]])))
         except ValueError as err:
             o.sku_id, o.matched_on, o.seller_sku = variant.sku_id, on, variant.seller_sku
-            o.reason = f"The cost {err}, so it was not read."
+            o.reason = f'The amount in the "{reading}" column {err}, so this row was not read.'
             o.unit_cost_minor = None
             out.append(o)
             continue

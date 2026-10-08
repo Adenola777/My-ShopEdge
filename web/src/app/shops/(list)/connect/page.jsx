@@ -15,7 +15,7 @@ export default function ConnectAnotherShopPage() {
     <section>
       <header className="page-head">
         <h1>Connect another TikTok Shop</h1>
-        <p>Read-only. MyShopEdge never changes anything in your shop.</p>
+        <p>MyShopEdge reads your shop and never changes anything in it.</p>
       </header>
       <div className="stack">
         <div className="card">

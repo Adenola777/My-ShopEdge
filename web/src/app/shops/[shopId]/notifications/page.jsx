@@ -27,7 +27,7 @@ import { chipClass, SEVERITY_TONE } from "@/lib/terms";
 export const metadata = { title: "Notifications" };
 
 /** @type {Record<string, string>} */
-const SEVERITY_WORD = { critical: "Urgent", warning: "Check", info: "Note" };
+const SEVERITY_WORD = { critical: "Act now", warning: "Check", info: "Note" };
 
 /**
  * @param {{
@@ -55,7 +55,11 @@ export default async function NotificationsPage({ params, searchParams }) {
     <section>
       <header className="page-head">
         <h1>Notifications</h1>
-        <p>{unread_count === 0 ? "Nothing new." : `${unread_count} unread`}</p>
+        <p>
+          {unread_count === 0
+            ? "You have no unread notices."
+            : `You have ${unread_count} unread ${unread_count === 1 ? "notice" : "notices"}.`}
+        </p>
       </header>
 
       <nav className="switch" aria-label="Show">
@@ -67,8 +71,11 @@ export default async function NotificationsPage({ params, searchParams }) {
 
       {notifications.length === 0 ? (
         <section className="state">
-          <h2>{resolved ? "Nothing resolved yet." : "Nothing needs your attention."}</h2>
-          <p>Notices appear here when something in your shop changes or needs a decision.</p>
+          <h2>{resolved ? "Nothing resolved yet." : "You have no open notices."}</h2>
+          <p>
+            MyShopEdge tells you here when TikTok&rsquo;s stock count rises and MyShopEdge reduces
+            your adjustment, or when your TikTok connection is close to expiring.
+          </p>
         </section>
       ) : (
         <div className="card">

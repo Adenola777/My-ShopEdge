@@ -25,7 +25,7 @@ import { redirect } from "next/navigation";
 import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
 import { api } from "@/lib/api";
 
-export const metadata = { title: "Payment confirmed" };
+export const metadata = { title: "Card confirmed" };
 
 /**
  * @param {{ searchParams: Promise<Record<string, string | undefined>> }} props
@@ -47,7 +47,7 @@ export default async function ConfirmedPage({ searchParams }) {
         })
       : null;
     return (
-      <main className="confirmed">
+      <section className="confirmed">
         <h1>Your card is confirmed and your trial has started.</h1>
         {firstPayment ? (
           <p>
@@ -57,31 +57,37 @@ export default async function ConfirmedPage({ searchParams }) {
           <p>We will email you seven days before the first payment.</p>
         )}
         <Link className="btn btn--primary" href="/">
-          Continue
+          Go to your shop
         </Link>
-      </main>
+      </section>
     );
   }
 
   if (hint === "failed" || status === "past_due") {
     return (
-      <main className="confirmed">
+      <section className="confirmed">
         <h1>Your bank did not confirm the card.</h1>
         <p>
           Nothing has been charged. Banks sometimes decline a first check, and trying again
           or using another card normally resolves it.
         </p>
-        <Link className="btn btn--primary" href="/billing">
-          Try the card again
-        </Link>
-      </main>
+        {status === "past_due" ? (
+          <Link className="btn btn--primary" href="/billing/payment-failed">
+            See what to do next
+          </Link>
+        ) : (
+          <Link className="btn btn--primary" href="/billing">
+            Try the card again
+          </Link>
+        )}
+      </section>
     );
   }
 
   // Reloaded later, or arrived with no setup in progress. Showing the real state is more
   // useful than an error about a page that was only ever a staging post.
   return (
-    <main className="confirmed">
+    <section className="confirmed">
       <h1>There is nothing waiting to be confirmed.</h1>
       <p>
         {status === "none" || status === null
@@ -91,6 +97,6 @@ export default async function ConfirmedPage({ searchParams }) {
       <Link className="btn btn--primary" href="/billing">
         Go to your plan
       </Link>
-    </main>
+    </section>
   );
 }

@@ -446,7 +446,9 @@ def _post_statement(conn, shop_id: str, client: Client, s: dict[str, Any], tally
                 "tiktok_value, applied_value, status, note) "
                 "values (%s, 'amount', 'settlement', %s, 'adjustment_amount', %s, %s, 'open', %s)",
                 (shop_id, sid, t.get("adjustment_amount"), t.get("adjustment_amount"),
-                 f"TikTok recorded this as {kind} and gave no further reason"))
+                 f"TikTok recorded this under the type "
+                 f"\"{str(kind or 'adjustment').replace('_', ' ').lower()}\" "
+                 f"and gave no further reason."))
     p.post("settlement", -p.total, statement_time, s["id"], counted=False)
 
 
@@ -494,8 +496,9 @@ def _absorb(conn, shop_id: str, sku_id: str, title: str, before: int, after: int
             "tiktok_value, seller_value, applied_value, status, note) "
             "values (%s, 'amount', 'sku', %s, 'tiktok_stock', %s, %s, %s, 'open', %s)",
             (shop_id, sku_id, str(after), str(before + adjusted), str(after + adjusted),
-             f"TikTok's count rose by {rise}, more than the {tolerance} units taken as a "
-             f"duplicate of your own adjustment of {adjusted}, so it was not absorbed."))
+             f"TikTok's stock count rose by {rise}. That is more than the {tolerance} units "
+             f"MyShopEdge treats as a repeat of your own adjustment of {adjusted}, so both "
+             "changes were kept. Count the stock you hold to check which is right."))
         tally.notes.append(f"{sku_id}: rise of {rise} above tolerance {tolerance}")
         return adjusted
     absorbed = min(rise, adjusted)
@@ -504,18 +507,20 @@ def _absorb(conn, shop_id: str, sku_id: str, title: str, before: int, after: int
         "insert into stock_movements (shop_id, sku_id, movement_type, quantity, reason) "
         "values (%s, %s, 'adjustment_absorbed', %s, %s)",
         (shop_id, sku_id, absorbed,
-         f"TikTok's count rose from {before} to {after}; your adjustment falls from "
-         f"{adjusted} to {adjusted - absorbed}"))
+         f"TikTok's count rose from {before} to {after}, so your adjustment was reduced "
+         f"from {adjusted} to {adjusted - absorbed}."))
     account = conn.execute("select account_id from shops where id = %s", (shop_id,)).fetchone()[0]
     unit = "unit" if absorbed == 1 else "units"
+    them = "it" if absorbed == 1 else "them"
     conn.execute(
         "insert into notifications (account_id, shop_id, type, severity, title, body, "
         "entity_type, entity_id, dedupe_key) values (%s, %s, 'stock_absorbed', 'info', %s, %s, "
         "'sku', %s, %s) on conflict (account_id, dedupe_key) do nothing",
         (str(account), shop_id,
-         f"You put {absorbed} {unit} of {title} back into TikTok.",
-         f"We had already added {'it' if absorbed == 1 else 'them'}, so we have taken ours "
-         f"off. On the shelf is still {on_shelf}.",
+         f"TikTok's count for {title} rose by {rise} {'unit' if rise == 1 else 'units'}.",
+         f"You had already added {absorbed} {unit} in MyShopEdge, so MyShopEdge removed "
+         f"{them} from your adjustment to avoid counting {them} twice. Stock on hand is "
+         f"{on_shelf}.",
          sku_id, f"stock_absorbed:{sku_id}:{datetime.now(timezone.utc).date().isoformat()}"))
     return adjusted - absorbed
 

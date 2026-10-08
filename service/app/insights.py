@@ -145,15 +145,17 @@ def build(rows: list[dict[str, Any]], extra: dict[Any, dict[str, Any]], period: 
             out.append(Insight(
                 rule_key="negative_contribution", severity="warning",
                 headline=f"{name} lost {_pounds(-contribution)} on {units} "
-                         f"{'unit' if units == 1 else 'units'} sold this period.",
-                detail="What reached you after TikTok's cut was less than the cost of the units "
-                       "sold and not returned. Options: check the cost price recorded for it, "
-                       "look at its selling price and discounts, or look at what TikTok takes on it.",
+                         f"{'unit' if units == 1 else 'units'} sold so far this month.",
+                detail="Its net proceeds were less than the cost of the units sold and kept. "
+                       "You can check the cost price recorded for it, review its selling price "
+                       "and discounts, or look at the TikTok fees charged on it.",
                 evidence=Evidence(period=period, values=[
                     EvidenceValue(label="Units sold", number=units),
                     EvidenceValue(label="Net proceeds", amount=money(net_proceeds, currency)),
-                    EvidenceValue(label="Cost of units sold and not returned", amount=money(-cost, currency)),
-                    EvidenceValue(label="Contribution", amount=money(contribution, currency)),
+                    EvidenceValue(label="Cost of goods sold, less returned units",
+                                  amount=money(-cost, currency)),
+                    EvidenceValue(label="Net proceeds less cost of goods sold",
+                                  amount=money(contribution, currency)),
                 ], **ev_product),
             ))
 
@@ -164,12 +166,13 @@ def build(rows: list[dict[str, Any]], extra: dict[Any, dict[str, Any]], period: 
             pence = _pence_in_pound(postage, net_sales)
             out.append(Insight(
                 rule_key="postage_share", severity="info",
-                headline=f"Postage and packing took {pence}p of every £1 that reached you for {name}.",
-                detail=f"Your postage and packing figures come to {_pounds(postage)} for the units "
-                       f"sold, against {_pounds(net_sales)} of sales after your discounts.",
+                headline=f"Shipping and packaging you pay took {pence}p of every £1 of net sales "
+                         f"for {name}.",
+                detail=f"Your shipping and packaging figures come to {_pounds(postage)} for the "
+                       f"units sold, against {_pounds(net_sales)} of net sales.",
                 evidence=Evidence(period=period, values=[
-                    EvidenceValue(label="Sales after your discounts", amount=money(net_sales, currency)),
-                    EvidenceValue(label="Postage and packing, from your cost figures",
+                    EvidenceValue(label="Net sales", amount=money(net_sales, currency)),
+                    EvidenceValue(label="Shipping and packaging you pay, from your cost figures",
                                   amount=money(-postage, currency)),
                     EvidenceValue(label="Pence in the £1", number=pence),
                 ], **ev_product),

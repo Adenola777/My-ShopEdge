@@ -132,7 +132,9 @@ def start_trial(
     # trusted, because a seller could otherwise start a Pro trial at the Starter price.
     price_id = os.environ.get(plan.price_env_var)
     if not price_id:
-        raise Problem(503, "plan_unavailable", "This plan is not configured yet. Nobody has been charged.")
+        raise Problem(503, "plan_unavailable",
+                      "This plan cannot be started at the moment. You have not been charged. "
+                      "Choose another plan, or try again later.")
 
     existing = db.get_subscription_row(account.id)
     if existing is not None and existing["status"] in LIVE:
@@ -180,10 +182,15 @@ def start_trial(
         )
     except stripe.CardError as exc:
         _log_stripe_error(account.id, step, exc)
-        raise Problem(402, "card_declined", exc.user_message or "Your bank declined the card.") from exc
+        declined = (exc.user_message or "Your bank declined the card.").rstrip(". ") + "."
+        raise Problem(402, "card_declined",
+                      f"{declined} Nothing was charged and the trial has not started. "
+                      "Try another card, or ask your bank why it declined.") from exc
     except stripe.StripeError as exc:
         _log_stripe_error(account.id, step, exc)
-        raise Problem(502, "stripe_error", "We could not start the trial. Nobody has been charged.") from exc
+        raise Problem(502, "stripe_error",
+                      "Our payment provider did not complete the request, so the trial has not "
+                      "started and nothing was charged. Try again in a few minutes.") from exc
 
     # The subscription Stripe just returned already carries its status and trial end, so
     # the row is moved off 'incomplete' now rather than waiting for the webhook. The webhook

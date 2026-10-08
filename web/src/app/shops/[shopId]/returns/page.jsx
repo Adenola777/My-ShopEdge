@@ -29,8 +29,8 @@ export default async function ReturnsPage({ params }) {
     <section data-testid="returns-screen">
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/stock`}>Stock</Link></p>
-        <h1>Check your returns</h1>
-        <p>Say whether each returned item can be sold again. Stock updates once.</p>
+        <h1>Check returns</h1>
+        <p>Say whether each returned item can be sold again. Each item can be checked only once, and the check cannot be changed.</p>
       </header>
 
       {returns.length === 0 ? (
@@ -54,7 +54,7 @@ export default async function ReturnsPage({ params }) {
                       </strong>
                     </li>
                     <li>
-                      <span>TikTok refund</span>
+                      <span>Refund to the customer</span>
                       <Figure amount={r.refund} reason="Not refunded yet" />
                     </li>
                     {r.requested_at && <li><span>Requested</span><strong>{formatDate(r.requested_at)}</strong></li>}

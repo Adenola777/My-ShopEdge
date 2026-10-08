@@ -100,7 +100,7 @@ LABELS = {
     "fbt_operations_fee": "FBT operations fee",
     "fbt_shipping_fee": "FBT shipping fee",
     "fbt_storage_fee": "FBT storage fee",
-    "unmapped_fee": "Fee TikTok did not name in a way we recognise",
+    "unmapped_fee": "Fee MyShopEdge does not recognise",
     "platform_adjustment": "TikTok adjustment",
     "refund": "Refunds to customers",
     "cost_of_goods_sold": "Cost of goods sold",

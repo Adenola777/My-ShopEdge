@@ -61,7 +61,7 @@ def decode_cursor(cursor: str) -> tuple[str, str]:
         data = json.loads(base64.urlsafe_b64decode(padded))
         return data["t"], data["i"]
     except Exception as exc:
-        raise Problem(400, "invalid_cursor", "That page cursor is not valid.") from exc
+        raise Problem(400, "invalid_cursor", "That list could not be loaded. Refresh the page.") from exc
 
 
 class Settlement(BaseModel):
@@ -344,13 +344,14 @@ def _checked_invoice(body: SettlementInvoiceIn, currency: str) -> dict[str, Any]
                       "To record the invoice, enter its type, date, net, VAT and gross.")
     if {body.gross.currency, body.net.currency, body.vat.currency} != {currency}:
         raise Problem(422, "validation_failed",
-                      f"The invoice amounts must be in {currency}, the statement's currency.")
+                      f"The invoice amounts must be in {currency}, the currency of this "
+                      f"statement. Enter them in {currency}.")
     if body.gross.amount_minor != body.net.amount_minor + body.vat.amount_minor:
         raise Problem(422, "validation_failed",
                       "The gross must equal the net plus the VAT. Check the figures against "
                       "the invoice.")
     if body.period_start and body.period_end and body.period_start > body.period_end:
-        raise Problem(422, "validation_failed", "The period cannot end before it starts.")
+        raise Problem(422, "validation_failed", "The period ends before it starts. Choose an end date on or after the start date.")
     return {
         "invoice_type": body.invoice_type.strip(), "issued_on": body.issued_on,
         "period_start": body.period_start, "period_end": body.period_end,
@@ -371,7 +372,7 @@ def record_settlement_invoice(
     if not number:
         raise Problem(422, "validation_failed", "An invoice number is required.")
     if len(number) > 64:
-        raise Problem(422, "validation_failed", "That invoice number is too long.")
+        raise Problem(422, "validation_failed", "The invoice number can be up to 64 characters.")
 
     with tenant(account.id) as conn:
         cur = conn.execute(

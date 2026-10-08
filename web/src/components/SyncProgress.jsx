@@ -50,7 +50,7 @@ function describe(d) {
     case "scheduled":
       return ["Waiting", "quiet"];
     case "retry_wait":
-      return ["Trying again shortly", "warn"];
+      return ["Waiting to try again", "warn"];
     case "partial":
       return [`${n.toLocaleString("en-GB")} found so far`, "warn"];
     case "failed":
@@ -101,11 +101,11 @@ export function SyncProgress({ shopId, initial }) {
           return (
             <li key={d.domain} data-testid={`sync-domain-${d.domain}`}>
               <span>
-                {DOMAIN[d.domain] ?? d.domain}
+                {DOMAIN[d.domain] ?? "Other shop data"}
                 {d.last_success_at && (
                   <div className="rows__sub">
                     Last read {formatDate(d.last_success_at, { time: true })}
-                    {d.stale ? ". Out of date" : ""}
+                    {d.stale ? ". This is out of date." : ""}
                   </div>
                 )}
               </span>
@@ -115,8 +115,18 @@ export function SyncProgress({ shopId, initial }) {
         })}
       </ul>
       <p className="card__why">
-        {done ? "Every part of your shop has been read at least once." : "We will tell you when it is ready."}
+        {done ? "Every part of your shop has been read at least once." : "This card shows each part as it arrives."}
       </p>
+      {domains.some((d) => d.status === "failed") && (
+        <p className="card__why">A part that could not be read is tried again at the next daily read.</p>
+      )}
+      {domains.some((d) => d.status === "needs_reconnect") && (
+        <p>
+          <a className="btn btn--quiet btn--block" href={`/shops/${encodeURIComponent(shopId)}/connection-problem`}>
+            Reconnect your shop
+          </a>
+        </p>
+      )}
     </div>
   );
 }

@@ -138,6 +138,21 @@ def _header(shop_name: str, start: date, end: date, basis: str, built: datetime)
     ]
 
 
+# The same sentences the Money screen shows (web/src/lib/terms.js, keptReason), so a file
+# handed to an accountant never carries a code. Added 8 October 2026.
+KEPT_REASONS = {
+    "incomplete_costs": "Not known, because not every product sold in the period has a cost price.",
+    "no_sales": "Nothing sold in this period.",
+}
+
+# The confidence code in words, by the rules in money_view.calculate.
+CONFIDENCE_WORDS = {
+    "confirmed": "Confirmed",
+    "estimated": "Estimated, because TikTok has not yet settled some amounts in the period.",
+    "incomplete": "Incomplete, because not every product sold in the period has a cost price.",
+}
+
+
 def _month_summary(conn, shop_id: UUID, start: date, end: date, basis: str) -> list[list[Any]]:
     view = calculate(conn, shop_id, start, end, basis)
     rows: list[list[Any]] = [["Section", "Line", "TikTok field", "Amount (£)"]]
@@ -151,9 +166,9 @@ def _month_summary(conn, shop_id: UUID, start: date, end: date, basis: str) -> l
         ["Totals", "Gross sales", "", _pounds(t.gross_sales.amount_minor)],
         ["Totals", "Net sales", "", _pounds(t.net_sales.amount_minor)],
         ["Totals", "Net proceeds", "", _pounds(t.net_proceeds.amount_minor)],
-        ["Totals", "You keep", "", _pounds(view.kept.amount_minor) if view.kept else
-         f"Not known: {view.kept_reason or 'no reason given'}"],
-        ["Totals", "Confidence", "", view.confidence],
+        ["Totals", "Gross profit after returns", "", _pounds(view.kept.amount_minor) if view.kept else
+         KEPT_REASONS.get(view.kept_reason or "", "Not known.")],
+        ["Totals", "Confidence", "", CONFIDENCE_WORDS.get(view.confidence, view.confidence)],
     ]
     return rows
 
@@ -297,11 +312,11 @@ def build_shop_export(account_id: UUID, export_id: UUID) -> None:
                 "expires_at = %s, size_bytes = %s, row_count = %s where id = %s",
                 (key, built, built + LIFE, len(data), max(len(table) - 2, 0), str(export_id)),
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         log.exception("export %s failed", export_id)
-        reason = ("File storage is not configured on this deployment."
-                  if isinstance(exc, Problem) and exc.code == "storage_unconfigured"
-                  else "The file could not be built.")
+        reason = ("We could not prepare this download because of a fault at our end. Your "
+                  "records are unaffected. Request it again later, or email "
+                  "info@inspirecraftglobal.com.")
         with tenant(account_id) as conn:
             conn.execute("update exports set status = 'failed', failure_reason = %s "
                          "where id = %s and status = 'queued'", (reason, str(export_id)))
@@ -339,7 +354,7 @@ def create_export(
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
     if body.period_end < body.period_start:
-        raise Problem(422, "validation_failed", "The period ends before it starts.")
+        raise Problem(422, "validation_failed", "The period ends before it starts. Choose an end date on or after the start date.")
     if (body.period_end - body.period_start).days > MAX_SPAN_DAYS:
         raise Problem(422, "validation_failed", "An export covers at most twenty four months.")
     if body.period_start > business_today():
@@ -461,11 +476,11 @@ def build_account_export(account_id: UUID, export_id: UUID) -> None:
             conn.execute("update account_exports set status = 'ready', storage_key = %s, "
                          "ready_at = %s, expires_at = %s, size_bytes = %s where id = %s",
                          (key, built, built + LIFE, len(data), str(export_id)))
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         log.exception("account export %s failed", export_id)
-        reason = ("File storage is not configured on this deployment."
-                  if isinstance(exc, Problem) and exc.code == "storage_unconfigured"
-                  else "The archive could not be built.")
+        reason = ("We could not prepare this download because of a fault at our end. Your "
+                  "records are unaffected. Request it again later, or email "
+                  "info@inspirecraftglobal.com.")
         with tenant(account_id) as conn:
             conn.execute("update account_exports set status = 'failed', failure_reason = %s "
                          "where id = %s and status = 'queued'", (reason, str(export_id)))

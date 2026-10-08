@@ -137,7 +137,7 @@ def put_tax_profile(
         try:
             registered_from = date.fromisoformat(body.vat_registered_from)
         except ValueError as exc:
-            raise Problem(422, "vat_date_invalid", "The VAT registration date is not a date.") from exc
+            raise Problem(422, "vat_date_invalid", "Enter the date you registered for VAT as a full date.") from exc
 
     # A full replacement, not a patch. An omitted field is cleared.
     with tenant(account.id) as conn:
@@ -205,8 +205,8 @@ def get_vat_monitor(
 
     if rule is None:
         raise Problem(503, "vat_unconfigured",
-                      "The VAT registration threshold has not been loaded yet, so this "
-                      "screen cannot say where you stand against it.")
+                      "MyShopEdge does not have the current VAT registration threshold yet, so "
+                      "it cannot show where you stand against it.")
     rule_key, value, reviewed_at = rule
     threshold_minor = int(value["amount_minor"])
     currency = value.get("currency", "GBP")
@@ -317,7 +317,7 @@ def get_set_aside(
                 as_of=as_of, amount=None, unavailable_reason="no_tax_profile",
                 confidence="incomplete",
                 basis_of_estimate=[BasisItem(
-                    label="Fill in your tax profile so a set-aside can be estimated.")],
+                    label="Fill in your business details so MyShopEdge can estimate a set-aside.")],
             )
         structure = profile[0]
         if structure == "company":
@@ -332,8 +332,8 @@ def get_set_aside(
                 as_of=as_of, amount=None, unavailable_reason="no_tax_profile",
                 confidence="incomplete",
                 basis_of_estimate=[BasisItem(
-                    label="Choose sole trader or limited company in your tax profile so a "
-                          "set-aside can be estimated.")],
+                    label="Choose sole trader or limited company in your business details so "
+                          "MyShopEdge can estimate a set-aside.")],
             )
 
         rows = conn.execute(
@@ -349,8 +349,8 @@ def get_set_aside(
             return SetAsideOut(
                 as_of=as_of, amount=None, confidence="incomplete", period=period,
                 basis_of_estimate=[BasisItem(
-                    label="The income tax and National Insurance rates for this tax year are "
-                          "not loaded yet, so no amount can be produced.")],
+                    label="MyShopEdge does not have this tax year's Income Tax and National "
+                          "Insurance rates yet, so it cannot estimate a set-aside.")],
             )
         view = calculate(conn, shopId, start, today, "sales")
 
@@ -360,7 +360,8 @@ def get_set_aside(
             as_of=as_of, amount=None, unavailable_reason="incomplete_costs",
             confidence="incomplete", period=period,
             basis_of_estimate=[BasisItem(
-                label="Some products you sold have no cost, so your profit is not known.")],
+                label="Some products you sold have no cost price, so your gross profit "
+                          "after returns is not known.")],
         )
     profit = view.kept.amount_minor if view.kept is not None else 0
     allowance, tax, class4 = _estimate(profit, rules)
@@ -369,7 +370,8 @@ def get_set_aside(
         # Always an estimate: the tax year is not over, and only this shop's profit is known.
         confidence="estimated", period=period,
         basis_of_estimate=[
-            BasisItem(label="Profit so far this tax year, by sale date, before overheads",
+            BasisItem(label="Gross profit after returns so far this tax year, by sale date, "
+                            "before your overheads",
                       amount=money(profit, currency)),
             BasisItem(label="Personal Allowance", amount=money(allowance, currency),
                       rule_key="income_tax_personal_allowance"),

@@ -131,7 +131,7 @@ def update_notification(
         if ORDER[body.status] < ORDER[row[0]]:
             raise Problem(
                 422, "validation_failed",
-                f"A notification that is {row[0]} cannot go back to {body.status}.",
+                f"A notification marked {row[0]} cannot be marked {body.status} again.",
             )
         cur = conn.execute(
             f"update notifications set status = %s where id = %s and account_id = %s "

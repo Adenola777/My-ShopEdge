@@ -46,12 +46,12 @@ export default async function ShopsPage() {
       <section>
         <header className="page-head">
           <h1>Connect your TikTok Shop</h1>
-          <p>Read-only. MyShopEdge never changes anything in your shop.</p>
+          <p>MyShopEdge reads your shop and never changes anything in it.</p>
         </header>
         <div className="stack">
           <div className="card">
             <h2>What we read</h2>
-            <p className="card__why">Only what is needed to work out what you earned.</p>
+            <p className="card__why">We read only what we need to work out what you earned.</p>
             <ul className="rows">
               <li><span>Orders and sales</span><strong>Read</strong></li>
               <li><span>Products and stock</span><strong>Read</strong></li>
@@ -80,7 +80,7 @@ export default async function ShopsPage() {
           {shops.map((s) => (
             <li key={s.id}>
               <Link href={`/shops/${s.id}/today`}>{s.shop_name ?? s.tiktok_shop_id}</Link>
-              <span className="rows__sub">{s.region}</span>
+              <span className="rows__sub">{s.region === "GB" ? "United Kingdom" : s.region}</span>
             </li>
           ))}
         </ul>

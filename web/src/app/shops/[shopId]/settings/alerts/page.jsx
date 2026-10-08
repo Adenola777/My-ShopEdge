@@ -7,7 +7,7 @@
  */
 
 import { fetchShop } from "@/lib/api";
-import { apiProblem } from "@/components/ApiProblem";
+import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { AlertSettingsForm } from "@/components/SettingsForms";
 
 export const metadata = { title: "Alert settings" };
@@ -16,7 +16,7 @@ export const metadata = { title: "Alert settings" };
 export default async function AlertSettingsPage({ params }) {
   const { shopId } = await params;
   const result = await fetchShop(shopId, "/alert-settings");
-  const problem = apiProblem(result, { what: "your alert settings" });
+  const problem = apiProblem(result, { what: "your alert settings", note: NOTHING_CHANGED });
   if (problem) return problem;
 
   return (

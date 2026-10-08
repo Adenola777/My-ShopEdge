@@ -127,7 +127,7 @@ def _safe_return_to(value: str | None) -> str | None:
     if not value.startswith("/") or value.startswith("//") or "\\" in value:
         raise Problem(
             400, "return_to_not_allowed",
-            "return_to must be a path on MyShopEdge beginning with a single slash.",
+            "Something went wrong starting the connection. Go back to MyShopEdge and start it again.",
         )
     return value
 
@@ -173,6 +173,10 @@ def authorize_tiktok(
     )
 
 
+REFUSED_AUTHORISATION = ("TikTok did not accept the connection, so your shop is not connected. "
+                         "Start the connection again from MyShopEdge.")
+
+
 def _exchange_code(code: str) -> dict[str, Any]:
     """Turn an auth code into tokens. A23.3.
 
@@ -191,21 +195,22 @@ def _exchange_code(code: str) -> dict[str, Any]:
     except httpx.HTTPError as err:
         raise Problem(
             502, "tiktok_unreachable",
-            "TikTok did not answer. Start the connection again.",
+            "TikTok did not answer, so your shop is not connected. Start the connection again "
+            "in a few minutes.",
         ) from err
 
     # The detail must never carry the code, the state or anything from params, because a
     # problem response is shown to the seller and is very likely to end up in a screenshot.
     if response.status_code != 200:
-        raise Problem(400, "code_exchange_failed", "TikTok refused the authorisation.")
+        raise Problem(400, "code_exchange_failed", REFUSED_AUTHORISATION)
 
     body = response.json()
     if body.get("code") != 0:
-        raise Problem(400, "code_exchange_failed", "TikTok refused the authorisation.")
+        raise Problem(400, "code_exchange_failed", REFUSED_AUTHORISATION)
 
     data = body.get("data") or {}
     if not data.get("access_token"):
-        raise Problem(400, "code_exchange_failed", "TikTok refused the authorisation.")
+        raise Problem(400, "code_exchange_failed", REFUSED_AUTHORISATION)
     return data
 
 
@@ -261,17 +266,22 @@ def _signed_get(path: str, access_token: str, query: dict[str, str] | None = Non
             timeout=HTTP_TIMEOUT,
         )
     except httpx.HTTPError as err:
-        raise Problem(502, "tiktok_unreachable", "TikTok did not answer. Try again shortly.") from err
+        raise Problem(502, "tiktok_unreachable",
+                      "TikTok did not answer, so your shop is not connected. Start the "
+                      "connection again in a few minutes.") from err
 
     body = response.json() if response.content else {}
     if response.status_code != 200 or body.get("code") != 0:
-        # TikTok's own message is carried through, because at this point the seller has
-        # already authorised and a bare "something went wrong" makes the failure
-        # undiagnosable. It carries no secret: the token is in a header and the signature is
-        # not echoed.
+        # TikTok's own message is logged, because at this point the seller has already
+        # authorised and a bare "something went wrong" makes the failure undiagnosable. It
+        # carries no secret: the token is in a header and the signature is not echoed. The
+        # seller reads a sentence rather than TikTok's text (copy audit, 8 October 2026).
+        log.warning("TikTok refused %s: http=%s code=%s message=%s", path,
+                    response.status_code, body.get("code"), body.get("message"))
         raise Problem(
             502, "tiktok_call_failed",
-            f"TikTok refused the request: {body.get('message') or response.status_code}",
+            "TikTok turned down our request, so your shop is not connected. Start the "
+            "connection again in a few minutes.",
         )
     return body.get("data") or {}
 
@@ -380,14 +390,16 @@ def tiktok_callback(
     if data.get("user_type") != SELLER_USER_TYPE:
         raise Problem(
             400, "not_a_seller_account",
-            "That TikTok account is not a Shop seller account.",
+            "That TikTok account does not run a TikTok Shop. Sign in to TikTok with the account "
+            "that runs your shop, then connect again.",
         )
 
     shops = _authorized_shops(data["access_token"])
     if not shops:
         raise Problem(
             400, "no_authorised_shop",
-            "That TikTok account has no shop authorised for MyShopEdge.",
+            "TikTok did not give MyShopEdge access to a shop on that account. Start the connection "
+            "again and approve access for your shop on TikTok's page.",
         )
 
     # Every shop TikTok lists is stored. A12.7 ruled one shop per account; on 29 September
@@ -439,7 +451,9 @@ def tiktok_callback(
                 # the UNIQUE (platform, tiktok_shop_id) guard doing its job.
                 raise Problem(
                     409, "shop_already_connected",
-                    "That shop is already connected to another MyShopEdge account.",
+                    "That shop is already connected to a different MyShopEdge account, so it was not "
+                    "added here. Sign in with that account, or email "
+                    "info@inspirecraftglobal.com if you no longer use it.",
                 )
             shop_id = row[0]
 

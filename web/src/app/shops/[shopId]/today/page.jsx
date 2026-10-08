@@ -9,7 +9,9 @@
  * - "You keep" is Gross profit after returns and "Left after TikTok" is Net proceeds (A8),
  *   and the sentence "before your own running costs and your tax" goes with the figure.
  * - The VAT line is gone, because VAT is out of scope (A29.8).
- * - Shop Money states return postage on its own line so Paid out reconciles (A29.7).
+ * - Shop Money states return postage on its own line so Paid out reconciles (A29.7). Paid
+ *   out is not drawn as a total, because it equals the lines above only when nothing is
+ *   awaiting settlement (copy audit 8 October, finding 4).
  * - The hero's second line on the sheet ("From £X of sales across N orders") needs the
  *   day's sales and order count, which TodayView does not carry. Phase 3 of the audit adds
  *   them to the contract first. Until then the line is the before-overheads sentence.
@@ -23,7 +25,8 @@ import { api, fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 import {
-  AWAITING, BEFORE_OVERHEADS, CONFIDENCE, HERO_LABEL, SEVERITY_TONE, chipClass, keptReason,
+  AWAITING, BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, HERO_LABEL, SEVERITY_TONE, chipClass,
+  keptReason,
 } from "@/lib/terms";
 
 export const metadata = { title: "Today" };
@@ -61,7 +64,7 @@ export default async function TodayPage({ params }) {
         <div className="note note--warn" role="status">
           <p>
             {t.freshness?.last_synced_at
-              ? `These figures were last brought up to date ${formatDate(t.freshness.last_synced_at, { time: true })}, so they may not be current.`
+              ? `MyShopEdge last brought these figures up to date ${formatDate(t.freshness.last_synced_at, { time: true })}, ${status === "stale" ? "more than a day ago" : "more than six hours ago"}, so they may not be current.`
               : "Your shop has not been brought up to date yet, so these figures are not complete."}
           </p>
         </div>
@@ -71,14 +74,14 @@ export default async function TodayPage({ params }) {
         <div className="card hero">
           <p className="hero__label">
             {HERO_LABEL[t.hero.label] ?? t.hero.label} today{" "}
-            <span className={chipClass(confidenceTone)}>{confidence}</span>
+            <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[t.hero.confidence]}>{confidence}</span>
           </p>
           <p className="hero__value"><Figure amount={t.hero.value} /></p>
           {isProfit ? (
             <p className="hero__line">{BEFORE_OVERHEADS}</p>
           ) : (
             <p className="hero__line">
-              Net proceeds, because not every product has a cost price yet.{" "}
+              This is net proceeds, because not every product sold today has a cost price yet.{" "}
               <Link href={`/shops/${shopId}/products`}>Add costs</Link>
             </p>
           )}
@@ -90,29 +93,35 @@ export default async function TodayPage({ params }) {
             <p className="stat__label">Gross sales this month</p>
           </div>
           <div className="card">
-            <p className="stat__value">
-              <Figure amount={t.month.kept} reason={keptReason(t.month.kept_reason)} />
-            </p>
-            <p className="stat__label">
-              {t.month.kept ? "Gross profit after returns this month" : keptReason(t.month.kept_reason)}
-            </p>
+            <p className="stat__value"><Figure amount={t.month.kept} /></p>
+            <p className="stat__label">Gross profit after returns this month</p>
+            {!t.month.kept && t.month.kept_reason && (
+              <p className="rows__sub">{keptReason(t.month.kept_reason)}</p>
+            )}
           </div>
         </div>
 
         <div className="card">
           <h2>Shop Money</h2>
-          <p className="card__why">What TikTok has paid you, and what it still owes.</p>
+          <p className="card__why">
+            This card covers every sale MyShopEdge holds for this shop. It shows what TikTok has
+            paid you, and what it still owes you.
+          </p>
           <ul className="rows">
-            <li><span>Net proceeds</span><Figure amount={sm.generated} /></li>
-            {sm.return_postage && (
-              <li><span>Return postage deducted</span><Figure amount={sm.return_postage} /></li>
+            <li><span>Net proceeds, all time</span><Figure amount={sm.generated} /></li>
+            {sm.return_postage && sm.return_postage.amount_minor !== 0 && (
+              <li><span>Return shipping TikTok deducted</span><Figure amount={sm.return_postage} /></li>
             )}
-            <li className="rows__total"><span>Paid out</span><Figure amount={sm.paid_out} /></li>
+            <li><span>Paid out</span><Figure amount={sm.paid_out} /></li>
             <li>
               <span>Awaiting settlement</span>
               <span className="chip chip--warn"><Figure amount={sm.awaiting} /></span>
             </li>
           </ul>
+          <p className="rows__sub">
+            Paid out and awaiting settlement together make up net proceeds less the return
+            shipping TikTok deducted.
+          </p>
           {awaiting.length > 0 && (
             <details className="disclose">
               <summary>What is awaiting settlement</summary>
@@ -120,7 +129,7 @@ export default async function TodayPage({ params }) {
                 {awaiting.map((a) => (
                   <li key={a.status} className="rows__sub">
                     <span>
-                      {AWAITING[a.status] ?? a.status}, {a.orders} {a.orders === 1 ? "order" : "orders"}
+                      {AWAITING[a.status] ?? "Awaiting settlement"}, {a.orders} {a.orders === 1 ? "order" : "orders"}
                     </span>
                     <Figure amount={a.amount} />
                   </li>
@@ -143,9 +152,11 @@ export default async function TodayPage({ params }) {
               {t.needs_you.map((n) => (
                 <li key={n.type}>
                   <span>
-                    {n.href ? <Link href={n.href}>{n.label ?? n.type}</Link> : (n.label ?? n.type)}
+                    {n.href
+                      ? <Link href={n.href}>{n.label ?? "Something needs your attention"}</Link>
+                      : (n.label ?? "Something needs your attention")}
                     {n.amount_at_stake && (
-                      <span className="rows__sub"> <Figure amount={n.amount_at_stake} /> affected</span>
+                      <span className="rows__sub"> <Figure amount={n.amount_at_stake} /> is affected.</span>
                     )}
                   </span>
                   <span className={chipClass(SEVERITY_TONE[n.severity] ?? "quiet")}>

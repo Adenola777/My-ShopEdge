@@ -27,17 +27,17 @@ export default async function CardPage() {
 
   if (!subRes.ok || !LIVE.includes(subRes.data?.status)) {
     return (
-      <main className="billing">
+      <section className="billing">
         <h1>There is no plan to change the card on.</h1>
         <p>A card can be changed while a plan or a free trial is running.</p>
         <Link className="btn btn--primary" href={back}>Back</Link>
-      </main>
+      </section>
     );
   }
 
   return (
-    <main className="billing">
+    <section className="billing">
       <CardChangeForm back={back} />
-    </main>
+    </section>
   );
 }

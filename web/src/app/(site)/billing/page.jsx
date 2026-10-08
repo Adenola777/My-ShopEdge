@@ -17,7 +17,7 @@ import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
 
 import { PaymentForm } from "./PaymentForm";
 
-export const metadata = { title: "Start your free trial" };
+export const metadata = { title: "Your plan" };
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +36,12 @@ export default async function BillingPage() {
   const status = subRes.ok ? subRes.data?.status : null;
   if (status && status !== "none") {
     return (
-      <main className="billing" data-testid="billing-current">
+      <section className="billing" data-testid="billing-current">
         <h1>{status === "trialing" ? "Your free trial is running." : status === "active" ? "Your plan is active." : status === "past_due" ? "Your last payment did not go through." : status === "canceled" ? "Your plan has ended." : "Your plan is being set up."}</h1>
-        <p>There is nothing to choose here now.</p>
+        <p>{status === "past_due" ? "Your figures stay open to you while it is sorted." : "There is nothing to choose here now."}</p>
         {status === "past_due" && <p><Link href="/billing/payment-failed" data-testid="payment-failed-link">What a failed payment means</Link></p>}
         <Link className="btn btn--primary" href="/shops">Go to your shop</Link>
-      </main>
+      </section>
     );
   }
 
@@ -49,13 +49,14 @@ export default async function BillingPage() {
 
   if (!payload) {
     return (
-      <main className="billing">
+      <section className="billing">
         <h1>We cannot show the plans right now.</h1>
         <p>
           The plans could not be loaded from MyShopEdge, so no plan can be chosen yet and
           nothing has been charged. Try again in a few minutes.
         </p>
-      </main>
+        <p><a className="btn btn--primary" href="/billing">Try again</a></p>
+      </section>
     );
   }
 
@@ -68,8 +69,8 @@ export default async function BillingPage() {
   // The whole flow lives in PaymentForm now: the plan cards are the chooser, so the heading,
   // the cards and the trust footer move inside it and change with the step the seller is on.
   return (
-    <main className="billing">
+    <section className="billing">
       <PaymentForm plans={plans} trialDays={trialDays} trialEnds={trialEnds} />
-    </main>
+    </section>
   );
 }

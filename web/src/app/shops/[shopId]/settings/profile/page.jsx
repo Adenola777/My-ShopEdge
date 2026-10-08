@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { api, formatDate } from "@/lib/api";
-import { apiProblem } from "@/components/ApiProblem";
+import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { chipClass } from "@/lib/terms";
 import { PlanControls } from "@/components/PlanControls";
 
@@ -57,7 +57,7 @@ export default async function ProfilePage({ params }) {
     api("/me", { cache: "no-store" }),
     api("/billing/subscription", { cache: "no-store" }),
   ]);
-  const problem = apiProblem(meRes, { what: "your profile" });
+  const problem = apiProblem(meRes, { what: "your profile", note: NOTHING_CHANGED });
   if (problem) return problem;
 
   /** @type {import("@/lib/api-types").components["schemas"]["Account"]} */
@@ -72,7 +72,7 @@ export default async function ProfilePage({ params }) {
     <section data-testid="profile-page">
       <header className="page-head">
         <h1>Profile and plan</h1>
-        <p>Your sign-in details and the plan this account is on.</p>
+        <p>This page shows how you sign in and which plan this account is on.</p>
       </header>
       <div className="stack">
         <div className="card" data-testid="profile-account">
@@ -83,7 +83,7 @@ export default async function ProfilePage({ params }) {
             <li><span>Member since</span><strong>{formatDate(me.created_at)}</strong></li>
             <li><span>Shops</span><strong>{me.shop_count ?? 0}</strong></li>
           </ul>
-          <p className="card__why">Your name and email come from the way you sign in, so they change there.</p>
+          <p className="card__why">Your name and email come from the account you sign in with, such as Google, so you change them there.</p>
         </div>
 
         <div className="card" data-testid="profile-plan">
@@ -109,7 +109,7 @@ export default async function ProfilePage({ params }) {
             Delete my account
           </Link>
         </p>
-        <p className="footnote">Your account closes at once and is erased after thirty days. Until then you can sign in and keep it.</p>
+        <p className="footnote">Deleting closes your account at once. After thirty days MyShopEdge erases your name and email. Until then you can sign in and cancel the deletion.</p>
       </div>
     </section>
   );

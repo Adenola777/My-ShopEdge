@@ -67,7 +67,7 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
         idempotencyKey,
       });
       if (!ok) {
-        setError(data?.detail ?? "We could not start the trial. Nobody has been charged.");
+        setError(data?.detail ?? "We could not start the trial. Nobody has been charged. Try again in a moment.");
         return;
       }
       if (data.status === "trialing") {
@@ -102,7 +102,7 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
           and you can cancel before then in Settings and pay nothing.
         </p>
         <Link className="btn btn--primary btn--block" href="/shops" data-testid="billing-done-continue">
-          Go to your dashboard
+          Go to your shop
         </Link>
       </section>
     );
@@ -117,8 +117,8 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
             : "Your shop is connected. Start your free trial."}
         </h1>
         <p className="billing__lede">
-          Every plan begins with {trialDays} days free. We verify your card now and take
-          nothing until {trialEnds}. You can cancel before then and you will not be charged.
+          Every plan begins with {trialDays} days free, and nothing is taken until{" "}
+          {trialEnds}. You can stop the plan in Settings before then, and nothing is charged.
         </p>
       </header>
 
@@ -151,8 +151,8 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
                     <small> a month after your free trial</small>
                   </span>
                   <span className="plan__limit">
-                    Up to {plan.order_limit.toLocaleString("en-GB")} orders a month, and{" "}
-                    {plan.history_months} months of history.
+                    Made for up to {plan.order_limit.toLocaleString("en-GB")} orders a month.
+                    Nothing stops if you sell more. {plan.history_months} months of history.
                   </span>
                   <span className="plan__features" role="list">
                     {plan.features.map((/** @type {string} */ feature) => (
@@ -177,8 +177,8 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
               {chosen ? (
                 <>
                   You chose {chosen.name}. After {trialDays} free days it is{" "}
-                  {formatMoney(chosen.price)} a month, and you can change the card or cancel at
-                  any time in Settings.
+                  {formatMoney(chosen.price)} a month, and you can change the card or stop the
+                  plan at any time in Settings. Your plan is fixed once you continue to the card.
                 </>
               ) : (
                 <>Choose a plan to continue.</>
@@ -191,7 +191,7 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
               disabled={busy || !chosen}
               data-testid="billing-continue"
             >
-              {busy ? "One moment" : "Continue to card details"}
+              {busy ? "Setting up your trial" : chosen ? `Continue with ${chosen.name}` : "Continue"}
             </button>
           </div>
         </section>
@@ -228,7 +228,7 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
         </p>
         <p>
           We store no card details. Stripe holds them and we hold a reference. You can change
-          the card or cancel at any time in Settings.
+          the card or stop the plan at any time in Settings.
         </p>
       </footer>
     </>
@@ -260,7 +260,7 @@ function ConfirmCard({ planName, trialDays, onDone }) {
     });
 
     if (result.error) {
-      setError(result.error.message ?? "Your bank did not confirm the card.");
+      setError(`${result.error.message ?? "Your bank did not confirm the card."} Nothing has been charged. Check the details or try another card.`);
       setBusy(false);
       return;
     }
@@ -270,7 +270,7 @@ function ConfirmCard({ planName, trialDays, onDone }) {
   return (
     <form onSubmit={submit} className="card-form">
       <p className="card-form__note">
-        We verify the card now and charge nothing today. Your bank may ask you to confirm.
+        We verify the card now and charge nothing today.
       </p>
       <PaymentElement options={{ layout: "tabs" }} />
       {error ? (

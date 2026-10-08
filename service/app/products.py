@@ -346,9 +346,12 @@ def list_products(
             kept_reason=(
                 None if r["kept_minor"] is not None
                 else (
-                    "One variant has no cost price yet."
+                    "One variant had no cost price on the day some of its units sold, so "
+                    "gross profit after returns for this period is not known."
                     if int(r["skus_without_cost"]) == 1
-                    else f"{int(r['skus_without_cost'])} variants have no cost price yet."
+                    else f"{int(r['skus_without_cost'])} variants had no cost price on the day "
+                         "some of their units sold, so gross profit after returns for this "
+                         "period is not known."
                 )
             ),
             returns_units=int(r["returns_units"]),
@@ -460,6 +463,11 @@ class ProductDetail(BaseModel):
 #
 # cost_of_goods_sold is deliberately absent from these lists. The ledger posts it for every
 # unit sold including the ones that came back, so it is replaced by a computed line.
+# When a cost is missing, the stages that need it show their own total under these names
+# rather than a running "Gross profit" that leaves the cost of goods out. Money does the same
+# (money_view.SECTION_TOTALS). Added 8 October 2026 from the copy audit, finding 8.
+INCOMPLETE_TOTALS = {"your_costs": "Total your costs", "return_loss": "Total return costs"}
+
 SECTIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
     ("sales", "Sales", "Sales after refunds",
      ("gross_sales", "seller_discount", "refund")),
@@ -485,7 +493,7 @@ LABELS = {
     "fbt_operations_fee": "FBT operations fee",
     "fbt_shipping_fee": "FBT shipping fee",
     "fbt_storage_fee": "FBT storage fee",
-    "unmapped_fee": "Fee TikTok did not name in a way we recognise",
+    "unmapped_fee": "Fee MyShopEdge does not recognise",
     "refund": "Refunds to customers",
     "return_shipping": "Return shipping you paid",
     "stock_written_off": "Stock written off",
@@ -602,14 +610,18 @@ def get_product(
             ))
         if not section_lines:
             continue
-        running += sum(l.amount.amount_minor for l in section_lines)
+        own = sum(l.amount.amount_minor for l in section_lines)
+        running += own
+        incomplete_stage = retained_minor is None and key in INCOMPLETE_TOTALS
         sections.append(CalculatorSection(
             key=key, label=label, lines=section_lines,
             # The subtotal is the running figure, not the section's own sum, because the
             # seller is reading a chain that ends at You keep rather than four unrelated
-            # piles. The label names which figure of A4 each stage has reached.
-            subtotal=money(running, currency),
-            subtotal_label=subtotal_label,
+            # piles. The label names which figure of A4 each stage has reached. When the
+            # cost of goods is not known, that figure is not reached, so the stage shows
+            # its own total instead.
+            subtotal=money(own if incomplete_stage else running, currency),
+            subtotal_label=INCOMPLETE_TOTALS[key] if incomplete_stage else subtotal_label,
         ))
 
     return ProductDetail(

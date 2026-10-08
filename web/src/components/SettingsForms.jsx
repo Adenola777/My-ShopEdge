@@ -18,6 +18,7 @@
  *   with ones it does, and the props carry types so `npm run check` passes.
  */
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -67,9 +68,9 @@ export function AlertSettingsForm({ shopId, initial }) {
     <form onSubmit={save} className="card stack" data-testid="alert-settings-form">
       <div>
         <label htmlFor="low">Low stock warning (days of cover)</label>
-        <input id="low" data-testid="low-stock-days" inputMode="numeric" value={low}
+        <input id="low" data-testid="low-stock-days" inputMode="numeric" value={low} aria-describedby="low-help"
                onChange={(e) => setLow(e.target.value)} />
-        <p className="rows__sub">A variant is marked low when it has fewer than this many days of stock left.</p>
+        <p className="rows__sub" id="low-help">A variant is marked low when it has fewer than this many days of stock left.</p>
       </div>
       <div>
         <label htmlFor="coming">Coming back window (days)</label>
@@ -78,12 +79,12 @@ export function AlertSettingsForm({ shopId, initial }) {
       </div>
       <div>
         <label htmlFor="absorb">Stock rise to accept without asking (units)</label>
-        <input id="absorb" data-testid="absorption-tolerance" inputMode="numeric" value={absorb}
+        <input id="absorb" data-testid="absorption-tolerance" inputMode="numeric" value={absorb} aria-describedby="absorb-help"
                onChange={(e) => setAbsorb(e.target.value)} />
-        <p className="rows__sub">A larger unexplained rise in TikTok&rsquo;s count is flagged for you to check.</p>
+        <p className="rows__sub" id="absorb-help">A larger rise in TikTok&rsquo;s count that MyShopEdge cannot explain is raised as a discrepancy for you to check.</p>
       </div>
       {error && <p className="form-error" role="alert" data-testid="alert-settings-error">{error}</p>}
-      {saved && <p className="note" role="status" data-testid="alert-settings-saved">Saved.</p>}
+      {saved && <p className="note" role="status" data-testid="alert-settings-saved">Your thresholds are saved.</p>}
       <p><button className="btn btn--primary" data-testid="save-alert-settings" disabled={busy}>{busy ? "Saving" : "Save thresholds"}</button></p>
     </form>
   );
@@ -109,7 +110,7 @@ export function DisconnectAction({ shopId }) {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was changed." : (r.data?.detail ?? "The shop was not disconnected."));
+      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was changed." : (r.data?.detail ?? "The shop was not disconnected. Please try again in a moment."));
       return;
     }
     setDone(true);
@@ -120,6 +121,8 @@ export function DisconnectAction({ shopId }) {
     return (
       <div className="note" role="status" data-testid="disconnect-done">
         <p>Your shop is disconnected. Your records are still here. Reconnect the same shop at any time and everything continues from where it stopped.</p>
+        <p>Disconnecting does not change your plan. You manage your plan in <Link href={`/shops/${shopId}/settings/profile`}>Profile and plan</Link>.</p>
+        <p><Link href={`/shops/${shopId}/settings`}>Back to settings</Link> &middot; <Link href="/shops/connect">Reconnect this shop</Link></p>
       </div>
     );
   }
@@ -133,6 +136,16 @@ export function DisconnectAction({ shopId }) {
 }
 
 /**
+ * "2026-09" as "September 2026", for the saved message.
+ *
+ * @param {string} month
+ */
+function monthName(month) {
+  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })
+    .format(new Date(`${month}-01T12:00:00Z`));
+}
+
+/**
  * S24 Other-channel sales. Enter a month's total from a channel outside TikTok.
  *
  * @param {{ shopId: string }} props
@@ -143,7 +156,7 @@ export function OtherSalesForm({ shopId }) {
   const [channel, setChannel] = useState("");
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(/** @type {string | null} */ (null));
   const [error, setError] = useState(/** @type {string | null} */ (null));
 
   /** @param {import("react").FormEvent} e */
@@ -164,7 +177,7 @@ export function OtherSalesForm({ shopId }) {
     }
     setBusy(true);
     setError(null);
-    setSaved(false);
+    setSaved(null);
     const r = await api(`/shops/${encodeURIComponent(shopId)}/other-sales/${month.trim()}`, {
       method: "PUT",
       body: JSON.stringify({ channel: channel.trim(), gross: { amount_minor: minor, currency: "GBP" } }),
@@ -174,7 +187,7 @@ export function OtherSalesForm({ shopId }) {
       setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? "That figure was not saved."));
       return;
     }
-    setSaved(true);
+    setSaved(`MyShopEdge saved ${channel.trim()} for ${monthName(month.trim())}.`);
     setAmount("");
     router.refresh();
   }
@@ -188,16 +201,18 @@ export function OtherSalesForm({ shopId }) {
       </div>
       <div>
         <label htmlFor="os-channel">Channel</label>
-        <input id="os-channel" data-testid="other-sales-channel" maxLength={100} placeholder="Etsy"
+        <input id="os-channel" data-testid="other-sales-channel" maxLength={100} aria-describedby="os-channel-help"
                value={channel} onChange={(e) => setChannel(e.target.value)} />
+        <p className="rows__sub" id="os-channel-help">For example Etsy, eBay or a market stall.</p>
       </div>
       <div>
-        <label htmlFor="os-amount">Total for the month (£)</label>
+        <label htmlFor="os-amount">Total sales for the month, before any fees (£)</label>
         <input id="os-amount" data-testid="other-sales-amount" inputMode="decimal" placeholder="1234.56"
                value={amount} onChange={(e) => setAmount(e.target.value)} />
       </div>
       {error && <p className="form-error" role="alert" data-testid="other-sales-error">{error}</p>}
-      {saved && <p className="note" role="status" data-testid="other-sales-saved">Saved.</p>}
+      {saved && <p className="note" role="status" data-testid="other-sales-saved">{saved}</p>}
+      <p className="rows__sub">Saving the same channel and month again replaces the earlier total.</p>
       <p><button className="btn btn--primary" data-testid="save-other-sales" disabled={busy}>{busy ? "Saving" : "Save month"}</button></p>
     </form>
   );

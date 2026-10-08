@@ -13,11 +13,11 @@ import { saveCard } from "../CardChangeForm";
 
 export default function CardDonePage() {
   return (
-    <main className="billing">
+    <section className="billing">
       <Suspense fallback={<p aria-live="polite">One moment.</p>}>
         <Finish />
       </Suspense>
-    </main>
+    </section>
   );
 }
 

@@ -114,14 +114,14 @@ def _includes(erase_at: datetime, plan_stopped: bool = False) -> list[str]:
         "turns renewal back on.",
     ] if plan_stopped else [])
     return [
-        "Sign-in stops working for this account now.",
-        "Every connected shop is disconnected now, and its TikTok tokens are marked revoked.",
+        "You can no longer use MyShopEdge with this account, except to cancel the deletion.",
+        "Every connected shop is disconnected now, and MyShopEdge stops using its TikTok sign-in details.",
         *plan,
         f"Until {day} you can cancel the deletion by signing in again. Nothing is erased before then.",
-        f"On {day} your name and email are erased, the stored TikTok tokens are erased, "
-        "and every file you uploaded or exported is deleted.",
-        "Your ledger stays, attached to no person, for the period financial records must be "
-        "kept. Your name and email are not kept with it.",
+        f"After {day} your name and email are erased, your TikTok sign-in details are "
+        "erased, and every file you uploaded or exported is deleted.",
+        "Your ledger stays, with your name and email removed, because financial records must "
+        "be kept. MyShopEdge has not yet set when it is deleted.",
     ]
 
 
@@ -151,7 +151,7 @@ def delete_me(
             (str(account.id),),
         ).fetchone()
         if row is None:
-            raise Problem(401, "account_not_found", "Please sign in again.")
+            raise Problem(401, "account_not_found", "We could not find your account. Sign in again.")
         email, status, deleted_at = row
         # The column is citext, so the database already treats case as no difference. The
         # check reads the address the same way, and still refuses any other address.
@@ -159,7 +159,9 @@ def delete_me(
             raise Problem(422, "validation_failed",
                           "That is not the email address on this account, so nothing was deleted.")
         if status == "suspended":
-            raise Problem(403, "account_suspended", "This account is suspended.")
+            raise Problem(403, "account_suspended",
+                          "This account is suspended, so it cannot be used. Email "
+                          "info@inspirecraftglobal.com and we will tell you why and what happens next.")
 
         renewal = "none"
         if status != "deleted":
@@ -212,7 +214,7 @@ def cancel_account_deletion(account: Annotated[Account, Depends(require_signed_i
             (str(account.id),),
         ).fetchone()
         if row is None:
-            raise Problem(409, "not_closing", "This account has no deletion to cancel.")
+            raise Problem(409, "not_closing", "This account is not being deleted, so there is nothing to cancel.")
         # Renewal comes back only where the deletion stopped it. A Stripe failure raises
         # and rolls back, so the account stays closing and the seller can try again.
         billing.set_renewal_for_deletion(account.id, closing=False)

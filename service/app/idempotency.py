@@ -22,6 +22,10 @@ from .problems import Problem
 
 RETAIN = "24 hours"
 
+# A seller meets these only through a fault in the app, so the words say what to do.
+RESEND = ("Something went wrong sending this change, so nothing was saved. Refresh the page "
+          "and try again.")
+
 
 def request_hash(*parts: Any) -> str:
     return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()
@@ -32,7 +36,7 @@ def replay(conn, account_id: UUID, operation: str, key: str | None, digest: str)
     if key is None:
         return None
     if not 8 <= len(key) <= 128:
-        raise Problem(422, "validation_failed", "Idempotency-Key must be 8 to 128 characters.")
+        raise Problem(422, "validation_failed", RESEND)
     conn.execute(
         "delete from idempotency_keys where account_id = %s and operation = %s and key = %s "
         f"and created_at < now() - interval '{RETAIN}'",
@@ -48,7 +52,7 @@ def replay(conn, account_id: UUID, operation: str, key: str | None, digest: str)
     if row[0] != digest:
         raise Problem(
             422, "idempotency_key_reused",
-            "That Idempotency-Key was already used for a different request.",
+            RESEND,
         )
     return row[1], row[2]
 

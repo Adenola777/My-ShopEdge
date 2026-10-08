@@ -40,7 +40,7 @@ PLANS: dict[str, Plan] = {
     "starter": Plan(
         slug="starter",
         name="Starter",
-        strapline="Know your numbers.",
+        strapline="Starter covers a shop taking up to 100 orders a month.",
         price_minor=999,
         currency="GBP",
         order_limit=100,
@@ -48,6 +48,7 @@ PLANS: dict[str, Plan] = {
         highlight=False,
         price_env_var="STRIPE_PRICE_STARTER",
         features=[
+            "Up to 100 orders a month",
             "One TikTok Shop connection",
             "Sales, fees and payouts, reconciled to every statement",
             "Refunds and returns, with the stock effect of each",
@@ -60,7 +61,7 @@ PLANS: dict[str, Plan] = {
     "growth": Plan(
         slug="growth",
         name="Growth",
-        strapline="Understand your business.",
+        strapline="Growth covers a shop taking up to 500 orders a month.",
         price_minor=2499,
         currency="GBP",
         order_limit=500,
@@ -70,7 +71,7 @@ PLANS: dict[str, Plan] = {
         features=[
             "Everything in Starter",
             "Up to 500 orders a month",
-            "Profit by product and by variant",
+            "Gross profit after returns, by product",
             "Every transaction behind any figure",
             "Exports on a sales basis or a cash basis",
             "Priority support",
@@ -79,7 +80,7 @@ PLANS: dict[str, Plan] = {
     "pro": Plan(
         slug="pro",
         name="Pro",
-        strapline="Scale with confidence.",
+        strapline="Pro covers a shop taking up to 2,000 orders a month.",
         price_minor=4999,
         currency="GBP",
         order_limit=2000,

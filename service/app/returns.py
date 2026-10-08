@@ -253,7 +253,7 @@ def get_return_metrics(
     start = period_from or today.replace(day=1)
     end = period_to or today
     if start > end:
-        raise Problem(422, "validation_failed", "The period starts after it ends.")
+        raise Problem(422, "validation_failed", "The period ends before it starts. Choose an end date on or after the start date.")
 
     with tenant(account.id) as conn:
         cur = conn.execute(METRICS_SQL, {"shop": str(shop_id), "from": start, "to": end})
@@ -367,7 +367,8 @@ def check_return_item(
             raise Problem(409, "already_checked", "This item has already been checked. Checking is one way.")
         if postage is not None and postage.currency != currency:
             raise Problem(422, "validation_failed",
-                          f"The postage is in {postage.currency} and this shop sells in {currency}.")
+                          f"The postage is in {postage.currency} and this shop sells in {currency}. "
+                          f"Enter it in {currency}.")
 
         writes_ledger = status == "unsellable" or (postage is not None and postage.amount_minor > 0)
         line = None
@@ -380,7 +381,8 @@ def check_return_item(
             ).fetchone()
             if line is None:
                 raise Problem(422, "no_order_line",
-                              "The order holds no line for this variant, so nothing can be recorded against it.")
+                              "This variant is not on the original order, so the return cannot be "
+                              "recorded against it.")
 
         write_off_minor = None
         if status == "unsellable":
@@ -392,7 +394,8 @@ def check_return_item(
             if cost is None:
                 raise Problem(422, "no_cost",
                               "This variant had no cost when it sold, so the write-off cannot be worked out. "
-                              "Add its cost, then check the item again.")
+                              "Add its cost on the product page, dated on or before the day it "
+                              "sold, then check the item again.")
             write_off_minor = int(cost[0]) * int(quantity)
 
         now = now_utc()
