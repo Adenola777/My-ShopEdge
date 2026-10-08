@@ -98,7 +98,7 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
         <h1>Your free trial has started.</h1>
         <p>
           You are on {chosen ? chosen.name : "your plan"} for {trialDays} days. Nothing has
-          been charged. We will email you three days before the first payment on {trialEnds},
+          been charged. We will email you seven days before the first payment on {trialEnds},
           and you can cancel before then in Settings and pay nothing.
         </p>
         <Link className="btn btn--primary btn--block" href="/shops" data-testid="billing-done-continue">
