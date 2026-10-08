@@ -13,19 +13,28 @@
 import { api, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 
-export const metadata = { title: "Help and glossary" };
+export const metadata = { title: "Glossary and tax rules" };
 
 /** What each figure on the screens means, in the A8 terms. The rules below it come from the service. */
 const TERMS = [
-  ["Gross sales (GMV)", "What customers paid for your products, before refunds and before anything TikTok takes."],
-  ["Refunds to customers", "Money returned to buyers, in full or in part."],
-  ["Net proceeds", "Your sales after refunds, less every fee and deduction TikTok makes."],
-  ["Gross profit after returns", "Net proceeds less what the goods you sold cost you, after returned stock is put back or written off. It is before your own running costs and your tax."],
-  ["Settlement", "A statement from TikTok and the payout it sends to your bank."],
-  ["Sales basis", "Counts money on the day of the sale."],
-  ["Cash basis", "Counts money in the month TikTok settled it."],
-  ["Stock written off", "The cost of returned units you marked as unsellable."],
-  ["Days of cover", "Stock on hand divided by the daily rate of sales over the last fourteen days."],
+  ["Gross sales (GMV)", "Gross sales are what customers paid for your products, before refunds and before anything TikTok takes."],
+  ["Seller discounts", "Seller discounts are the discounts you fund yourself, such as your own vouchers."],
+  ["Net sales", "Net sales are gross sales less seller discounts."],
+  ["Total TikTok fees", "Total TikTok fees is the sum of the fees TikTok charges, such as platform commission and affiliate commission. It is always shown under the separate fees that make it up."],
+  ["Refunds to customers", "Refunds to customers are the money returned to buyers, in full or in part."],
+  ["Net proceeds", "Net proceeds are your sales after refunds, less every fee and deduction TikTok makes."],
+  ["Cost of goods sold", "Cost of goods sold is what the units you sold cost you, at the cost price in force on the day each unit sold."],
+  ["Gross profit", "Gross profit is net proceeds less cost of goods sold and the shipping and packaging you pay."],
+  ["Return costs", "Return costs are the return shipping you paid and the cost of returned stock you wrote off."],
+  ["Gross profit after returns", "Gross profit after returns is gross profit less return costs. It is before your own running costs and your tax."],
+  ["Settlement", "A settlement is a statement from TikTok and the payout it sends to your bank."],
+  ["Paid out", "Paid out is what TikTok sent to your bank for a statement, after any reserve it withheld."],
+  ["Reserve withheld", "Reserve withheld is money TikTok holds back from a statement for a time before it pays it out."],
+  ["Awaiting settlement", "Awaiting settlement is money from your sales that TikTok has not settled yet."],
+  ["Sales basis", "Sales basis counts money on the day of the sale."],
+  ["Cash basis", "Cash basis counts money in the month TikTok settled it."],
+  ["Stock written off", "Stock written off is the cost of returned units you marked as unsellable."],
+  ["Days of cover", "Days of cover is stock on hand divided by the daily rate of sales over the last fourteen days."],
 ];
 
 /** @typedef {import("@/lib/api-types").components["schemas"]["ReferenceRule"]} ReferenceRule */
@@ -102,7 +111,7 @@ export default async function GlossaryPage() {
   return (
     <section data-testid="glossary-screen">
       <header className="page-head">
-        <h1>Help and glossary</h1>
+        <h1>Glossary and tax rules</h1>
         <p>What each figure means, and the tax rules MyShopEdge uses with the date each was last checked.</p>
       </header>
       <div className="card" data-testid="glossary-terms">
@@ -116,7 +125,7 @@ export default async function GlossaryPage() {
       {rules.length === 0 ? (
         <div className="card">
           <h2>Tax rules</h2>
-          <p className="muted">The current HMRC figures will appear here shortly.</p>
+          <p className="muted">No tax rules are loaded yet.</p>
         </div>
       ) : (
         <div className="stack">
@@ -130,11 +139,17 @@ export default async function GlossaryPage() {
                       {RULE_LABEL[r.rule_key] ?? r.rule_key}
                       <div className="rows__sub">
                         {[describe(r.value),
-                          `from ${formatDate(r.effective_from)}`,
-                          r.reviewed_at ? `reviewed ${formatDate(r.reviewed_at)}` : null,
-                        ].filter(Boolean).join(". ")}
+                          `It applies from ${formatDate(r.effective_from)}`,
+                          r.reviewed_at ? `It was last checked on ${formatDate(r.reviewed_at)}` : null,
+                        ].filter(Boolean).join(". ")}.
                         {r.source_url && (
-                          <> · <a href={r.source_url} target="_blank" rel="noreferrer">source</a></>
+                          <>
+                            {" "}
+                            <a href={r.source_url} target="_blank" rel="noreferrer">
+                              {RULE_LABEL[r.rule_key] ?? "This rule"}{" "}
+                              {r.source_url.startsWith("https://www.gov.uk/") ? "on gov.uk" : "at its source"} (opens in a new tab)
+                            </a>
+                          </>
                         )}
                       </div>
                     </span>

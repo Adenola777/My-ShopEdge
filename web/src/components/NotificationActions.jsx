@@ -58,8 +58,8 @@ export function NotificationActions({ id, status, title }) {
         </button>
       )}
       <button className="btn btn--quiet btn--small" disabled={busy} onClick={() => send("done")}
-              aria-label={`Mark as done: ${title}`}>
-        Done
+              aria-label={`Mark as resolved: ${title}`}>
+        Mark as resolved
       </button>
       {error && <p className="form-error" role="alert">{error}</p>}
     </div>

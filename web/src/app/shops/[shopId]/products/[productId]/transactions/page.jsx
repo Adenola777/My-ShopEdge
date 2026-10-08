@@ -13,6 +13,7 @@ import Link from "next/link";
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
+import { RECORD_SOURCE } from "@/lib/terms";
 
 export const metadata = { title: "Product transactions" };
 
@@ -38,6 +39,12 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
 
   const page = result.data;
   const entries = page.entries ?? [];
+  const dated = Boolean(query.from && query.to);
+  const keep = new URLSearchParams({
+    ...(query.basis ? { basis: query.basis } : {}),
+    ...(query.from ? { from: query.from } : {}),
+    ...(query.to ? { to: query.to } : {}),
+  }).toString();
 
   return (
     <section data-testid="product-transactions-screen">
@@ -45,8 +52,12 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
         <p className="crumb">
           <Link href={`/shops/${shopId}/products/${productId}`}>Back to product</Link>
         </p>
-        <h1>Every record behind this product</h1>
-        <p>These are the transactions behind this product&rsquo;s figures.</p>
+        <h1>Records for this product</h1>
+        <p>
+          {dated
+            ? `These are the records behind this product's figures from ${formatDate(query.from)} to ${formatDate(query.to)}.`
+            : "These are all the records MyShopEdge holds for this product."}
+        </p>
       </header>
 
       <div className="card">
@@ -62,17 +73,17 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
 
       <div className="card" data-testid="records-list">
         {entries.length === 0 ? (
-          <p className="muted">No records for this product in this period.</p>
+          <p className="muted">{dated ? "No records for this product fall in these dates." : "No records are held for this product yet."}</p>
         ) : (
           <ul className="rows">
             {entries.map((/** @type {any} */ e) => (
               <li key={e.id}>
                 <span>
-                  {e.label ?? e.entry_type}
+                  {e.label ?? "Record"}
                   <div className="rows__sub">
                     {formatDate(e.basis_day)}
                     {e.tiktok_order_id ? ` · order ${e.tiktok_order_id}` : ""}
-                    {e.source ? ` · ${e.source}` : ""}
+                    {RECORD_SOURCE[e.source] ? ` · ${RECORD_SOURCE[e.source]}` : ""}
                   </div>
                 </span>
                 <Figure amount={e.amount} />
@@ -84,7 +95,7 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
           <p className="card__foot">
             <Link
               data-testid="records-next"
-              href={`/shops/${shopId}/products/${productId}/transactions?cursor=${encodeURIComponent(page.next_cursor)}${query.basis ? `&basis=${query.basis}` : ""}`}
+              href={`/shops/${shopId}/products/${productId}/transactions?cursor=${encodeURIComponent(page.next_cursor)}${keep ? `&${keep}` : ""}`}
             >
               Show more
             </Link>

@@ -11,8 +11,13 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { newKey } from "@/lib/money-input";
 
-/** @param {{ shopId: string, id: string, correctable: boolean }} props */
-export function ResolveActions({ shopId, id, correctable }) {
+/**
+ * `explainOnly` is for a fee MyShopEdge does not recognise, which has no value of the
+ * seller's to weigh against TikTok's, so the only choice offered is to mark it explained.
+ *
+ * @param {{ shopId: string, id: string, correctable: boolean, explainOnly?: boolean }} props
+ */
+export function ResolveActions({ shopId, id, correctable, explainOnly = false }) {
   const router = useRouter();
   const [mode, setMode] = useState(/** @type {"" | "corrected_seller" | "explained"} */ (""));
   const [text, setText] = useState("");
@@ -48,10 +53,12 @@ export function ResolveActions({ shopId, id, correctable }) {
     <div className="stack" style={{ marginTop: "var(--space-4)" }}>
       {mode === "" ? (
         <div className="stack">
-          <button className="btn btn--primary btn--block" disabled={busy} onClick={() => send("accepted_tiktok")}>
-            Accept TikTok&rsquo;s value
-          </button>
-          {correctable && (
+          {!explainOnly && (
+            <button className="btn btn--primary btn--block" disabled={busy} onClick={() => send("accepted_tiktok")}>
+              Accept TikTok&rsquo;s value
+            </button>
+          )}
+          {correctable && !explainOnly && (
             <button className="btn btn--quiet btn--block" disabled={busy} onClick={() => setMode("corrected_seller")}>
               Correct my record
             </button>
@@ -63,7 +70,7 @@ export function ResolveActions({ shopId, id, correctable }) {
       ) : (
         <div className="stack">
           <label htmlFor={`r-${id}`}>
-            {mode === "corrected_seller" ? "Your corrected record" : "What explains it"}
+            {mode === "corrected_seller" ? "The correct value, as it should read on your record" : "What explains it"}
           </label>
           <input id={`r-${id}`} maxLength={1000} value={text} onChange={(e) => setText(e.target.value)} />
           <div className="actions">

@@ -32,8 +32,21 @@ const ENTITY = {
   return: "a return",
   sku: "a product variant",
   product: "a product",
-  ledger_entry: "a ledger line",
+  ledger_entry: "a record",
 };
+
+/**
+ * A value as the seller reads it. A stock count (the field `tiktok_stock`, written by
+ * tiktok_sync._absorb) is a number of units, so it says so.
+ *
+ * @param {{ field?: string | null }} d
+ * @param {string | null | undefined} value
+ */
+function withUnit(d, value) {
+  if (value == null) return null;
+  if (d.field === "tiktok_stock") return `${value} ${value === "1" ? "unit" : "units"}`;
+  return value;
+}
 
 /**
  * @param {{
@@ -65,7 +78,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
         <p>
           {open_count === 0
             ? "No discrepancy is open right now."
-            : `${open_count} ${open_count === 1 ? "discrepancy is" : "discrepancies are"} open. While one is open, totals use TikTok's value.`}
+            : `${open_count} ${open_count === 1 ? "discrepancy is" : "discrepancies are"} open. While one is open, MyShopEdge uses the value shown under "MyShopEdge is using".`}
         </p>
       </header>
 
@@ -79,6 +92,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
       {discrepancies.length === 0 ? (
         <section className="state">
           <h2>{status === "open" ? "No open discrepancies." : "No resolved discrepancies yet."}</h2>
+          {status === "open" && <p>MyShopEdge has found nothing in your records that disagrees with TikTok.</p>}
         </section>
       ) : (
         <div className="stack">
@@ -98,20 +112,20 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
               {d.kind === "unmapped_fee" ? (
                 <>
                   <p>
-                    TikTok charged a fee we have not seen before. It is included in your figures
-                    in full, and we are identifying it.
+                    TikTok charged a fee MyShopEdge does not recognise. Your figures include it in
+                    full, under TikTok&rsquo;s own name.
                   </p>
                   <ul className="rows">
-                    <li><span>TikTok recorded</span><strong>{d.tiktok_value ?? "Nothing recorded"}</strong></li>
+                    <li><span>TikTok calls it</span><strong>{d.tiktok_value ?? "Nothing recorded"}</strong></li>
                   </ul>
                 </>
               ) : (
                 <>
-                  <h3 className="card__sub">What we found</h3>
+                  <h3 className="card__sub">What MyShopEdge found</h3>
                   <ul className="rows">
-                    <li><span>TikTok</span><strong>{d.tiktok_value ?? "Nothing recorded"}</strong></li>
-                    <li><span>Your record</span><strong>{d.seller_value ?? "Nothing recorded"}</strong></li>
-                    <li className="rows__total"><span>We are using</span><strong>{d.applied_value ?? "Nothing yet"}</strong></li>
+                    <li><span>TikTok</span><strong>{withUnit(d, d.tiktok_value) ?? "Nothing recorded"}</strong></li>
+                    <li><span>Your record</span><strong>{withUnit(d, d.seller_value) ?? "Nothing recorded"}</strong></li>
+                    <li className="rows__total"><span>MyShopEdge is using</span><strong>{withUnit(d, d.applied_value) ?? "Nothing yet"}</strong></li>
                   </ul>
                 </>
               )}
@@ -121,9 +135,10 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
                 <>
                   <h3 className="card__sub">Effect</h3>
                   <p className="rows__sub" style={{ marginTop: 0 }}>
-                    Your totals use TikTok&rsquo;s figure. Resolving this records your decision and does not change any total.
+                    Resolving this records your decision and does not change any total.
                   </p>
-                  <ResolveActions shopId={shopId} id={d.id} correctable={Boolean(d.correctable)} />
+                  <ResolveActions shopId={shopId} id={d.id} correctable={Boolean(d.correctable)}
+                                  explainOnly={d.kind === "unmapped_fee"} />
                 </>
               )}
             </article>

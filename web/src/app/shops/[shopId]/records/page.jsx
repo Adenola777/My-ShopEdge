@@ -49,6 +49,8 @@ export default async function RecordsPage({ params, searchParams }) {
   const first = page.entries[0];
   const heading = filters.category && first?.label ? first.label : "Records";
   const base = `/shops/${shopId}/records`;
+  /** True when the page was opened from a figure rather than from the menu. */
+  const forFigure = Object.keys(filters).some((k) => k !== "basis" && k !== "from" && k !== "to");
 
   return (
     <section>
@@ -59,15 +61,23 @@ export default async function RecordsPage({ params, searchParams }) {
           {filters.from && filters.to
             ? `${formatDate(filters.from)} to ${formatDate(filters.to)}, on the `
             : "On the "}
-          {filters.basis === "cash" ? "cash basis" : "sales basis"}. These are the records
-          behind the figure, as the ledger holds them.
+          {filters.basis === "cash" ? "cash basis" : "sales basis"}.{" "}
+          {forFigure
+            ? "These are the records that make up the figure."
+            : "These are the records MyShopEdge holds for this shop."}
         </p>
       </header>
 
       {page.entries.length === 0 ? (
         <section className="state">
-          <h2>No records make up this figure.</h2>
-          <p>Nothing was recorded against it in this period, which is why it reads as zero.</p>
+          {forFigure ? (
+            <>
+              <h2>No records make up this figure.</h2>
+              <p>Nothing was recorded against it in this period, which is why it reads as zero.</p>
+            </>
+          ) : (
+            <h2>No records match these filters.</h2>
+          )}
         </section>
       ) : (
         <div className="card">
@@ -75,7 +85,7 @@ export default async function RecordsPage({ params, searchParams }) {
             {page.entries.map((e) => (
               <li key={e.id}>
                 <span>
-                  <strong>{e.label ?? e.category ?? e.entry_type}</strong>
+                  <strong>{e.label ?? "Record"}</strong>
                   <div className="rows__sub">
                     {formatDate(e.basis_day)}
                     {e.tiktok_order_id

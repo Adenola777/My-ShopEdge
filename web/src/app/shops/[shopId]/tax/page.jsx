@@ -42,21 +42,20 @@ export default async function TaxPage({ params }) {
     <section data-testid="tax-screen">
       <header className="page-head">
         <h1>Tax</h1>
-        <p>Your VAT threshold position and the dates that matter. Not financial advice.</p>
+        <p>This page tracks your sales against the VAT threshold, estimates tax to set aside and lists your tax dates. It is not financial advice.</p>
       </header>
 
       <div className="stack">
         <div className="card" data-testid="vat-monitor">
           <h2>VAT registration threshold</h2>
-          <p className="card__why">Your rolling twelve-month turnover against the current threshold.</p>
+          <p className="card__why">This compares your gross sales over the last twelve months with the current threshold.</p>
           {!vat ? (
             <p className="muted" data-testid="vat-unconfigured">
-              Your VAT position will appear here shortly. We are adding this year&rsquo;s HMRC
-              threshold.
+              The VAT threshold is not loaded yet, so your position cannot be shown.
             </p>
           ) : (<>
           <ul className="rows">
-            <li><span>Rolling twelve-month turnover</span><Figure amount={vat.rolling_twelve_month_turnover} /></li>
+            <li><span>Gross sales over the last twelve months</span><Figure amount={vat.rolling_twelve_month_turnover} /></li>
             <li><span>Threshold</span><Figure amount={vat.threshold} /></li>
             <li className="rows__total">
               <span>{vat.above_threshold ? "Over the threshold by" : "Headroom before the threshold"}</span>
@@ -103,7 +102,9 @@ export default async function TaxPage({ params }) {
           <h2>Key tax dates</h2>
           <p className="card__why">The Self Assessment dates for the current tax year.</p>
           {dates.length === 0 ? (
-            <p className="muted">Your key tax dates will appear here shortly.</p>
+            <p className="muted">
+              {datesRes.ok ? "Tax dates are not loaded yet." : "Tax dates could not be loaded just now."}
+            </p>
           ) : (
             <ul className="rows">
               {dates.map((d) => (
