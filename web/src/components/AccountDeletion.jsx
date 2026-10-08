@@ -34,7 +34,7 @@ export function DeleteAccountForm() {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was deleted." : (r.data?.detail ?? "The account was not deleted."));
+      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was deleted." : (r.data?.detail ?? "Your account was not closed. Please try again in a moment."));
       return;
     }
     setAck(/** @type {Ack} */ (r.data));
@@ -45,12 +45,12 @@ export function DeleteAccountForm() {
       <div className="stack" data-testid="deletion-accepted">
         <div className="card">
           <h2>Your account is closing</h2>
-          <p className="card__why">Keep this as your record of what you asked for.</p>
+          <p className="card__why">MyShopEdge does not email this record, so please save or print this page before you sign out.</p>
           <ul className="stack">
             {ack.includes.map((line) => <li key={line}>{line}</li>)}
           </ul>
           {ack.invoices_retained_until && (
-            <p className="note">Your TikTok fee invoices are kept until {formatDate(ack.invoices_retained_until)}, because VAT records must be.</p>
+            <p className="note">MyShopEdge keeps your TikTok fee invoices until at least {formatDate(ack.invoices_retained_until)}, because VAT records must be kept for six years.</p>
           )}
         </div>
         <p><a className="btn btn--primary btn--block" href="/handler/sign-out">Sign out</a></p>
@@ -68,7 +68,7 @@ export function DeleteAccountForm() {
       {error && <p className="form-error" role="alert">{error}</p>}
       <p>
         <button className="btn btn--quiet btn--block" disabled={busy || email.trim() === ""} data-testid="confirm-delete">
-          {busy ? "Deleting" : "Delete my account"}
+          {busy ? "Deleting your account" : "Delete my account"}
         </button>
       </p>
     </form>

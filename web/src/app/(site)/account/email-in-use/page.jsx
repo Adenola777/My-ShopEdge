@@ -11,11 +11,11 @@ export const metadata = { title: "That email is already in use" };
 
 export default function EmailInUsePage() {
   return (
-    <main className="billing" data-testid="email-in-use">
+    <section className="billing" data-testid="email-in-use">
       <h1>That email is already in use</h1>
       <p>Your email address already belongs to a MyShopEdge account that was created with a different way of signing in.</p>
       <p>Sign out, then sign in the way you did the first time. Your shop and figures are on that account.</p>
-      <p><a className="btn btn--primary btn--block" href="/handler/sign-out">Sign out</a></p>
-    </main>
+      <p><a className="btn btn--primary btn--block" href="/handler/sign-out">Sign out and sign in again</a></p>
+    </section>
   );
 }

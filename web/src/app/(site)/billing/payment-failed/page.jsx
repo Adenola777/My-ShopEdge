@@ -23,14 +23,17 @@ export default async function PaymentFailedPage() {
   const sub = await api("/billing/subscription", { cache: "no-store" });
   if (sub.status === 401) redirect("/start");
   if (!sub.ok || sub.data?.status !== "past_due") redirect("/shops");
+  /** @type {string | null | undefined} */
+  const slug = sub.data.plan;
+  const planName = slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "";
   return (
-    <main className="billing" data-testid="payment-failed">
+    <section className="billing" data-testid="payment-failed">
       <h1>Your payment did not go through</h1>
-      <p>Your bank did not accept the last payment for your {sub.data.plan ?? ""} plan. This is often a bank being cautious rather than a problem with your account.</p>
+      <p>Your bank did not accept the last payment for your {planName ? `${planName} plan` : "plan"}.</p>
       {sub.data.current_period_end && <p>The period it was for ends on {formatDate(sub.data.current_period_end)}.</p>}
       <p>Your figures stay open to you while this is sorted.</p>
       <p><Link className="btn btn--primary btn--block" href="/billing/card" data-testid="payment-failed-card">Use a different card</Link></p>
       <p><Link className="btn btn--quiet btn--block" href="/shops">Go to your shop</Link></p>
-    </main>
+    </section>
   );
 }

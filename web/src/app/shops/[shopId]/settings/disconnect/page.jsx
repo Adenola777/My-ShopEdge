@@ -6,25 +6,26 @@
  * `audit/EMERGENT_review_28_september.md`.
  */
 
+import Link from "next/link";
 import { fetchShop } from "@/lib/api";
-import { apiProblem } from "@/components/ApiProblem";
+import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { DisconnectAction } from "@/components/SettingsForms";
 
-export const metadata = { title: "Disconnect" };
+export const metadata = { title: "Disconnect this shop" };
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function DisconnectPage({ params }) {
   const { shopId } = await params;
   // A read that proves the shop is the caller's before the page offers to disconnect it.
   const result = await fetchShop(shopId, "/alert-settings");
-  const problem = apiProblem(result, { what: "this shop" });
+  const problem = apiProblem(result, { what: "this shop", note: NOTHING_CHANGED });
   if (problem) return problem;
 
   return (
     <section data-testid="disconnect-screen">
       <header className="page-head">
         <h1>Disconnect this shop</h1>
-        <p>MyShopEdge stops reading from TikTok. Nothing you already have is deleted.</p>
+        <p>MyShopEdge stops reading from TikTok. Nothing you already have is deleted. Disconnecting does not change your plan, and you can stop it renewing in <Link href={`/shops/${shopId}/settings/profile`}>Profile and plan</Link>.</p>
       </header>
       <div className="card">
         <h2>What stays</h2>
@@ -33,7 +34,7 @@ export default async function DisconnectPage({ params }) {
           <li><span>Your ledger and figures</span><strong>Kept</strong></li>
           <li><span>Your product costs</span><strong>Kept</strong></li>
         </ul>
-        <p className="card__why">Reconnecting the same shop later resumes against these records.</p>
+        <p className="card__why">If you connect the same shop again later, MyShopEdge reads from where it stopped and adds what you missed to these records. MyShopEdge does not ask TikTok to withdraw the approval you gave it.</p>
       </div>
       <DisconnectAction shopId={shopId} />
     </section>

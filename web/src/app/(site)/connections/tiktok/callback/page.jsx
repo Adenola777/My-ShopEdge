@@ -25,7 +25,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { Problem } from "@/components/ApiProblem";
 
-export const metadata = { title: "Connecting your shop" };
+export const metadata = { title: "Your shop connection" };
 export const dynamic = "force-dynamic";
 
 /** What each refusal from `tiktok_callback` means to a seller. */
@@ -97,7 +97,7 @@ export default async function TikTokCallbackPage({ searchParams }) {
     const code = /** @type {keyof typeof REFUSAL} */ (result.data?.code);
     const [title, note] = /** @type {[string, string]} */ (REFUSAL[code] ?? [
       "The shop could not be connected.",
-      result.data?.detail ?? "Nothing has changed, and you can try again in a few minutes.",
+      "Nothing has changed. Start again in a few minutes.",
     ]);
     return <Problem title={title} note={note} startAgain />;
   }
@@ -111,7 +111,12 @@ export default async function TikTokCallbackPage({ searchParams }) {
     return (
       <section className="state">
         <h1>{name} is connected, but MyShopEdge cannot read it.</h1>
-        <p>{NOT_SUPPORTED[reason] ?? "This kind of shop is not supported yet."}</p>
+        <p>{NOT_SUPPORTED[reason] ?? "MyShopEdge does not read this kind of shop."}</p>
+        <p>
+          <Link className="btn btn--primary" href="/shops">
+            Back to your shops
+          </Link>
+        </p>
       </section>
     );
   }
@@ -120,7 +125,7 @@ export default async function TikTokCallbackPage({ searchParams }) {
     <section className="state">
       <h1>{name} is connected.</h1>
       <p>
-        MyShopEdge now holds read-only access to your shop. We are reading your orders,
+        MyShopEdge only reads your shop and never changes it. We are reading your orders,
         returns and payouts now, and your figures fill in as they arrive.
       </p>
       <p>

@@ -34,7 +34,7 @@ export default async function SyncPage({ params }) {
     <section data-testid="sync-screen">
       <header className="page-head">
         <h1>Getting your shop ready</h1>
-        <p>This can take a few minutes. You can leave this screen.</p>
+        <p>The first read of your shop starts as soon as it connects. You can leave this screen, and the progress below updates on its own.</p>
       </header>
       <div className="stack">
         <SyncProgress shopId={shopId} initial={result.data} />

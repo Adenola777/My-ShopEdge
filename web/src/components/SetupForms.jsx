@@ -15,10 +15,12 @@ import { newKey, parsePounds } from "@/lib/money-input";
 
 /** @typedef {import("@/lib/api-types").components["schemas"]} Schemas */
 
-/** @param {any} r @param {string} fallback */
-function failure(r, fallback) {
-  return r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? fallback);
+/** @param {any} r @param {string} fallback @param {string} [unreachable] */
+function failure(r, fallback, unreachable = "MyShopEdge could not be reached, so nothing was saved.") {
+  return r.unreachable ? unreachable : (r.data?.detail ?? fallback);
 }
+
+const NO_FILE_STARTED = "MyShopEdge could not be reached, so no file was started.";
 
 // ---------------------------------------------------------------------------------- S5
 
@@ -362,7 +364,7 @@ async function openFile(path) {
     window.location.assign(r.data.download_url);
     return null;
   }
-  if (r.ok && r.data?.status === "expired") return "This file has expired. Build it again at no cost.";
+  if (r.ok && r.data?.status === "expired") return "This file has expired. You can build it again.";
   return r.unreachable ? "MyShopEdge could not be reached, so the file did not download." : "The file could not be fetched. Please try again.";
 }
 
@@ -399,12 +401,12 @@ function JobStatus({ path, job: first, onReset, onSettled }) {
   }, [job, path, onSettled]);
 
   if (job.status === "queued") {
-    return <p className="note" role="status" data-testid="job-queued">Building your file. You can leave this screen and come back: the file will be in the list below.</p>;
+    return <p className="note" role="status" data-testid="job-queued">MyShopEdge is building your file. You can leave this screen and come back, and the file will be in the list below.</p>;
   }
   if (job.status === "failed") {
     return (
       <div className="stack" data-testid="job-failed">
-        <p className="form-error" role="alert">The file could not be built.</p>
+        <p className="form-error" role="alert">MyShopEdge could not build the file. Your records are unchanged.</p>
         <p><button className="btn btn--quiet" onClick={onReset}>Try again</button></p>
       </div>
     );
@@ -412,7 +414,7 @@ function JobStatus({ path, job: first, onReset, onSettled }) {
   if (job.status === "expired") {
     return (
       <div className="stack" data-testid="job-expired">
-        <p className="note">This file has expired. Build it again at no cost.</p>
+        <p className="note">This file has expired. You can build it again.</p>
         <p><button className="btn btn--quiet" onClick={onReset}>Build it again</button></p>
       </div>
     );
@@ -426,7 +428,7 @@ function JobStatus({ path, job: first, onReset, onSettled }) {
         {job.expires_at && <li><span>Kept until</span><strong>{formatDate(job.expires_at)}</strong></li>}
       </ul>
       <p><DownloadButton path={path} /></p>
-      <p className="footnote">We keep the file for seven days. After that it can be built again at no cost.</p>
+      <p className="footnote">MyShopEdge keeps this file for seven days, and you can build it again whenever you need it.</p>
       <p><button className="btn btn--quiet btn--block" onClick={onReset}>Build another file</button></p>
     </div>
   );
@@ -482,7 +484,7 @@ function RecentFiles({ listPath, itemPath, describe, version }) {
           </li>
         ))}
       </ul>
-      <p className="footnote">Files are kept for seven days and then expire. An expired file can be built again at no cost.</p>
+      <p className="footnote">MyShopEdge keeps each file for seven days. You can build an expired file again.</p>
     </div>
   );
 }
@@ -529,7 +531,7 @@ export function ExportForm({ shopId, today }) {
       body: JSON.stringify({ kind, format, basis, period_start: range[0], period_end: range[1] }),
     });
     setBusy(false);
-    if (!r.ok) { setError(failure(r, "The export did not start.")); return; }
+    if (!r.ok) { setError(failure(r, "The export did not start.", NO_FILE_STARTED)); return; }
     setJob(r.data);
     setVersion((n) => n + 1);
   }
@@ -537,7 +539,7 @@ export function ExportForm({ shopId, today }) {
   const shopPath = `/shops/${encodeURIComponent(shopId)}/exports`;
   const recent = (
     <RecentFiles listPath={shopPath} itemPath={(id) => `${shopPath}/${id}`} version={version}
-      describe={(j) => `${KINDS[j.kind] ?? j.kind}, ${j.period_start} to ${j.period_end}, ${j.basis} basis, ${j.format === "xlsx" ? "Excel" : "CSV"}`} />
+      describe={(j) => `${KINDS[j.kind] ?? j.kind}, ${formatDate(j.period_start)} to ${formatDate(j.period_end)}, ${j.basis} basis, ${j.format === "xlsx" ? "Excel" : "CSV"}`} />
   );
   if (job) {
     return (
@@ -582,7 +584,7 @@ export function ExportForm({ shopId, today }) {
           <option value="csv">CSV</option>
         </select>
       </div>
-      <p className="note">The file covers {range[0]} to {range[1]} on the {basis} basis, and its totals equal the screen for the same period.</p>
+      <p className="note">The file covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis, and its totals equal the screen for the same period.</p>
       {error && <p className="form-error" role="alert">{error}</p>}
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-export">{busy ? "Starting" : "Build the file"}</button></p>
       {recent}
@@ -606,7 +608,7 @@ export function DataDownload() {
     setError(null);
     const r = await api("/me/export", { method: "POST", idempotencyKey: newKey() });
     setBusy(false);
-    if (!r.ok) { setError(failure(r, "The download did not start.")); return; }
+    if (!r.ok) { setError(failure(r, "The download did not start.", NO_FILE_STARTED)); return; }
     setJob(r.data);
     setVersion((n) => n + 1);
   }
@@ -622,7 +624,7 @@ export function DataDownload() {
   return (
     <div className="stack">
       {error && <p className="form-error" role="alert">{error}</p>}
-      <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-download">{busy ? "Starting" : "Prepare my data"}</button></p>
+      <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-download">{busy ? "Starting" : "Build my data file"}</button></p>
       {recent}
     </div>
   );

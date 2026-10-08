@@ -14,18 +14,25 @@
 import { redirect } from "next/navigation";
 
 /**
+ * The fallback note for a page that shows no figures, such as Disconnect or Profile and plan,
+ * where "a wrong number" would mean nothing. A failed read changes nothing.
+ */
+export const NOTHING_CHANGED = "Nothing has changed. Please try again in a moment.";
+
+/**
  * @param {import("@/lib/api").ApiResult} result
- * @param {{ what: string, notFound?: string }} copy
+ * @param {{ what: string, notFound?: string, note?: string }} copy
  *   `what` names what failed to load, such as "your stock". `notFound` replaces the 404
- *   wording where the missing thing is a record rather than the shop.
+ *   wording where the missing thing is a record rather than the shop. `note` replaces the
+ *   fallback's line about wrong numbers on a page that shows none.
  * @returns {React.ReactElement | null}  Null when the result is usable.
  */
-export function apiProblem(result, { what, notFound }) {
+export function apiProblem(result, { what, notFound, note }) {
   if (result.unreachable) {
     return (
       <Problem
         title="MyShopEdge could not be reached."
-        note={`We could not load ${what} just now. Please try again in a moment.`}
+        note={`MyShopEdge could not load ${what}. Please try again in a moment.`}
         retry
       />
     );
@@ -96,11 +103,22 @@ export function apiProblem(result, { what, notFound }) {
       />
     );
   }
+  // The provider has signed the seller in before the service has their email (auth.py). It
+  // clears on its own, so it is not reported as a failure.
+  if (result.status === 503 && code === "identity_syncing") {
+    return (
+      <Problem
+        title="MyShopEdge is still setting up your account."
+        note="Please try again in a moment."
+        retry
+      />
+    );
+  }
   if (!result.ok || !result.data) {
     return (
       <Problem
         title={`${what.charAt(0).toUpperCase()}${what.slice(1)} could not be loaded.`}
-        note="We show nothing rather than risk showing a wrong number. Please try again in a moment."
+        note={note ?? "We show nothing rather than risk showing a wrong number. Please try again in a moment."}
         retry
       />
     );

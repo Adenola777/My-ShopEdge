@@ -29,8 +29,9 @@ export default async function StartPage() {
   if (!STACK_CONFIGURED) {
     return (
       <Problem
-        title="Sign-in is temporarily unavailable."
-        note="Please try again shortly."
+        title="Sign-in is not working at the moment."
+        note="Nothing on your account has changed. Try again in a few minutes."
+        retry
       />
     );
   }

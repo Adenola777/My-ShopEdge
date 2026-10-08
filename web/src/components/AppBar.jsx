@@ -59,7 +59,7 @@ export async function AppBar({ shopId, shopsLink = false }) {
       <div className="appbar__inner">
         <a className="appbar__logo" href="/">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/mse-logo-horizontal-notagline.svg" alt="MyShopEdge" width={129} height={48} />
+          <img src="/brand/mse-logo-horizontal-notagline.svg" alt="MyShopEdge home" width={129} height={48} />
         </a>
         {shopId && (
           <div className="appbar__status">
@@ -67,7 +67,9 @@ export async function AppBar({ shopId, shopsLink = false }) {
               <span
                 className={`appbar__updated${freshness.status === "stale" ? " appbar__updated--stale" : ""}`}
               >
-                {freshness.last_synced_at ? `Updated ${stamp(freshness.last_synced_at)}` : "Not updated yet"}
+                {freshness.last_synced_at
+                  ? `Updated ${stamp(freshness.last_synced_at)}${freshness.status === "stale" ? ", now out of date" : ""}`
+                  : "Not updated yet"}
               </span>
             )}
             <a

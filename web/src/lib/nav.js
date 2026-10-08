@@ -16,7 +16,7 @@
 export const AREAS = [
   {
     slug: "today", label: "Today", icon: "today", pages: [
-      ["today", "Overview"],
+      ["today", "Today overview"],
       ["notifications", "Notifications"],
       ["discrepancies", "Discrepancies"],
     ],
@@ -35,7 +35,7 @@ export const AREAS = [
   },
   {
     slug: "money", label: "Money", icon: "money", pages: [
-      ["money", "Overview"],
+      ["money", "Money overview"],
       ["payouts", "Payouts and invoices"],
       ["records", "Records"],
       ["money/export", "Export"],
@@ -43,7 +43,7 @@ export const AREAS = [
   },
   {
     slug: "tax", label: "Tax", icon: "tax", pages: [
-      ["tax", "Overview"],
+      ["tax", "Tax overview"],
       ["setup/tax", "Business details"],
       ["other-sales", "Other-channel sales"],
     ],

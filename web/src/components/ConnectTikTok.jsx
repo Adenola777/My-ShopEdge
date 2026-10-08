@@ -39,7 +39,7 @@ export function ConnectTikTok() {
       return;
     }
     const code = /** @type {keyof typeof REFUSAL} */ (r.data?.code);
-    setError(REFUSAL[code] ?? r.data?.detail ?? "The connection could not be started.");
+    setError(REFUSAL[code] ?? r.data?.detail ?? "The connection could not be started. Nothing has changed. Try again in a moment.");
   }
 
   return (

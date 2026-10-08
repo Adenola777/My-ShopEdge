@@ -19,7 +19,7 @@
 
 import Link from "next/link";
 import { api, fetchShop, formatDate } from "@/lib/api";
-import { apiProblem } from "@/components/ApiProblem";
+import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { chipClass } from "@/lib/terms";
 
 export const metadata = { title: "Shop connection" };
@@ -61,25 +61,25 @@ export default async function SettingsPage({ params }) {
     fetchShop(shopId, "/alert-settings"),
     fetchShop(shopId, "/costs/coverage"),
   ]);
-  const problem = apiProblem(shopsRes, { what: "your settings" });
+  const problem = apiProblem(shopsRes, { what: "your settings", note: NOTHING_CHANGED });
   if (problem) return problem;
 
   /** @type {import("@/lib/api-types").components["schemas"]["Shop"][]} */
   const shops = shopsRes.data?.shops ?? [];
   const shop = shops.find((s) => s.id === shopId);
-  const [statusLabel, statusTone] = shop ? (CONNECTION[shop.connection_status] ?? [shop.connection_status, "quiet"]) : ["Not known", "quiet"];
+  const [statusLabel, statusTone] = shop ? (CONNECTION[shop.connection_status] ?? ["Not known", "quiet"]) : ["Not known", "quiet"];
   const healthy = shop?.connection_status === "connected";
 
   const tax = taxRes.ok ? taxRes.data : null;
   const alerts = alertsRes.ok ? alertsRes.data : null;
   const coverage = coverageRes.ok ? coverageRes.data : null;
-  const unavailable = <span className="muted">Not available</span>;
+  const unavailable = <span className="muted">This did not load. Reload the page to try again.</span>;
 
   return (
     <section data-testid="settings-page">
       <header className="page-head">
         <h1>Shop connection</h1>
-        <p>How this shop is connected to TikTok, and what it is set up with.</p>
+        <p>This page shows how this shop is connected to TikTok and how it is set up.</p>
       </header>
       <div className="stack">
         <div className="card" data-testid="settings-connection">
@@ -118,14 +118,14 @@ export default async function SettingsPage({ params }) {
               {coverage ? <strong>{costWords(coverage)}</strong> : unavailable}
             </li>
             <li>
-              <span>Tax profile</span>
+              <span><Link href={`${base}/setup/tax`}>Tax profile</Link></span>
               {tax
                 ? <strong>{tax.completed && tax.business_structure ? (STRUCTURE[tax.business_structure] ?? tax.business_structure) : "Not filled in"}</strong>
                 : unavailable}
             </li>
             <li>
-              <span><Link href={`${base}/settings/alerts`}>Low stock alert</Link></span>
-              {alerts ? <strong>{alerts.low_stock_days} days</strong> : unavailable}
+              <span><Link href={`${base}/settings/alerts`}>Low stock threshold</Link></span>
+              {alerts ? <strong>{alerts.low_stock_days} days of cover</strong> : unavailable}
             </li>
             <li>
               <span><Link href={`${base}/other-sales`}>Other-channel sales</Link></span>
@@ -141,7 +141,7 @@ export default async function SettingsPage({ params }) {
             Disconnect TikTok Shop
           </Link>
         </p>
-        <p className="footnote">Disconnecting stops updates. Nothing you already have is deleted.</p>
+        <p className="footnote">Disconnecting stops updates and keeps everything you already have. It does not change your plan.</p>
       </div>
     </section>
   );

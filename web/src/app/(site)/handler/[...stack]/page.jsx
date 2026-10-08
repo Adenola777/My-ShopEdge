@@ -20,14 +20,26 @@ import { StackHandler } from "@stackframe/stack";
 import { STACK_CONFIGURED } from "@/lib/stack";
 import { Problem } from "@/components/ApiProblem";
 
-export const metadata = { title: "Account" };
+/** The page title for each of Stack's routes that a seller sees. */
+const TITLES = /** @type {Record<string, string>} */ ({
+  "sign-in": "Sign in",
+  "sign-up": "Create an account",
+  "sign-out": "Sign out",
+});
+
+/** @param {{ params: Promise<{ stack?: string[] }> }} props */
+export async function generateMetadata({ params }) {
+  const { stack } = await params;
+  return { title: TITLES[stack?.[0] ?? ""] ?? "Account" };
+}
 
 export default function Handler() {
   if (!STACK_CONFIGURED) {
     return (
       <Problem
-        title="Sign-in is temporarily unavailable."
-        note="Please try again shortly."
+        title="Sign-in is not working at the moment."
+        note="Nothing on your account has changed. Try again in a few minutes."
+        retry
       />
     );
   }
