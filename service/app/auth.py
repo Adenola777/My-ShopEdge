@@ -333,7 +333,8 @@ def require_signed_in(request: Request) -> Account:
         raise Problem(
             403,
             "email_unverified",
-            "Your sign-in provider has not verified this email address yet. Verify it there, then sign in again.",
+            "The service you signed in with has not verified this email address yet. Verify it "
+            "there, then sign in again.",
         )
 
     account_id = resolve_account_id(subject)

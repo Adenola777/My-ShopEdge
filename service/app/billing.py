@@ -50,7 +50,7 @@ def _stripe() -> stripe.StripeClient:
     key = os.environ.get("STRIPE_SECRET_KEY")
     if not key:
         raise Problem(503, "billing_unconfigured",
-                      "Plans cannot be started or changed just now. Nobody has been charged. Please try again later.")
+                      "Plans cannot be started or changed just now. You have not been charged. Try again later.")
     return stripe.StripeClient(key)
 
 
@@ -266,7 +266,7 @@ def set_renewal_for_deletion(account_id, closing: bool) -> str:
     except stripe.StripeError as exc:
         raise Problem(502, "stripe_error",
                       "We could not reach our payment provider, so nothing was changed. "
-                      "Please try again in a moment.") from exc
+                      "Try again in a few minutes.") from exc
 
     _apply_stripe_subscription(sub)
     logger.info("account %s renewal %s for deletion", account_id, outcome)
@@ -396,7 +396,7 @@ def update_subscription(
         _log_stripe_error(account.id, "update_subscription", exc)
         raise Problem(502, "stripe_error",
                       "We could not reach our payment provider, so nothing was changed. "
-                      "Please try again in a moment.") from exc
+                      "Try again in a few minutes.") from exc
     _apply_stripe_subscription(sub)
     return _subscription_out(db.get_subscription_row(account.id))
 
@@ -415,7 +415,7 @@ def start_card_change(account: Annotated[Account, Depends(require_account)]) -> 
         _log_stripe_error(account.id, "start_card_change", exc)
         raise Problem(502, "stripe_error",
                       "We could not reach our payment provider, so your card was not changed. "
-                      "Please try again in a moment.") from exc
+                      "Try again in a few minutes.") from exc
     return CardSetupOut(client_secret=intent.client_secret)
 
 
@@ -448,7 +448,7 @@ def set_card(
         _log_stripe_error(account.id, "set_card", exc)
         raise Problem(502, "stripe_error",
                       "We could not reach our payment provider, so your card was not changed. "
-                      "Please try again in a moment.") from exc
+                      "Try again in a few minutes.") from exc
     _apply_stripe_subscription(sub)
     return _subscription_out(db.get_subscription_row(account.id))
 

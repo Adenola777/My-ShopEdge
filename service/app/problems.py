@@ -13,6 +13,12 @@ from fastapi.responses import JSONResponse
 
 BASE = "https://api.myshopedge.com/problems"
 
+# The detail of every unhandled error. It cannot say whether a change was saved, because the
+# fault may have come before or after the write, so it tells the seller how to find out.
+INTERNAL_ERROR = ("Something went wrong at our end. Refresh the page to see whether your change "
+                  "was saved, and try again if it was not. If it keeps happening, email "
+                  "info@inspirecraftglobal.com.")
+
 # The title a person reads, by status. Until 8 October the title was the machine code, such
 # as "token_unverifiable", which the copy audit of that day found shown to sellers. The code
 # stays in `code` and `type`, where the contract puts it.
@@ -125,4 +131,4 @@ async def problem_handler(_request: Request, exc: Exception) -> JSONResponse:
         return problem_response(exc.status_code, "http_error", detail)
     # An unhandled exception must not leak a stack trace or a connection string to a
     # seller. It is logged by the server and reported as one line here.
-    return problem_response(500, "internal_error", "Something went wrong at our end.")
+    return problem_response(500, "internal_error", INTERNAL_ERROR)

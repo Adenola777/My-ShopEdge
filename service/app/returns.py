@@ -393,8 +393,8 @@ def check_return_item(
             ).fetchone()
             if cost is None:
                 raise Problem(422, "no_cost",
-                              "This variant had no cost when it sold, so the write-off cannot be worked out. "
-                              "Add its cost on the product page, dated on or before the day it "
+                              "This variant had no cost price on the day it sold, so the write-off cannot be worked "
+                              "out. Add its cost price on the product page, dated on or before the day it "
                               "sold, then check the item again.")
             write_off_minor = int(cost[0]) * int(quantity)
 

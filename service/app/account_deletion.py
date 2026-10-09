@@ -117,7 +117,8 @@ def _includes(erase_at: datetime, plan_stopped: bool = False) -> list[str]:
         "You can no longer use MyShopEdge with this account, except to cancel the deletion.",
         "Every connected shop is disconnected now, and MyShopEdge stops using its TikTok sign-in details.",
         *plan,
-        f"Until {day} you can cancel the deletion by signing in again. Nothing is erased before then.",
+        f"Until {day} you can cancel the deletion. Sign in again, and MyShopEdge takes you to "
+        "the account closing page. Nothing is erased before then.",
         f"After {day} your name and email are erased, your TikTok sign-in details are "
         "erased, and every file you uploaded or exported is deleted.",
         "Your ledger stays, with your name and email removed, because financial records must "
