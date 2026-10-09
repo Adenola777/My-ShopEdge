@@ -55,7 +55,7 @@ export const SETTINGS = {
   slug: "settings", label: "Settings", icon: "settings", pages: [
     ["settings/profile", "Profile and plan"],
     ["settings", "Shop connection", ["sync", "connection-problem", "setup", "settings/disconnect"]],
-    ["settings/alerts", "Alerts"],
+    ["settings/alerts", "Alert settings"],
     ["settings/data", "Your data", ["settings/delete"]],
     ["/shops?all=1", "Your shops"],
     ["glossary", "Help and glossary"],
@@ -74,7 +74,7 @@ export function hrefOf(base, slug) {
 
 /**
  * The area and page a path belongs to. The longest matching path wins, so `money/export`
- * is Export rather than Money's overview, and `settings/alerts` is Alerts rather than the
+ * is Export rather than Money's overview, and `settings/alerts` is Alert settings rather than the
  * shop connection. A path that belongs to nothing gives nulls.
  *
  * @param {string} path

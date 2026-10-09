@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, formatDate, formatMoney } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
+import { FormError, formFailure } from "@/components/FormFailure";
 
 /** @typedef {import("@/lib/api-types").components["schemas"]} Schemas */
 
@@ -437,7 +438,7 @@ function JobStatus({ path, job: first, onReset, onSettled }) {
   if (job.status === "failed") {
     return (
       <div className="stack" data-testid="job-failed">
-        <p className="form-error" role="alert">MyShopEdge could not build the file. Your records are unchanged.</p>
+        <p className="form-error" role="alert">MyShopEdge could not build the file. Your records are unchanged. Please try again, and if it fails a second time, email info@inspirecraftglobal.com.</p>
         <p><button className="btn btn--quiet" onClick={onReset}>Try again</button></p>
       </div>
     );
@@ -548,7 +549,7 @@ export function ExportForm({ shopId, today }) {
   const [format, setFormat] = useState("xlsx");
   const [job, setJob] = useState(/** @type {any} */ (null));
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
   const [version, setVersion] = useState(0);
   const settled = useCallback(() => setVersion((n) => n + 1), []);
 
@@ -562,7 +563,7 @@ export function ExportForm({ shopId, today }) {
       body: JSON.stringify({ kind, format, basis, period_start: range[0], period_end: range[1] }),
     });
     setBusy(false);
-    if (!r.ok) { setError(failure(r, "The export did not start.", NO_FILE_STARTED)); return; }
+    if (!r.ok) { setError(formFailure(r, { fallback: "The export did not start.", unreachable: NO_FILE_STARTED })); return; }
     setJob(r.data);
     setVersion((n) => n + 1);
   }
@@ -615,8 +616,11 @@ export function ExportForm({ shopId, today }) {
           <option value="csv">CSV</option>
         </select>
       </div>
-      <p className="note">The file covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis, and its totals equal the screen for the same period.</p>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <p className="note">
+        The file covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis.
+        {kind === "month_summary" && " Its totals equal the Money screen for the same period and basis."}
+      </p>
+      <FormError failure={error} />
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-export">{busy ? "Starting" : "Build the file"}</button></p>
       {recent}
     </div>
@@ -804,7 +808,7 @@ export function ScheduledExports({ shopId }) {
 export function DataDownload() {
   const [job, setJob] = useState(/** @type {any} */ (null));
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
   const [version, setVersion] = useState(0);
   const settled = useCallback(() => setVersion((n) => n + 1), []);
   const recent = (
@@ -817,7 +821,7 @@ export function DataDownload() {
     setError(null);
     const r = await api("/me/export", { method: "POST", idempotencyKey: newKey() });
     setBusy(false);
-    if (!r.ok) { setError(failure(r, "The download did not start.", NO_FILE_STARTED)); return; }
+    if (!r.ok) { setError(formFailure(r, { fallback: "The download did not start.", unreachable: NO_FILE_STARTED })); return; }
     setJob(r.data);
     setVersion((n) => n + 1);
   }
@@ -832,7 +836,7 @@ export function DataDownload() {
   }
   return (
     <div className="stack">
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <FormError failure={error} />
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-download">{busy ? "Starting" : "Build my data file"}</button></p>
       {recent}
     </div>

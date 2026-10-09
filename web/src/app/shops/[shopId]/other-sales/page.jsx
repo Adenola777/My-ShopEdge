@@ -32,7 +32,7 @@ export default async function OtherSalesPage({ params }) {
     <section data-testid="other-sales-screen">
       <header className="page-head">
         <h1>Other-channel sales</h1>
-        <p>Sales you make outside TikTok, so the VAT monitor sees your whole turnover.</p>
+        <p>Enter the sales you make outside TikTok, so MyShopEdge compares your whole turnover with the VAT registration threshold.</p>
       </header>
 
       <div className="stack">
@@ -41,7 +41,7 @@ export default async function OtherSalesPage({ params }) {
         <div className="card" data-testid="other-sales-list">
           <h2>Months entered</h2>
           {months.length === 0 ? (
-            <p className="muted">Nothing entered yet. Add a month above.</p>
+            <p className="muted">You have not entered any months yet. Add one above.</p>
           ) : (
             <ul className="rows">
               {months.map((m) => (

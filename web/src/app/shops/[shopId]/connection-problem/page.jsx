@@ -14,8 +14,8 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { api } from "@/lib/api";
-import { apiProblem } from "@/components/ApiProblem";
+import { api, formatDate } from "@/lib/api";
+import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { ConnectTikTok } from "@/components/ConnectTikTok";
 
 export const metadata = { title: "Connection problem" };
@@ -25,7 +25,7 @@ export const metadata = { title: "Connection problem" };
 /** @type {State} */
 const DISCONNECTED = {
   head: "Your TikTok Shop is disconnected",
-  body: "MyShopEdge has stopped reading from TikTok, so your figures will not update. Your records are still here. Reconnect the same shop at any time and everything continues from where it stopped.",
+  body: "MyShopEdge has stopped reading from TikTok, so your figures will not update. Your records are still here. Reconnect the same shop at any time and everything continues from where it stopped. Your plan is not changed while the shop is disconnected.",
   reconnect: true,
 };
 
@@ -33,7 +33,7 @@ const DISCONNECTED = {
 const STATE = {
   needs_reconnect: {
     head: "Your TikTok Shop needs reconnecting",
-    body: "TikTok no longer accepts MyShopEdge's permission to read your shop, so new orders, returns and payments are not arriving. Your figures stop at the last successful read.",
+    body: "MyShopEdge needs your approval on TikTok again. Until you give it, new orders, returns and payments are not read, and your figures stop at the last successful read.",
     reconnect: true,
   },
   disconnected: DISCONNECTED,
@@ -48,7 +48,7 @@ const STATE = {
 export default async function ConnectionProblemPage({ params }) {
   const { shopId } = await params;
   const result = await api("/shops", { cache: "no-store" });
-  const problem = apiProblem(result, { what: "this shop" });
+  const problem = apiProblem(result, { what: "this shop", note: NOTHING_CHANGED });
   if (problem) return problem;
 
   /** @type {import("@/lib/api-types").components["schemas"]["Shop"][]} */
@@ -68,6 +68,11 @@ export default async function ConnectionProblemPage({ params }) {
       <div className="stack">
         <div className="note note--warn" role="status" data-testid="connection-status">
           <p>{state.body}</p>
+          <p data-testid="connection-last-read">
+            {shop.last_synced_at
+              ? `MyShopEdge last finished a read of this shop on ${formatDate(shop.last_synced_at, { time: true })}.`
+              : "MyShopEdge has not yet finished a read of this shop."}
+          </p>
         </div>
         {state.reconnect ? (
           <div className="card">

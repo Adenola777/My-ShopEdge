@@ -8,17 +8,17 @@
 
 import Link from "next/link";
 import { fetchShop } from "@/lib/api";
-import { apiProblem } from "@/components/ApiProblem";
+import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { ExportForm, ScheduledExports } from "@/components/SetupForms";
 
-export const metadata = { title: "Export" };
+export const metadata = { title: "Export your figures" };
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function ExportPage({ params }) {
   const { shopId } = await params;
   // A read that proves the shop is the caller's before the form is offered.
   const check = await fetchShop(shopId, "/alert-settings");
-  const problem = apiProblem(check, { what: "this shop" });
+  const problem = apiProblem(check, { what: "this shop", note: NOTHING_CHANGED });
   if (problem) return problem;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
   return (
@@ -26,7 +26,7 @@ export default async function ExportPage({ params }) {
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/money`}>Money</Link></p>
         <h1>Export</h1>
-        <p>An Excel or CSV file whose totals equal the screen.</p>
+        <p>This page builds an Excel or CSV file of your figures. A month summary has the same totals as the Money screen for the same period.</p>
       </header>
       <ExportForm shopId={shopId} today={today} />
       <ScheduledExports shopId={shopId} />

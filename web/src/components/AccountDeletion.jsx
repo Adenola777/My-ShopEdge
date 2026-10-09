@@ -11,13 +11,14 @@
 import { useState } from "react";
 import { api, formatDate } from "@/lib/api";
 import { newKey } from "@/lib/money-input";
+import { FormError, formFailure } from "@/components/FormFailure";
 
 /** @typedef {import("@/lib/api-types").components["schemas"]["DeletionAcknowledgement"]} Ack */
 
 export function DeleteAccountForm() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
   const [ack, setAck] = useState(/** @type {Ack | null} */ (null));
   const [key] = useState(() => newKey());
 
@@ -33,7 +34,10 @@ export function DeleteAccountForm() {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was deleted." : (r.data?.detail ?? "Your account was not closed. Please try again in a moment."));
+      setError(formFailure(r, {
+        fallback: "Your account was not closed. Please try again in a moment.",
+        unreachable: "MyShopEdge could not be reached, so nothing was deleted.",
+      }));
       return;
     }
     setAck(/** @type {Ack} */ (r.data));
@@ -64,7 +68,7 @@ export function DeleteAccountForm() {
         <input id="confirm-email" type="email" autoComplete="off" value={email}
                onChange={(e) => setEmail(e.target.value)} data-testid="confirm-email" />
       </div>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <FormError failure={error} />
       <p>
         <button className="btn btn--quiet btn--block" disabled={busy || email.trim() === ""} data-testid="confirm-delete">
           {busy ? "Deleting your account" : "Delete my account"}
@@ -86,7 +90,7 @@ export function DeleteAccountForm() {
  */
 export function CancelDeletion({ children }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
   const [kept, setKept] = useState(/** @type {{ shops_disconnected: number } | null} */ (null));
 
   async function cancel() {
@@ -95,7 +99,10 @@ export function CancelDeletion({ children }) {
     const r = await api("/me/deletion/cancel", { method: "POST" });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so the deletion still stands." : (r.data?.detail ?? "The deletion was not cancelled."));
+      setError(formFailure(r, {
+        fallback: "The deletion was not cancelled.",
+        unreachable: "MyShopEdge could not be reached, so the deletion still stands.",
+      }));
       return;
     }
     setKept({ shops_disconnected: Number(r.data?.shops_disconnected ?? 0) });
@@ -122,7 +129,7 @@ export function CancelDeletion({ children }) {
   return (
     <div className="stack">
       {children}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <FormError failure={error} />
       <p>
         <button className="btn btn--primary btn--block" onClick={cancel} disabled={busy} data-testid="cancel-deletion">
           {busy ? "Cancelling" : "Keep my account"}
