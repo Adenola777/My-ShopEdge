@@ -31,6 +31,10 @@ so they carry no single time, and the tie ends at the count. A29.6 holds the ful
 Four severities are derived from the owner's definitions rather than named by him: open
 discrepancies, unmapped fees and returns to check as warnings, out of stock as info.
 
+**The order count**, A16.3, is read from `order_usage.read_order_usage` and served as
+`order_usage`. It is the account's count, not the shop's, because the plan is the account's.
+Today only reads it; the notice at 100 per cent is written by the sync.
+
 **Requires migration 0022**, which adds the refresh and scope columns and the `partial`
 sync status. Until 0022 is applied, this handler fails on the query that reads them. The
 missing scope item cannot fire until `required_scopes` holds a decided list (A29.4).
@@ -54,6 +58,7 @@ from .dates import business_today, now_utc
 from .db import tenant
 from .money import Money, money
 from .money_view import TIKTOK_FEES, calculate
+from .order_usage import OrderUsage, read_order_usage
 from .shops import require_shop
 
 router = APIRouter(tags=["Money"])
@@ -184,6 +189,9 @@ class TodayView(BaseModel):
     month: Month
     shop_money: ShopMoney
     needs_you: list[NeedsYouItem]
+    # A16.3. The account's orders in its billing period against the plan's limit, or null
+    # when the account has no live plan with a current period. See order_usage.py.
+    order_usage: OrderUsage | None = None
 
 
 def _plural(n: int, one: str, many: str) -> str:
@@ -331,6 +339,7 @@ def get_today(
         settlement = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
 
         needs = _needs_row(conn, shop_id, month_start, today)
+        usage = read_order_usage(conn, account.id, now)
 
     currency = month.totals.net_proceeds.currency
 
@@ -383,6 +392,7 @@ def get_today(
         ),
         shop_money=shop_money,
         needs_you=items,
+        order_usage=usage,
     )
 
 

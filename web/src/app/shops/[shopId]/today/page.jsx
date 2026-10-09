@@ -18,6 +18,14 @@
  *
  * Every figure is served by `getToday` and rendered as it arrives (A29.1). Freshness is in
  * the top bar; this screen adds a banner only when the figures are not current (WFW 6).
+ *
+ * The order count, A16.3, added 9 October 2026. It shows only when `order_usage.state` is
+ * `approaching` (80 per cent) or `passed` (100 per cent), and names the larger plan. The
+ * count is the account's across every shop, because the plan is the account's. Its link goes
+ * to Profile and plan, which shows the plan, because no screen and no operation in this
+ * repository changes a running plan: /billing tells a seller with a live plan that there is
+ * nothing to choose, and updateSubscription only stops or restores renewal. So the card names
+ * the larger plan and does not claim the seller can move to it here.
  */
 
 import Link from "next/link";
@@ -33,6 +41,46 @@ export const metadata = { title: "Today" };
 
 /** @type {Record<string, string>} */
 const SEVERITY_WORD = { critical: "Act now", warning: "Check", info: "Note" };
+
+/** @param {number} n */
+function orders(n) {
+  return `${n.toLocaleString("en-GB")} ${n === 1 ? "order" : "orders"}`;
+}
+
+/**
+ * A16.3's card, or nothing below 80 per cent.
+ *
+ * @param {{ usage: import("@/lib/api-types").components["schemas"]["OrderUsage"] | null | undefined, shopId: string }} props
+ */
+function OrderUsageCard({ usage, shopId }) {
+  if (!usage || (usage.state !== "approaching" && usage.state !== "passed")) return null;
+  const { order_count: count, order_limit: limit, plan_name: plan, larger_plan: larger } = usage;
+  const ends = formatDate(usage.period_end);
+  const passed = usage.state === "passed";
+  return (
+    <div className={passed ? "note note--warn" : "card"} role="status" data-testid="order-usage">
+      <h2>{passed ? `This account has ${count === limit ? "reached" : "passed"} its plan's order limit` : "Orders this billing period"}</h2>
+      <p>
+        {!passed
+          ? `The shops on this account have taken ${count.toLocaleString("en-GB")} of the ${orders(limit)} the ${plan} plan covers in the billing period that ends on ${ends}.`
+          : count === limit
+            ? `The shops on this account have taken ${orders(count)} in the billing period that ends on ${ends}, which is the ${plan} plan's limit.`
+            : `The shops on this account have taken ${orders(count)} in the billing period that ends on ${ends}, which is more than the ${limit.toLocaleString("en-GB")} the ${plan} plan covers.`}
+        {" "}Cancelled orders count too.
+      </p>
+      <p>
+        Nothing stops at the limit. MyShopEdge keeps reading your orders, and your figures and
+        exports carry on as before.{" "}
+        {larger
+          ? `The ${larger.name} plan covers up to ${orders(larger.order_limit)} a month.`
+          : `The ${plan} plan is the largest MyShopEdge offers.`}
+      </p>
+      <p className="card__foot">
+        <Link href={`/shops/${shopId}/settings/profile`} data-testid="order-usage-plan">See your plan</Link>
+      </p>
+    </div>
+  );
+}
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function TodayPage({ params }) {
@@ -71,6 +119,8 @@ export default async function TodayPage({ params }) {
       )}
 
       <div className="stack">
+        <OrderUsageCard usage={t.order_usage} shopId={shopId} />
+
         <div className="card hero">
           <p className="hero__label">
             {HERO_LABEL[t.hero.label] ?? t.hero.label} today{" "}

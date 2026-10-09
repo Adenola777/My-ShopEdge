@@ -132,4 +132,4 @@ which A14 recorded as open.
 | S2 First sync | "Loading twelve months" becomes twenty-four. Not yet applied, the Figma quota is spent |
 | A12 test data | The generator covers two months of edge cases. No multi-month or BST boundary test exists |
 | Acceptance run | MON-5 has to pass across twenty-four months rather than twelve |
-| The quota | Ruled soft. `order_quota` view added by migration 0019. The service applies the limits and the two thresholds, not yet written |
+| The quota | Ruled soft. `order_quota` view added by migration 0019. Built 9 October 2026 in `service/app/order_usage.py`: the limit is applied per account across its shops, Today serves `order_usage` and shows it at 80 and 100 per cent, and the sync writes one in-app notice per billing period at 100 per cent. The email is not sent, because nothing in the service can send email and no provider is chosen. No screen changes a running plan, so the larger plan is named but cannot be chosen in the app |

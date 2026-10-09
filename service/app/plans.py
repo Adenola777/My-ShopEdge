@@ -117,11 +117,13 @@ PENDING_SCOPE = OUT_OF_MVP
 
 # Ruled in on 22 September 2026, and not built yet. Unlike the list above, these are work.
 #
-# The order limit is the one with a design question still attached. Counting orders is
-# straightforward. What happens when a seller passes the limit is not, and until that is
-# settled the quota cannot be built, because a counter with no defined consequence is not
-# enforcement. See A16.
+# The order limit was ruled soft in A16.3 and built on 9 October 2026 (order_usage.py): the
+# account's orders in its billing period are counted, Today shows the count at 80 and 100 per
+# cent beside the larger plan, and one in-app notice is written per period at 100 per cent.
+# Two parts of A16.3 remain, and they are listed below.
 IN_SCOPE_NOT_BUILT = [
-    "Order limits as an enforced quota. Nothing counts orders per billing period yet, so "
-    "100, 500 and 2,000 are commitments rather than controls.",
+    "The email A16.3 sends at 100 per cent of the order limit. Nothing in the service can send "
+    "email and no provider has been chosen, so an in-app notice is written in its place.",
+    "Moving to the larger plan from the app. Today names the larger plan, but no screen or "
+    "operation changes a running plan, so the seller cannot act on the offer in the app.",
 ]

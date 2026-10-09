@@ -78,6 +78,7 @@ UNVERIFIED FIELDS
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
@@ -105,6 +106,7 @@ from .tiktok_api import (
 )
 
 LONDON = ZoneInfo("Europe/London")
+logger = logging.getLogger("myshopedge.sync")
 
 # The ingester's maps, unchanged. testdata/ingest.py records where each came from.
 FEE_MAP = {
@@ -706,7 +708,26 @@ def sync_shop(conn, shop_id: UUID | str, client: Client, since: datetime, until:
     if all(s in ("completed", "partial") for s in outcome.values()):
         conn.execute("update shops set connection_status = 'connected', last_synced_at = now(), "
                      "first_synced_at = coalesce(first_synced_at, now()) where id = %s", (shop,))
+    _notify_order_limit(conn, shop, until)
     return outcome
+
+
+def _notify_order_limit(conn, shop: str, now: datetime) -> None:
+    """A16.3's notice at 100 per cent of the plan's orders, written here because every read of
+    a shop passes through `sync_shop` and Today only reads. `until` is the caller's now in every
+    caller (`window`, the webhook). The notice is account-wide, so the account is read from the
+    shop. It runs in its own savepoint and a fault is logged, not raised: A16.3 says the sync
+    never stops over the limit, so it must not stop over the notice either. The email A16.3
+    also asks for is not sent, because nothing here can send email (order_usage.py)."""
+    from .order_usage import notify_order_limit
+
+    try:
+        with conn.transaction():
+            account = conn.execute("select account_id from shops where id = %s",
+                                   (shop,)).fetchone()[0]
+            notify_order_limit(conn, account, now)
+    except Exception:  # noqa: BLE001  the notice must never stop a sync
+        logger.exception("order limit notice failed for shop %s", shop)
 
 
 # --- every due shop --------------------------------------------------------------------------

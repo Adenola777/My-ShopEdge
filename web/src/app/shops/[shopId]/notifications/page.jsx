@@ -24,6 +24,9 @@
  * - `first_read_complete` opens the shop's Today. Another change is adding that notice, and
  *   its writer was not in this tree when the link was written, so the link rests on
  *   `shop_id` alone.
+ * - `order_limit_passed`, written by `notify_order_limit` in order_usage.py with no shop,
+ *   because the plan's limit is the account's, opens Today of the shop whose page this is,
+ *   where the order count is shown (A16.3, 9 October 2026).
  *
  * Nothing in the service writes a notice about a discrepancy today, so none links to
  * Discrepancies.
@@ -56,7 +59,7 @@ function noticeLink(n, shopId) {
   if (n.type === "reconnect_needed" && n.entity_type === "shop" && n.entity_id) {
     return { href: `/shops/${encodeURIComponent(n.entity_id)}/connection-problem`, label: "Reconnect your shop" };
   }
-  if (n.type === "first_read_complete") {
+  if (n.type === "first_read_complete" || n.type === "order_limit_passed") {
     return { href: `/shops/${shop}/today`, label: "See Today" };
   }
   return null;

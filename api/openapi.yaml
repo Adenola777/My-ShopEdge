@@ -4433,6 +4433,94 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NeedsYouItem'
+        order_usage:
+          description: 'A16.3. The account''s orders in its current billing period against its
+
+            plan''s limit. Null when the account has no subscription, when its status is not
+
+            `trialing`, `active` or `past_due`, when either end of the period is unknown, or
+
+            when now falls outside the period. The client shows it only when `state` is
+
+            `approaching` or `passed`.
+
+            '
+          oneOf:
+          - $ref: '#/components/schemas/OrderUsage'
+          - type: 'null'
+    OrderUsage:
+      type: object
+      description: 'The soft order limit, A16.3. Orders are counted by TikTok''s creation time
+
+        from `period_start` inclusive to `period_end` exclusive, across every shop the
+
+        account owns, because the plan belongs to the account. A cancelled order counts.
+
+        Nothing stops at any state: the sync, the figures and the exports carry on.
+
+        '
+      required:
+      - state
+      - order_count
+      - order_limit
+      - plan
+      - plan_name
+      - period_start
+      - period_end
+      - larger_plan
+      properties:
+        state:
+          type: string
+          enum:
+          - below
+          - approaching
+          - passed
+          description: '`below` under 80 per cent of the limit, `approaching` from 80 per cent,
+
+            `passed` from 100 per cent, so a count equal to the limit is `passed`.
+
+            '
+        order_count:
+          type: integer
+          minimum: 0
+        order_limit:
+          type: integer
+          minimum: 1
+        plan:
+          type: string
+          enum:
+          - starter
+          - growth
+          - pro
+        plan_name:
+          type: string
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        larger_plan:
+          description: The next plan up, or null on the largest plan.
+          oneOf:
+          - type: object
+            required:
+            - slug
+            - name
+            - order_limit
+            properties:
+              slug:
+                type: string
+                enum:
+                - starter
+                - growth
+                - pro
+              name:
+                type: string
+              order_limit:
+                type: integer
+                minimum: 1
+          - type: 'null'
     NeedsYouItem:
       type: object
       required:

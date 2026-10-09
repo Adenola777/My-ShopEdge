@@ -1991,6 +1991,44 @@ export interface components {
                 }[];
             };
             needs_you: components["schemas"]["NeedsYouItem"][];
+            /**
+             * @description A16.3. The account's orders in its current billing period against its
+             *     plan's limit. Null when the account has no subscription, when its status is not
+             *     `trialing`, `active` or `past_due`, when either end of the period is unknown, or
+             *     when now falls outside the period. The client shows it only when `state` is
+             *     `approaching` or `passed`.
+             */
+            order_usage?: components["schemas"]["OrderUsage"] | null;
+        };
+        /**
+         * @description The soft order limit, A16.3. Orders are counted by TikTok's creation time
+         *     from `period_start` inclusive to `period_end` exclusive, across every shop the
+         *     account owns, because the plan belongs to the account. A cancelled order counts.
+         *     Nothing stops at any state: the sync, the figures and the exports carry on.
+         */
+        OrderUsage: {
+            /**
+             * @description `below` under 80 per cent of the limit, `approaching` from 80 per cent,
+             *     `passed` from 100 per cent, so a count equal to the limit is `passed`.
+             * @enum {string}
+             */
+            state: "below" | "approaching" | "passed";
+            order_count: number;
+            order_limit: number;
+            /** @enum {string} */
+            plan: "starter" | "growth" | "pro";
+            plan_name: string;
+            /** Format: date-time */
+            period_start: string;
+            /** Format: date-time */
+            period_end: string;
+            /** @description The next plan up, or null on the largest plan. */
+            larger_plan: {
+                /** @enum {string} */
+                slug: "starter" | "growth" | "pro";
+                name: string;
+                order_limit: number;
+            } | null;
         };
         NeedsYouItem: {
             /**
