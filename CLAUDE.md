@@ -276,9 +276,13 @@ Each of these was found by running something, and each survived reading.
    ruling the same day, `service/scripts/correct_posting_9_october.sql` corrected production's
    ledger in one transaction: 840 entries added with source `system` and a reason, none changed
    or removed. Queried afterwards, 104 of 107 statements reconcile and every statement still
-   comes to zero with its payout. The other three, 801 pence and 1 pence twice, need TikTok's
-   calculator read again for their orders, because `seller_discount_refund_amount` was never
-   stored; that it explains them is unverified.
+   comes to zero with its payout. The other three, 801 pence and 1 pence twice, were settled the
+   same day with the owner's approval by `service/scripts/repost_discount_refund.py`, run as a
+   one-off job on `My-ShopEdge-sync`. A dry run first read TikTok's calculator again and found
+   `seller_discount_refund_amount` of exactly 801, 1 and 1 pence on one order of each, which
+   confirmed the cause; `--apply` then posted the three refund lines and restated the three
+   payouts. Queried afterwards on production: all 107 statements reconcile, every statement
+   comes to zero with its payout, and the ledger holds 2,938 entries.
 
 ## Commercial rulings worth knowing before touching billing
 
