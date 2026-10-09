@@ -88,6 +88,7 @@ from zoneinfo import ZoneInfo
 
 from psycopg.types.json import Jsonb
 
+from .alert_notices import raise_alert_notices
 from .tiktok_api import (
     INVENTORY_MAX_PRODUCTS,
     INVENTORY_SEARCH_PATH,
@@ -709,6 +710,10 @@ def sync_shop(conn, shop_id: UUID | str, client: Client, since: datetime, until:
         conn.execute("update shops set connection_status = 'connected', last_synced_at = now(), "
                      "first_synced_at = coalesce(first_synced_at, now()) where id = %s", (shop,))
     _notify_order_limit(conn, shop, until)
+    # The low stock and return check notices S27's settings promise (STK-3), added 9 October
+    # 2026. They are not a domain: they write no `sync_runs` row and leave `outcome` as it
+    # was, so a fault in them never makes a read partial or failed. alert_notices explains.
+    raise_alert_notices(conn, shop, until, outcome)
     return outcome
 
 

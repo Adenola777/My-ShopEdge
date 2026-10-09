@@ -70,12 +70,13 @@ export function AlertSettingsForm({ shopId, initial }) {
         <label htmlFor="low">Low stock warning (days of cover)</label>
         <input id="low" data-testid="low-stock-days" inputMode="numeric" value={low} aria-describedby="low-help"
                onChange={(e) => setLow(e.target.value)} />
-        <p className="rows__sub" id="low-help">A variant is marked low when it has fewer than this many days of stock left.</p>
+        <p className="rows__sub" id="low-help">A variant is marked low when it has fewer than this many days of stock left, and MyShopEdge sends you one notice each time it drops below.</p>
       </div>
       <div>
-        <label htmlFor="coming">Coming back window (days)</label>
-        <input id="coming" data-testid="coming-back-days" inputMode="numeric" value={coming}
+        <label htmlFor="coming">Return check reminder (days)</label>
+        <input id="coming" data-testid="coming-back-days" inputMode="numeric" value={coming} aria-describedby="coming-help"
                onChange={(e) => setComing(e.target.value)} />
+        <p className="rows__sub" id="coming-help">MyShopEdge sends you one notice when a returned item has waited longer than this for your check, counted from the day MyShopEdge first read the return.</p>
       </div>
       <div>
         <label htmlFor="absorb">Stock rise to accept without asking (units)</label>
