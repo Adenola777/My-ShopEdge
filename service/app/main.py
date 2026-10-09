@@ -41,7 +41,7 @@ from . import (
     today_view,
     trends,
 )
-from .problems import problem_handler, problem_response, validation_handler
+from .problems import INTERNAL_ERROR, problem_handler, problem_response, validation_handler
 
 logger = logging.getLogger("myshopedge")
 
@@ -71,7 +71,7 @@ async def _errors_inside_cors(request: Request, call_next):
         return await call_next(request)
     except Exception:
         logger.exception("unhandled error on %s %s", request.method, request.url.path)
-        return problem_response(500, "internal_error", "Something went wrong at our end.")
+        return problem_response(500, "internal_error", INTERNAL_ERROR)
 
 
 _origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]

@@ -211,6 +211,13 @@ def needs_href(kind: str, shop_id: UUID, today: date) -> str | None:
         "unmapped_fees": f"{base}/records?category=unmapped_fee&from={month}&to={today.isoformat()}",
         "missing_costs": f"{base}/products",
         "out_of_stock": f"{base}/stock?state=out",
+        "returns_to_check": f"{base}/returns",
+        # Every connection item goes to the screen that explains the state and offers the
+        # reconnect, added 9 October 2026 from the copy audit (Area B row 25).
+        "connection_action_required": f"{base}/connection-problem",
+        "refresh_failed": f"{base}/connection-problem",
+        "missing_scope": f"{base}/connection-problem",
+        "sync_needs_reconnect": f"{base}/connection-problem",
     }.get(kind)
 
 
@@ -256,7 +263,8 @@ def _needs_you(r: dict[str, Any], now: datetime, currency: str) -> tuple[bool, l
         missing = [m for m in (r["missing_scopes"] or []) if m]
         if broken:
             add("connection_action_required", 1, "critical",
-                "Your TikTok Shop needs reconnecting")
+                "Your TikTok Shop needs reconnecting. Reconnect it to keep your figures up to "
+                "date.")
         if refresh_failed:
             add("refresh_failed", 1, "critical",
                 "TikTok would not renew MyShopEdge's access to your shop. Reconnect the shop to "

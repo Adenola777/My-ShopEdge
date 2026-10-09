@@ -9,10 +9,15 @@
  *
  * A3's step 1 offers the data download first, and since 29 September it links to S31.
  * Step 4's email is not sent, because nothing in the service sends email.
+ *
+ * Since 9 October 2026 the plan row reads getSubscription. deleteMe stops renewal only for a
+ * subscription in `billing.LIVE` (trialing, active or past_due), so the row is shown for those,
+ * hidden for an account with no live plan, and worded as a condition when the plan could not
+ * be read.
  */
 
 import Link from "next/link";
-import { fetchShop } from "@/lib/api";
+import { api, fetchShop } from "@/lib/api";
 import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { DeleteAccountForm } from "@/components/AccountDeletion";
 
@@ -23,9 +28,18 @@ export default async function DeleteAccountPage({ params }) {
   const { shopId } = await params;
   // A read that proves the seller is signed in and the shop is theirs before the page
   // offers anything.
-  const result = await fetchShop(shopId, "/alert-settings");
+  const [result, subRes] = await Promise.all([
+    fetchShop(shopId, "/alert-settings"),
+    api("/billing/subscription", { cache: "no-store" }),
+  ]);
   const problem = apiProblem(result, { what: "your account", note: NOTHING_CHANGED });
   if (problem) return problem;
+  const subStatus = subRes.ok ? String(subRes.data?.status ?? "") : null;
+  const planRow = subStatus === null
+    ? <li><span>Your plan</span><strong>If you have one, it stops renewing now, with no refund</strong></li>
+    : ["trialing", "active", "past_due"].includes(subStatus)
+      ? <li><span>Your plan</span><strong>Stops renewing now, with no refund</strong></li>
+      : null;
 
   return (
     <section data-testid="delete-account-screen">
@@ -48,7 +62,7 @@ export default async function DeleteAccountPage({ params }) {
           <ul className="rows">
             <li><span>Using MyShopEdge</span><strong>Stops now, except to cancel the deletion</strong></li>
             <li><span>Your TikTok Shop connection</span><strong>Ends now. MyShopEdge stops reading your shops but does not ask TikTok to withdraw your approval.</strong></li>
-            <li><span>Your plan</span><strong>Stops renewing now, with no refund</strong></li>
+            {planRow}
             <li><span>Your name and email</span><strong>Erased after 30 days</strong></li>
             <li><span>Your TikTok sign-in details</span><strong>Erased after 30 days</strong></li>
             <li><span>Files you uploaded or exported</span><strong>Deleted after 30 days</strong></li>

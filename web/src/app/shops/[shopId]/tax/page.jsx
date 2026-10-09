@@ -74,6 +74,18 @@ export default async function TaxPage({ params }) {
           </>)}
         </div>
 
+        {/* Until 9 October 2026 a failed set-aside read removed the card without a word
+            (copy audit finding 110). */}
+        {!setAside && (
+          <div className="card" data-testid="set-aside-error">
+            <h2>Tax to set aside</h2>
+            <p className="muted">
+              MyShopEdge could not load the set-aside estimate just now. Nothing on your account
+              has changed, and the other figures on this page are unaffected. Try again in a moment.
+            </p>
+          </div>
+        )}
+
         {setAside && (
           <div className="card" data-testid="set-aside">
             <h2>Tax to set aside</h2>
@@ -86,6 +98,13 @@ export default async function TaxPage({ params }) {
             <p className="hero__value"><Figure amount={setAside.amount} reason={
               (setAside.basis_of_estimate ?? [])[0]?.label ?? "No amount can be produced yet."
             } /></p>
+            {/* The way to the missing input, keyed on the contract's own reason codes. */}
+            {setAside.unavailable_reason === "no_tax_profile" && (
+              <p className="card__foot"><Link href={`/shops/${shopId}/setup/tax`}>Fill in your business details</Link></p>
+            )}
+            {setAside.unavailable_reason === "incomplete_costs" && (
+              <p className="card__foot"><Link href={`/shops/${shopId}/products`}>Add costs</Link></p>
+            )}
             {setAside.amount && (
               <ul className="rows">
                 {(setAside.basis_of_estimate ?? []).map((/** @type {NonNullable<import("@/lib/api-types").components["schemas"]["SetAside"]["basis_of_estimate"]>[number]} */ b) => (

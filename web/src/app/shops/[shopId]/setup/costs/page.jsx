@@ -16,13 +16,13 @@ export default async function CostsChoicePage({ params }) {
     <section data-testid="costs-choice">
       <header className="page-head">
         <h1>Do you have your product costs?</h1>
-        <p>Optional. You can add them later.</p>
+        <p>Costs are optional, and you can add them later.</p>
       </header>
       <div className="stack">
         <Link className="btn btn--primary btn--block" href={`${base}/costs/upload`} data-testid="choose-upload">Yes, in Excel or CSV</Link>
         <Link className="btn btn--quiet btn--block" href={`${base}/costs/manual`} data-testid="choose-manual">Yes, I will type them in</Link>
-        <Link className="btn btn--quiet btn--block" href={`${base}/tax`} data-testid="choose-later">Not right now</Link>
-        <p className="footnote">Without costs you see what is left after TikTok. With costs you see your gross profit. We remind you where a missing cost hides a figure.</p>
+        <Link className="btn btn--quiet btn--block" href={`${base}/tax`} data-testid="choose-later">Skip costs for now</Link>
+        <p className="footnote">Without costs you see your net proceeds. With costs you see your gross profit. MyShopEdge shows you where a missing cost leaves a figure out.</p>
       </div>
     </section>
   );

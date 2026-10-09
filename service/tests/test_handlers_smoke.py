@@ -898,9 +898,14 @@ def needs_you_links_only_to_built_screens():
     _assert(needs_href("unmapped_fees", SHOP, d).endswith(
         "records?category=unmapped_fee&from=2026-09-01&to=2026-09-24"))
     _assert(needs_href("out_of_stock", SHOP, d) == f"/shops/{SHOP}/stock?state=out")
-    # No screen yet, so no link rather than a link to nothing.
-    _assert(needs_href("returns_to_check", SHOP, d) is None)
-    _assert(needs_href("connection_action_required", SHOP, d) is None)
+    # Returns and the connection screen were built after this test was first written, so
+    # these items now link to them (copy audit, Area B rows 25 and 30, 9 October 2026).
+    _assert(needs_href("returns_to_check", SHOP, d) == f"/shops/{SHOP}/returns")
+    for kind in ("connection_action_required", "refresh_failed", "missing_scope",
+                 "sync_needs_reconnect"):
+        _assert(needs_href(kind, SHOP, d) == f"/shops/{SHOP}/connection-problem", kind)
+    # A kind with no screen still gets no link rather than a link to nothing.
+    _assert(needs_href("first_sync_pending", SHOP, d) is None)
 check("Needs you links only to screens that exist", needs_you_links_only_to_built_screens)
 
 

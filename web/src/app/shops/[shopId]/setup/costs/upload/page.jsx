@@ -17,8 +17,8 @@ export default async function UploadPage({ params }) {
     <section data-testid="upload-screen">
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/setup/costs`}>Product costs</Link></p>
-        <h1>Check the columns</h1>
-        <p>We read your file. Change anything that is wrong before any cost is applied.</p>
+        <h1>Upload your costs</h1>
+        <p>Choose your Excel or CSV file. You check the columns before any cost is applied.</p>
       </header>
       <UploadFlow shopId={shopId} />
     </section>

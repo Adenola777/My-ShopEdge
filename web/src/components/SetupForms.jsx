@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, formatDate, formatMoney } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
+import { FormError, formFailure } from "@/components/FormFailure";
 
 /** @typedef {import("@/lib/api-types").components["schemas"]} Schemas */
 
@@ -52,7 +53,7 @@ export function TaxProfileForm({ shopId, initial }) {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(failure(r, "Your tax profile was not saved."));
+      setError(failure(r, "Your business details were not saved. Try again."));
       return;
     }
     router.push(`/shops/${shopId}/today`);
@@ -70,7 +71,7 @@ export function TaxProfileForm({ shopId, initial }) {
         </select>
       </div>
       <div>
-        <label htmlFor="vat">VAT registered</label>
+        <label htmlFor="vat">Are you VAT registered?</label>
         <select id="vat" value={vat} onChange={(e) => setVat(e.target.value)} data-testid="vat">
           <option value="no">No</option>
           <option value="yes">Yes</option>
@@ -92,7 +93,7 @@ export function TaxProfileForm({ shopId, initial }) {
 // ---------------------------------------------------------------------------------- S20
 
 /**
- * @typedef {{ sku_id: string, title: string, seller_sku: string | null, units: number, has_cost: boolean }} CostRow
+ * @typedef {{ sku_id: string, title: string, seller_sku: string | null, units: number, has_cost: boolean, cost: Schemas["Money"] | null }} CostRow
  * @param {{ shopId: string, rows: CostRow[], currency: string }} props
  */
 export function ManualCosts({ shopId, rows, currency }) {
@@ -116,8 +117,10 @@ export function ManualCosts({ shopId, rows, currency }) {
     /** @type {Record<string, string>} */
     const errs = {};
     let saved = 0;
+    let tried = 0;
     for (const [skuId, v] of Object.entries(values)) {
       if (!v.cost.trim()) continue;
+      tried += 1;
       const cost = parsePounds(v.cost);
       const packing = v.packing.trim() ? parsePounds(v.packing) : undefined;
       const postage = v.postage.trim() ? parsePounds(v.postage) : undefined;
@@ -138,13 +141,16 @@ export function ManualCosts({ shopId, rows, currency }) {
         body: JSON.stringify({ cost: m(cost), packing: m(packing), postage: m(postage) }),
       });
       if (r.ok) saved += 1;
-      else errs[skuId] = failure(r, "Not saved.");
+      else errs[skuId] = failure(r, "This cost was not saved. Try again.");
     }
     setErrors(errs);
     setBusy(false);
-    setMessage(saved ? `${saved} ${saved === 1 ? "cost" : "costs"} saved.` : "Nothing was saved.");
+    setMessage(saved ? `${saved} ${saved === 1 ? "cost" : "costs"} saved.`
+      : tried === 0 ? "Nothing was saved, because no product cost was entered."
+      : "Nothing was saved. Each product below says why.");
     if (saved) {
-      setValues({});
+      // Only the rows that saved are cleared, so a row that failed keeps what was typed.
+      setValues((/** @type {any} */ all) => Object.fromEntries(Object.entries(all).filter(([id]) => errs[id])));
       router.refresh();
     }
   }
@@ -163,10 +169,10 @@ export function ManualCosts({ shopId, rows, currency }) {
           <div className="card stack" key={r.sku_id} data-testid="cost-row">
             <div>
               <strong>{r.title}</strong>
-              <div className="rows__sub">{r.seller_sku ?? "No seller SKU"} · {r.units} sold in the last 30 days{r.has_cost ? " · has a cost" : ""}</div>
+              <div className="rows__sub">{r.seller_sku ?? "No seller SKU"} · {r.units} sold in the last 30 days{r.cost ? ` · current cost ${formatMoney(r.cost)}` : ""}</div>
             </div>
             <div className="cost-fields">
-              {/** @type {[string, string][]} */ ([["cost", "Product cost (£)"], ["packing", "Packing (£)"], ["postage", "Postage (£)"]]).map(([f, label]) => (
+              {/** @type {[string, string][]} */ ([["cost", "Product cost (£)"], ["packing", "Packaging you pay (£)"], ["postage", "Shipping you pay (£)"]]).map(([f, label]) => (
                 <div key={f}>
                   <label htmlFor={`${f}-${r.sku_id}`}>{label}</label>
                   <input id={`${f}-${r.sku_id}`} inputMode="decimal" placeholder={f === "cost" ? "For example 3.40" : "Optional"}
@@ -182,7 +188,7 @@ export function ManualCosts({ shopId, rows, currency }) {
         );
       })}
       {message && <p className="note" role="status" data-testid="costs-message">{message}</p>}
-      <p><button className="btn btn--primary btn--block" onClick={save} disabled={busy} data-testid="save-costs">{busy ? "Saving" : "Save"}</button></p>
+      <p><button className="btn btn--primary btn--block" onClick={save} disabled={busy} data-testid="save-costs">{busy ? "Saving" : "Save costs"}</button></p>
       <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/setup/tax`}>Do this later</Link></p>
     </div>
   );
@@ -191,6 +197,13 @@ export function ManualCosts({ shopId, rows, currency }) {
 // ---------------------------------------------------------------------------------- S4
 
 const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** Words for a row's outcome, used only when the service gives no reason of its own. */
+/** @type {Record<string, string>} */
+const OUTCOME_WORDS = {
+  unmatched: "No product in your shop has this code.",
+  duplicate: "This code appears more than once in your file.",
+};
 
 /** @param {{ shopId: string }} props */
 export function UploadFlow({ shopId }) {
@@ -218,7 +231,7 @@ export function UploadFlow({ shopId }) {
       body: JSON.stringify({ filename: file.name, content_type: type, size_bytes: file.size }) });
     if (!r.ok) { setBusy(false); setError(failure(r, "The upload could not start.")); return; }
     const put = await fetch(r.data.upload_url, { method: "PUT", headers: { "content-type": type }, body: file }).catch(() => null);
-    if (!put || !put.ok) { setBusy(false); setError("The file did not reach the file store, so nothing was read."); return; }
+    if (!put || !put.ok) { setBusy(false); setError("Your file did not upload, so nothing was read. Check your connection and choose the file again."); return; }
     const read = await api(`${base}/${r.data.upload.id}`, { cache: "no-store" });
     setBusy(false);
     if (!read.ok) { setError(failure(read, "The file could not be read.")); return; }
@@ -242,6 +255,7 @@ export function UploadFlow({ shopId }) {
     if (!upload || !match) return;
     const ids = (match.rows ?? []).filter((/** @type {any} */ x) => x.outcome === "matched").map((/** @type {any} */ x) => x.row_id);
     setBusy(true);
+    setError(null);
     const r = await api(`${base}/${upload.id}/apply`, { method: "POST", idempotencyKey: newKey(), body: JSON.stringify({ apply_row_ids: ids }) });
     setBusy(false);
     if (!r.ok) { setError(failure(r, "The costs were not applied.")); return; }
@@ -266,7 +280,7 @@ export function UploadFlow({ shopId }) {
     return (
       <div className="stack" data-testid="upload-done">
         <p className="note" role="status">{done}</p>
-        <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/setup/tax`}>Continue</Link></p>
+        <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/setup/tax`}>Continue to your business details</Link></p>
       </div>
     );
   }
@@ -277,7 +291,8 @@ export function UploadFlow({ shopId }) {
         <div className="card">
           <label htmlFor="cost-file">Your cost file, Excel or CSV</label>
           <input id="cost-file" type="file" accept=".csv,.xlsx" onChange={pick} disabled={busy} data-testid="cost-file" />
-          <p className="footnote">The file goes to MyShopEdge's private file store in the EU and is kept as the record behind your costs. Nobody else can open it.</p>
+          {busy && <p className="note" role="status" data-testid="upload-reading">Uploading and reading your file.</p>}
+          <p className="footnote">The file goes to MyShopEdge's private file store in the EU and is kept as the record behind your costs. MyShopEdge does not share it.</p>
         </div>
       )}
       {upload && columns.length === 0 && (
@@ -305,7 +320,7 @@ export function UploadFlow({ shopId }) {
       )}
       {upload && mapping && columns.length > 0 && (
         <div className="card stack">
-          <h2>Column mapping</h2>
+          <h2>Which column is which</h2>
           <div>
             <label htmlFor="match-on">The code in your file is</label>
             <select id="match-on" value={mapping.match_on} onChange={(e) => setMapping({ ...mapping, match_on: /** @type {any} */ (e.target.value) })}>
@@ -315,8 +330,8 @@ export function UploadFlow({ shopId }) {
           </div>
           {picker("key_column", "Code column", false)}
           {picker("cost_column", "Product cost column", false)}
-          {picker("packing_column", "Packing cost column", true)}
-          {picker("postage_column", "Postage column", true)}
+          {picker("packing_column", "Packaging you pay column", true)}
+          {picker("postage_column", "Shipping you pay column", true)}
           <p><button className="btn btn--quiet btn--block" onClick={check} disabled={busy || !mapping.key_column || !mapping.cost_column} data-testid="check-match">{busy ? "Checking" : "Check the match"}</button></p>
         </div>
       )}
@@ -328,13 +343,13 @@ export function UploadFlow({ shopId }) {
             <li><span>Unmatched</span><strong className="chip chip--warn">{match.rows_unmatched ?? 0} rows</strong></li>
             <li><span>Duplicate codes</span><strong className="chip chip--warn">{match.rows_duplicate ?? 0} rows</strong></li>
           </ul>
-          <p><button className="btn btn--primary btn--block" onClick={apply} disabled={busy || !(match.rows_matched > 0)} data-testid="apply-costs">Apply {match.rows_matched ?? 0} costs</button></p>
+          <p><button className="btn btn--primary btn--block" onClick={apply} disabled={busy || !(match.rows_matched > 0)} data-testid="apply-costs">{busy ? "Applying" : `Apply ${match.rows_matched ?? 0} ${match.rows_matched === 1 ? "cost" : "costs"}`}</button></p>
           {(match.rows ?? []).some((/** @type {any} */ x) => x.outcome !== "matched") && (
             <details>
               <summary>Review unmatched rows</summary>
               <ul className="rows" data-testid="unmatched-rows">
                 {match.rows.filter((/** @type {any} */ x) => x.outcome !== "matched").map((/** @type {any} */ x) => (
-                  <li key={x.row_id}><span>{x.seller_sku ?? "No code"}</span><span className="muted">{x.reason ?? x.outcome}</span></li>
+                  <li key={x.row_id}><span>{x.seller_sku ?? "No code"}</span><span className="muted">{x.reason ?? OUTCOME_WORDS[x.outcome] ?? "This row was not matched."}</span></li>
                 ))}
               </ul>
               <p className="footnote">These rows are not applied. Correct them in your file and upload it again.</p>
@@ -423,7 +438,7 @@ function JobStatus({ path, job: first, onReset, onSettled }) {
   if (job.status === "failed") {
     return (
       <div className="stack" data-testid="job-failed">
-        <p className="form-error" role="alert">MyShopEdge could not build the file. Your records are unchanged.</p>
+        <p className="form-error" role="alert">MyShopEdge could not build the file. Your records are unchanged. Please try again, and if it fails a second time, email info@inspirecraftglobal.com.</p>
         <p><button className="btn btn--quiet" onClick={onReset}>Try again</button></p>
       </div>
     );
@@ -534,7 +549,7 @@ export function ExportForm({ shopId, today }) {
   const [format, setFormat] = useState("xlsx");
   const [job, setJob] = useState(/** @type {any} */ (null));
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
   const [version, setVersion] = useState(0);
   const settled = useCallback(() => setVersion((n) => n + 1), []);
 
@@ -548,7 +563,7 @@ export function ExportForm({ shopId, today }) {
       body: JSON.stringify({ kind, format, basis, period_start: range[0], period_end: range[1] }),
     });
     setBusy(false);
-    if (!r.ok) { setError(failure(r, "The export did not start.", NO_FILE_STARTED)); return; }
+    if (!r.ok) { setError(formFailure(r, { fallback: "The export did not start.", unreachable: NO_FILE_STARTED })); return; }
     setJob(r.data);
     setVersion((n) => n + 1);
   }
@@ -601,8 +616,11 @@ export function ExportForm({ shopId, today }) {
           <option value="csv">CSV</option>
         </select>
       </div>
-      <p className="note">The file covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis, and its totals equal the screen for the same period.</p>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <p className="note">
+        The file covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis.
+        {kind === "month_summary" && " Its totals equal the Money screen for the same period and basis."}
+      </p>
+      <FormError failure={error} />
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-export">{busy ? "Starting" : "Build the file"}</button></p>
       {recent}
     </div>
@@ -790,7 +808,7 @@ export function ScheduledExports({ shopId }) {
 export function DataDownload() {
   const [job, setJob] = useState(/** @type {any} */ (null));
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
   const [version, setVersion] = useState(0);
   const settled = useCallback(() => setVersion((n) => n + 1), []);
   const recent = (
@@ -803,7 +821,7 @@ export function DataDownload() {
     setError(null);
     const r = await api("/me/export", { method: "POST", idempotencyKey: newKey() });
     setBusy(false);
-    if (!r.ok) { setError(failure(r, "The download did not start.", NO_FILE_STARTED)); return; }
+    if (!r.ok) { setError(formFailure(r, { fallback: "The download did not start.", unreachable: NO_FILE_STARTED })); return; }
     setJob(r.data);
     setVersion((n) => n + 1);
   }
@@ -818,7 +836,7 @@ export function DataDownload() {
   }
   return (
     <div className="stack">
-      {error && <p className="form-error" role="alert">{error}</p>}
+      <FormError failure={error} />
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-download">{busy ? "Starting" : "Build my data file"}</button></p>
       {recent}
     </div>

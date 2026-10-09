@@ -121,6 +121,17 @@ export default async function MoneyPage({ params, searchParams }) {
         </div>
       )}
 
+      {m.sections.length === 0 && (
+        <section className="state" data-testid="money-empty">
+          <h2>There is nothing to break down for these dates.</h2>
+          <p>
+            {basis === "cash"
+              ? "MyShopEdge holds no money that TikTok settled in this period."
+              : "MyShopEdge holds no sales, fees, refunds or payouts for this period."}
+          </p>
+        </section>
+      )}
+
       <div className="stack">
         {m.sections.map((s) => (
           <div className="card" key={s.key}>

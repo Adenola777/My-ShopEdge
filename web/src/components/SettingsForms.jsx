@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
+import { FormError, formFailure } from "@/components/FormFailure";
 
 /**
  * S27 Alert settings. A full replacement of the three thresholds.
@@ -37,7 +38,7 @@ export function AlertSettingsForm({ shopId, initial }) {
   const [low, setLow] = useState(String(initial.low_stock_days));
   const [coming, setComing] = useState(String(initial.coming_back_days));
   const [absorb, setAbsorb] = useState(String(initial.absorption_tolerance_units));
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -57,7 +58,10 @@ export function AlertSettingsForm({ shopId, initial }) {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? "Those settings were not saved."));
+      setError(formFailure(r, {
+        fallback: "Those settings were not saved.",
+        unreachable: "MyShopEdge could not be reached, so nothing was saved.",
+      }));
       return;
     }
     setSaved(true);
@@ -84,7 +88,7 @@ export function AlertSettingsForm({ shopId, initial }) {
                onChange={(e) => setAbsorb(e.target.value)} />
         <p className="rows__sub" id="absorb-help">A larger rise in TikTok&rsquo;s count that MyShopEdge cannot explain is raised as a discrepancy for you to check.</p>
       </div>
-      {error && <p className="form-error" role="alert" data-testid="alert-settings-error">{error}</p>}
+      <FormError failure={error} testId="alert-settings-error" />
       {saved && <p className="note" role="status" data-testid="alert-settings-saved">Your thresholds are saved.</p>}
       <p><button className="btn btn--primary" data-testid="save-alert-settings" disabled={busy}>{busy ? "Saving" : "Save thresholds"}</button></p>
     </form>
@@ -100,7 +104,7 @@ export function DisconnectAction({ shopId }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
 
   async function disconnect() {
     setBusy(true);
@@ -111,7 +115,10 @@ export function DisconnectAction({ shopId }) {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was changed." : (r.data?.detail ?? "The shop was not disconnected. Please try again in a moment."));
+      setError(formFailure(r, {
+        fallback: "The shop was not disconnected. Please try again in a moment.",
+        unreachable: "MyShopEdge could not be reached, so nothing was changed.",
+      }));
       return;
     }
     setDone(true);
@@ -130,7 +137,7 @@ export function DisconnectAction({ shopId }) {
 
   return (
     <div className="stack">
-      {error && <p className="form-error" role="alert" data-testid="disconnect-error">{error}</p>}
+      <FormError failure={error} testId="disconnect-error" />
       <p><button className="btn btn--quiet" data-testid="confirm-disconnect" onClick={disconnect} disabled={busy}>{busy ? "Disconnecting" : "Disconnect this shop"}</button></p>
     </div>
   );
@@ -158,22 +165,22 @@ export function OtherSalesForm({ shopId }) {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(/** @type {string | null} */ (null));
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/components/FormFailure").Failure | null} */ (null));
 
   /** @param {import("react").FormEvent} e */
   async function save(e) {
     e.preventDefault();
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month.trim())) {
-      setError("Choose the month.");
+      setError({ message: "Choose the month.", signIn: false });
       return;
     }
     if (channel.trim() === "") {
-      setError("Name the channel, for example Etsy or eBay.");
+      setError({ message: "Name the channel, for example Etsy or eBay.", signIn: false });
       return;
     }
     const minor = parsePounds(amount);
     if (minor === null) {
-      setError("Enter the total in pounds, for example 1234.56.");
+      setError({ message: "Enter the total in pounds, for example 1234.56.", signIn: false });
       return;
     }
     setBusy(true);
@@ -185,7 +192,10 @@ export function OtherSalesForm({ shopId }) {
     });
     setBusy(false);
     if (!r.ok) {
-      setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? "That figure was not saved."));
+      setError(formFailure(r, {
+        fallback: "That figure was not saved.",
+        unreachable: "MyShopEdge could not be reached, so nothing was saved.",
+      }));
       return;
     }
     setSaved(`MyShopEdge saved ${channel.trim()} for ${monthName(month.trim())}.`);
@@ -211,7 +221,7 @@ export function OtherSalesForm({ shopId }) {
         <input id="os-amount" data-testid="other-sales-amount" inputMode="decimal" placeholder="1234.56"
                value={amount} onChange={(e) => setAmount(e.target.value)} />
       </div>
-      {error && <p className="form-error" role="alert" data-testid="other-sales-error">{error}</p>}
+      <FormError failure={error} testId="other-sales-error" />
       {saved && <p className="note" role="status" data-testid="other-sales-saved">{saved}</p>}
       <p className="rows__sub">Saving the same channel and month again replaces the earlier total.</p>
       <p><button className="btn btn--primary" data-testid="save-other-sales" disabled={busy}>{busy ? "Saving" : "Save month"}</button></p>

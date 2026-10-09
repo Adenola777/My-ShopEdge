@@ -108,11 +108,15 @@ export default async function TodayPage({ params }) {
         {shop?.shop_name && <p>{shop.shop_name}</p>}
       </header>
 
-      {(status === "stale" || status === "getting_old") && (
+      {/* Only `stale` raises the banner. `getting_old` starts six hours after a read, and the
+          daily read leaves a shop in that state for most of every day, so a banner then would
+          stop meaning anything (copy audit 8 October, finding 20). The top bar shows the time
+          of the last read in every state. */}
+      {status === "stale" && (
         <div className="note note--warn" role="status">
           <p>
             {t.freshness?.last_synced_at
-              ? `MyShopEdge last brought these figures up to date ${formatDate(t.freshness.last_synced_at, { time: true })}, ${status === "stale" ? "more than a day ago" : "more than six hours ago"}, so they may not be current.`
+              ? `MyShopEdge last brought these figures up to date ${formatDate(t.freshness.last_synced_at, { time: true })}, more than a day ago, so they may not be current.`
               : "Your shop has not been brought up to date yet, so these figures are not complete."}
           </p>
         </div>

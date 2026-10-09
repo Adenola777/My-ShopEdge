@@ -15,9 +15,22 @@ import { ReturnCheckForm } from "@/components/ReturnCheckForm";
 
 export const metadata = { title: "Check returns" };
 
-/** @param {{ params: Promise<{ shopId: string }> }} props */
-export default async function ReturnsPage({ params }) {
+/**
+ * What a check just recorded, by the status the form put in the address. Each sentence is
+ * what checkReturnItem writes for that status (returns.py, A30.2).
+ *
+ * @type {Record<string, string>}
+ */
+const RECORDED = {
+  resellable: "The check is recorded, and the returned units are back in your stock in MyShopEdge.",
+  unsellable: "The check is recorded, and the returned units are written off at the cost in force when they sold.",
+  not_applicable: "The check is recorded. Nothing came back, so your stock did not change.",
+};
+
+/** @param {{ params: Promise<{ shopId: string }>, searchParams: Promise<Record<string, string>> }} props */
+export default async function ReturnsPage({ params, searchParams }) {
   const { shopId } = await params;
+  const { checked } = await searchParams;
   const result = await fetchShop(shopId, "/returns", { awaiting_check: "true" });
   const problem = apiProblem(result, { what: "your returns" });
   if (problem) return problem;
@@ -32,6 +45,10 @@ export default async function ReturnsPage({ params }) {
         <h1>Check returns</h1>
         <p>Say whether each returned item can be sold again. Each item can be checked only once, and the check cannot be changed.</p>
       </header>
+
+      {checked && RECORDED[checked] && (
+        <div className="note note--info" role="status" data-testid="return-recorded"><p>{RECORDED[checked]}</p></div>
+      )}
 
       {returns.length === 0 ? (
         <div className="card">

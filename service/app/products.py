@@ -468,14 +468,19 @@ class ProductDetail(BaseModel):
 # (money_view.SECTION_TOTALS). Added 8 October 2026 from the copy audit, finding 8.
 INCOMPLETE_TOTALS = {"your_costs": "Total your costs", "return_loss": "Total return costs"}
 
+# A8.5 fixes the order for every period, product and export, so the first three stages are
+# Money's (money_view.CHAIN): refunds come after TikTok fees, and no subtotal is named that A8
+# does not name. Until 9 October 2026 refunds sat in the first stage under "Sales after
+# refunds" (copy audit, Area B row 60). Only the stages moved; every line and the figure the
+# chain ends on are unchanged.
 SECTIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
-    ("sales", "Sales", "Sales after refunds",
-     ("gross_sales", "seller_discount", "refund")),
-    ("deductions", "Total TikTok fees", "Net proceeds", (
+    ("sales", "Sales", "Net sales", ("gross_sales", "seller_discount")),
+    ("deductions", "TikTok fees", "Net proceeds before refunds", (
         "platform_commission", "affiliate_commission", "transaction_fee",
         "smart_promotions_fee", "shipping_fee", "return_handling_fee",
         "fbt_operations_fee", "fbt_shipping_fee", "fbt_storage_fee", "unmapped_fee",
     )),
+    ("refunds", "Refunds", "Net proceeds", ("refund",)),
     ("your_costs", "Your costs", "Gross profit", ("seller_shipping",)),
     ("return_loss", "Return costs", "Gross profit after returns",
      ("return_shipping", "stock_written_off")),

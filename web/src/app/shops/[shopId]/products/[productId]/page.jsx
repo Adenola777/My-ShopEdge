@@ -121,6 +121,9 @@ export default async function ProductDetailPage({ params, searchParams }) {
         <div className="card">
           <h2>{period?.from && period?.to ? `${formatDate(period.from)} to ${formatDate(period.to)}` : "This period"}</h2>
           <p className="card__why">Every sale of this product, and what came off it.</p>
+          {sections.length === 0 && (
+            <p className="muted">MyShopEdge holds no sales of this product for these dates.</p>
+          )}
           <ul className="rows">
             {sections.flatMap((s) => [
               ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (

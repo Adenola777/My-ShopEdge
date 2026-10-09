@@ -161,13 +161,13 @@ def read_amount(text: str) -> int:
     if t.startswith("-"):
         raise ValueError("is negative")
     if not _AMOUNT.match(t):
-        raise ValueError(f'"{text}" is not an amount')
+        raise ValueError(f'is "{text}", which is not an amount')
     try:
         d = Decimal(t.replace("£", "").replace(",", "").strip())
     except InvalidOperation as exc:
-        raise ValueError(f'"{text}" is not an amount') from exc
+        raise ValueError(f'is "{text}", which is not an amount') from exc
     if d != d.quantize(Decimal("0.01")):
-        raise ValueError(f'"{text}" has more than two decimal places')
+        raise ValueError(f'is "{text}", which has more than two decimal places')
     return int(d * 100)
 
 

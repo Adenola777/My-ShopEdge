@@ -38,6 +38,7 @@ export function InvoiceForm({ shopId, settlementId, currency, invoice }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [key] = useState(() => newKey());
+  const [saved, setSaved] = useState(false);
 
   /** @param {keyof typeof f} name */
   const bind = (name) => ({
@@ -81,15 +82,19 @@ export function InvoiceForm({ shopId, settlementId, currency, invoice }) {
       setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? "The invoice was not saved. Check the figures and try again."));
       return;
     }
+    setSaved(true);
     setOpen(false);
     router.refresh();
   }
 
   if (!open) {
     return (
-      <p><button type="button" className="btn btn--quiet btn--block" onClick={() => setOpen(true)} data-testid="edit-invoice">
-        Edit this invoice
-      </button></p>
+      <>
+        {saved && <p className="rows__sub" role="status">The invoice is saved.</p>}
+        <p><button type="button" className="btn btn--quiet btn--block" onClick={() => { setSaved(false); setOpen(true); }} data-testid="edit-invoice">
+          Edit this invoice
+        </button></p>
+      </>
     );
   }
 
