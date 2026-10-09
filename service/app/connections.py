@@ -341,11 +341,20 @@ KEY_VERSION = 1
 def _first_sync(shop_id, account_id) -> None:
     """The first read of a newly connected shop, run as a background task. The same refresh
     and sync the daily run does (tiktok_sync.run_one), which records each domain in sync_runs
-    and never raises. Replaced in the smoke test."""
-    from .tiktok_sync import run_one
+    and never raises. Replaced in the smoke test.
 
-    result = run_one(shop_id, account_id)
+    Since 9 October 2026 a read that finishes completed or partial leaves the seller one
+    notice (tiktok_sync.notify_first_read). The daily run does not call this, so later reads
+    send nothing, and the notice's dedupe key names the shop, so it is sent once per shop."""
+    from . import tiktok_sync
+
+    result = tiktok_sync.run_one(shop_id, account_id)
     log.warning("first sync after connection: %s", result)
+    try:
+        with tenant(account_id) as conn:
+            tiktok_sync.notify_first_read(conn, shop_id, account_id, result)
+    except Exception:  # noqa: BLE001  a background task has nobody to raise to
+        log.exception("first read notice for shop %s was not written", shop_id)
 
 
 class ConnectionResultOut(BaseModel):

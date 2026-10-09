@@ -3114,6 +3114,17 @@ components:
           $ref: '#/components/schemas/Money'
         fees:
           $ref: '#/components/schemas/Money'
+        fee_lines:
+          type: array
+          description: 'The fees that make up `fees`, each on its own line (A8.3), read from
+            the ledger entries of this statement. Each line carries the label, category and
+            order the Money screen uses. A fee MyShopEdge does not recognise is labelled with
+            TikTok''s own fee type and carries it in `tiktok_fee_type`. Shipping fees are
+            counted under `shipping_cost` and platform adjustments under `adjustments`, as
+            TikTok''s statement counts them, so neither appears here. Amounts are negative.
+            Added 9 October 2026.'
+          items:
+            $ref: '#/components/schemas/CalculatorLine'
         shipping_cost:
           $ref: '#/components/schemas/Money'
         adjustments:

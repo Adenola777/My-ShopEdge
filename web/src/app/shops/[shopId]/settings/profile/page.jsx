@@ -7,7 +7,9 @@
  * The name and email come from the sign-in provider, so nothing here edits them. Since
  * 8 October 2026 a live plan also shows PlanControls, which stops or restores renewal through
  * updateSubscription and links to /billing/card for a new card. A value whose request fails
- * is shown as not available rather than guessed.
+ * is shown as not available rather than guessed. Since 9 October 2026 an account whose
+ * subscription status is `none` sees one line saying it has no plan, and the Choose a plan
+ * button, in place of a Plan row that read "None".
  */
 
 import Link from "next/link";
@@ -88,12 +90,16 @@ export default async function ProfilePage({ params }) {
 
         <div className="card" data-testid="profile-plan">
           <h2>Your plan</h2>
-          <ul className="rows">
-            <li><span>Plan</span>{sub ? <strong>{sub.plan ? planName(sub.plan) : "None"}</strong> : unavailable}</li>
-            <li><span>Status</span><span className={chipClass(statusTone)}>{statusLabel}</span></li>
-            {next && <li><span>{next[0]}</span><strong>{next[1]}</strong></li>}
-            {sub?.card_last4 && <li><span>Card</span><strong>Ending {sub.card_last4}</strong></li>}
-          </ul>
+          {sub?.status === "none" ? (
+            <p data-testid="profile-no-plan">This account has no plan yet.</p>
+          ) : (
+            <ul className="rows">
+              <li><span>Plan</span>{sub ? <strong>{sub.plan ? planName(sub.plan) : "None"}</strong> : unavailable}</li>
+              <li><span>Status</span><span className={chipClass(statusTone)}>{statusLabel}</span></li>
+              {next && <li><span>{next[0]}</span><strong>{next[1]}</strong></li>}
+              {sub?.card_last4 && <li><span>Card</span><strong>Ending {sub.card_last4}</strong></li>}
+            </ul>
+          )}
           {sub?.status === "none" || sub?.status === "canceled" ? (
             <p><Link className="btn btn--primary btn--block" href="/billing">Choose a plan</Link></p>
           ) : null}

@@ -1425,6 +1425,8 @@ export interface components {
         SettlementComponents: {
             net_sales: components["schemas"]["Money"];
             fees: components["schemas"]["Money"];
+            /** @description The fees that make up `fees`, each on its own line (A8.3), read from the ledger entries of this statement. Each line carries the label, category and order the Money screen uses. A fee MyShopEdge does not recognise is labelled with TikTok's own fee type and carries it in `tiktok_fee_type`. Shipping fees are counted under `shipping_cost` and platform adjustments under `adjustments`, as TikTok's statement counts them, so neither appears here. Amounts are negative. Added 9 October 2026. */
+            fee_lines?: components["schemas"]["CalculatorLine"][];
             shipping_cost: components["schemas"]["Money"];
             adjustments: components["schemas"]["Money"];
             /** @description The statement total less the sum of its components. Anything other than zero means TikTok's own statement does not add up. */

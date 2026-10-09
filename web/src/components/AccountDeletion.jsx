@@ -8,7 +8,6 @@
  * this file, so the record the seller keeps is the one the service acted on.
  */
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, formatDate } from "@/lib/api";
 import { newKey } from "@/lib/money-input";
@@ -75,10 +74,20 @@ export function DeleteAccountForm() {
   );
 }
 
-export function CancelDeletion() {
-  const router = useRouter();
+/**
+ * The cancel button, with the closing page's explanation passed in as `children`. Since
+ * 9 October 2026 a cancellation that succeeds replaces both with a confirmation, because
+ * until then the seller was sent to /shops with nothing to say the account was kept. The
+ * confirmation reads `shops_disconnected` from cancelAccountDeletion's answer, and says each
+ * shop must be connected again because `cancel_account_deletion` in account_deletion.py
+ * leaves every shop disconnected.
+ *
+ * @param {{ children?: import("react").ReactNode }} props
+ */
+export function CancelDeletion({ children }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [kept, setKept] = useState(/** @type {{ shops_disconnected: number } | null} */ (null));
 
   async function cancel() {
     setBusy(true);
@@ -89,11 +98,30 @@ export function CancelDeletion() {
       setError(r.unreachable ? "MyShopEdge could not be reached, so the deletion still stands." : (r.data?.detail ?? "The deletion was not cancelled."));
       return;
     }
-    router.push("/shops");
+    setKept({ shops_disconnected: Number(r.data?.shops_disconnected ?? 0) });
+  }
+
+  if (kept) {
+    const n = kept.shops_disconnected;
+    return (
+      <div className="stack" data-testid="deletion-cancelled">
+        <h1>Your account is active again</h1>
+        <p role="status">The deletion is cancelled, and nothing will be erased.</p>
+        {n > 0 && (
+          <p>
+            {n === 1 ? "Your shop is" : `Your ${n} shops are`} still disconnected, because closing the
+            account stopped MyShopEdge using your TikTok sign-in details. Connect {n === 1 ? "it" : "each one"} again
+            on TikTok so MyShopEdge can read new orders and payments. Your records are all still here.
+          </p>
+        )}
+        <p><a className="btn btn--primary btn--block" href="/shops" data-testid="deletion-cancelled-shops">Go to your shops</a></p>
+      </div>
+    );
   }
 
   return (
     <div className="stack">
+      {children}
       {error && <p className="form-error" role="alert">{error}</p>}
       <p>
         <button className="btn btn--primary btn--block" onClick={cancel} disabled={busy} data-testid="cancel-deletion">

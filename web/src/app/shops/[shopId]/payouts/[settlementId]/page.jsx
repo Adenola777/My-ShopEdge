@@ -6,6 +6,10 @@
  * seller copies the invoice from Seller Center into the form at the foot of the page. The
  * service checks that gross equals net plus VAT and holds the invoice for six years. The
  * PDF itself is not stored yet, for the reason A10 gives.
+ *
+ * Since 9 October 2026 each fee is on its own line, named as Money names it (A8.3), with
+ * Total TikTok fees directly under the lines. A statement whose ledger holds no fee lines
+ * keeps the single Fees line, so no amount drops off the page.
  */
 
 import Link from "next/link";
@@ -13,6 +17,7 @@ import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 import { InvoiceForm } from "@/components/InvoiceForm";
+import { LineLabel } from "@/components/LineLabel";
 
 export const metadata = { title: "Payout" };
 
@@ -30,6 +35,9 @@ export default async function PayoutPage({ params }) {
   const r = d.reconciliation;
   const inv = d.invoice;
   const unexplained = r.unexplained.amount_minor !== 0;
+  const feeLines = c.fee_lines ?? [];
+  const feeLinesTotal = feeLines.reduce((sum, l) => sum + l.amount.amount_minor, 0);
+  const feeLinesShort = feeLines.length > 0 && feeLinesTotal !== c.fees.amount_minor;
 
   return (
     <section data-testid="payout-screen">
@@ -44,7 +52,18 @@ export default async function PayoutPage({ params }) {
           <h2>What TikTok&apos;s statement says</h2>
           <ul className="rows">
             <li><span>Net sales</span><Figure amount={c.net_sales} /></li>
-            <li><span>Fees</span><Figure amount={c.fees} /></li>
+            {feeLines.length > 0 ? (
+              <>
+                {feeLines.map((l, i) => (
+                  <li key={`${l.category}-${l.tiktok_field ?? ""}-${i}`}>
+                    <span><LineLabel line={l} /></span><Figure amount={l.amount} />
+                  </li>
+                ))}
+                <li className="rows__total"><span>Total TikTok fees</span><Figure amount={c.fees} /></li>
+              </>
+            ) : (
+              <li><span>Fees</span><Figure amount={c.fees} /></li>
+            )}
             <li><span>Shipping cost charged by TikTok</span><Figure amount={c.shipping_cost} /></li>
             <li><span>TikTok adjustments</span><Figure amount={c.adjustments} /></li>
             {c.difference && c.difference.amount_minor !== 0 && (
@@ -54,6 +73,12 @@ export default async function PayoutPage({ params }) {
             <li><span>Reserve withheld</span><Figure amount={s.total_reserve} unsigned /></li>
             <li className="rows__total"><span>Paid out</span><Figure amount={s.payable_amount} /></li>
           </ul>
+          {feeLinesShort && (
+            <p className="card__why">
+              The fee lines above do not add up to the fees TikTok&apos;s statement states. Total
+              TikTok fees shows TikTok&apos;s own figure.
+            </p>
+          )}
         </div>
 
         <div className="card">

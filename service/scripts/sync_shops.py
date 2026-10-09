@@ -17,6 +17,10 @@ Since 30 September 2026 each run also reads TikTok's stock count for every varia
 read from an order, through Inventory Search, into `stock_positions` (A32), and applies
 STK-8's absorption (A4.1).
 
+Since 9 October 2026 each run also asks Neon whether the Data API is on for production
+(`app.data_api_guard`). If it is on, the run fails after syncing, so the failure shows in the
+job's history. Without `NEON_API_KEY` on the job it reports "not checked" and fails nothing.
+
 The secrets come from the environment and are never printed. The output names shops by
 MyShopEdge id and gives TikTok's own error code and message when a call is refused.
 """
@@ -27,6 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app import data_api_guard  # noqa: E402
 from app.tiktok_sync import run_due  # noqa: E402
 
 if __name__ == "__main__":
@@ -34,4 +39,6 @@ if __name__ == "__main__":
     print(json.dumps(results, indent=2, default=str))
     failed = [r for r in results if "error" in r]
     print(f"{len(results)} shop(s) run, {len(failed)} with an error.")
-    sys.exit(1 if failed else 0)
+    state, sentence = data_api_guard.check()
+    print(sentence)
+    sys.exit(1 if failed or state == "on" else 0)

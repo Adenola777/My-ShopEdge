@@ -4,7 +4,9 @@
  * Every operation except getMe and cancelAccountDeletion refuses a closing account with
  * `account_closing`, and every shop screen sends that refusal here (`apiProblem`). The page
  * states the date the account is erased and offers the one thing A30.1 allows, which is to
- * keep it. A seller whose account is not closing is sent on to their shop.
+ * keep it. A seller whose account is not closing is sent on to their shop. Since 9 October
+ * 2026 a cancellation that succeeds is confirmed on this page, with a link to /shops, rather
+ * than sending the seller on without a word.
  */
 
 import { redirect } from "next/navigation";
@@ -33,14 +35,16 @@ export default async function ClosingPage() {
 
   return (
     <section className="billing" data-testid="closing-screen">
-      <h1>Your account is closing</h1>
-      <p>
-        After {formatDate(when)} your name and email are erased, your TikTok sign-in details
-        are erased, and every file you uploaded or exported is deleted. Your financial records
-        stay, with your name and email removed.
-      </p>
-      <p>Until then you can cancel the deletion and keep your account. Your shops stay disconnected, so you would connect each one again on TikTok.</p>
-      <CancelDeletion />
+      {/* CancelDeletion shows this explanation until the seller cancels, then a confirmation in its place. */}
+      <CancelDeletion>
+        <h1>Your account is closing</h1>
+        <p>
+          After {formatDate(when)} your name and email are erased, your TikTok sign-in details
+          are erased, and every file you uploaded or exported is deleted. Your financial records
+          stay, with your name and email removed.
+        </p>
+        <p>Until then you can cancel the deletion and keep your account. Your shops stay disconnected, so you would connect each one again on TikTok.</p>
+      </CancelDeletion>
       <p><a className="btn btn--quiet btn--block" href="/handler/sign-out">Sign out</a></p>
     </section>
   );

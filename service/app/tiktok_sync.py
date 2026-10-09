@@ -475,6 +475,57 @@ def sync_finance(conn, shop_id: str, client: Client, since: datetime, until: dat
     return tally
 
 
+# --- the first read of a shop ----------------------------------------------------------------
+
+def _count(n: int, one: str, many: str) -> str:
+    return f"{n} {one if n == 1 else many}"
+
+
+def notify_first_read(conn, shop_id, account_id, result: dict[str, Any]) -> bool:
+    """One notice when a newly connected shop's first read has finished. Inside `tenant()`.
+
+    Added 9 October 2026 and called only from `connections._first_sync`, so the daily read
+    never sends it. The dedupe key names the shop, so a shop that is connected again is not
+    told twice. Nothing is sent when the read failed, was skipped or raised: only when every
+    domain finished `completed` or `partial`. Returns whether a notice was written.
+
+    A partial read is told that some records were not read and that the daily read does not
+    go back for older ones. That is what `window` does, and it was checked by running on
+    9 October 2026: a statement from August that failed in the first read was still missing
+    after the next daily read, because each later read starts three days before the last one
+    ended.
+    """
+    sync = result.get("sync")
+    if "error" in result or not isinstance(sync, dict) or not sync:
+        return False
+    if any(s not in ("completed", "partial") for s in sync.values()):
+        return False
+    name, orders, returns, payouts = conn.execute(
+        "select coalesce(nullif(s.shop_name, ''), 'your TikTok Shop'), "
+        "(select count(*) from orders where shop_id = s.id), "
+        "(select count(*) from returns where shop_id = s.id), "
+        "(select count(*) from settlements where shop_id = s.id) "
+        "from shops s where s.id = %s", (str(shop_id),)).fetchone()
+    if orders + returns + payouts == 0:
+        body = ("TikTok holds no orders, returns or payouts for this shop yet. MyShopEdge reads "
+                "the shop again every day, and your screens fill as they arrive.")
+    else:
+        body = (f"MyShopEdge read {_count(orders, 'order', 'orders')}, "
+                f"{_count(returns, 'return', 'returns')} and {_count(payouts, 'payout', 'payouts')} "
+                "from TikTok. Money and Payouts now show them, and an order counts in your "
+                "figures once TikTok has paid it out.")
+    if "partial" in sync.values():
+        body += (" Some records could not be read this time. The daily read looks again only "
+                 "at the last three days, so a record older than that may not be read again.")
+    row = conn.execute(
+        "insert into notifications (account_id, shop_id, type, severity, title, body, "
+        "entity_type, entity_id, dedupe_key) values (%s, %s, 'first_read_complete', 'info', "
+        "%s, %s, 'shop', %s, %s) on conflict (account_id, dedupe_key) do nothing returning id",
+        (str(account_id), str(shop_id), f"MyShopEdge has finished reading {name}.", body,
+         str(shop_id), f"first_read_complete:{shop_id}")).fetchone()
+    return row is not None
+
+
 # --- one shop --------------------------------------------------------------------------------
 
 # --- stock -----------------------------------------------------------------------------------
