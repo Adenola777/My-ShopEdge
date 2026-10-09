@@ -10,7 +10,7 @@
  * at the cost in force when the unit sold, so the card names the rule rather than a figure.
  */
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, formatMoney } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
@@ -20,6 +20,7 @@ import { newKey, parsePounds } from "@/lib/money-input";
 /** @param {{ shopId: string, itemId: string, quantity: number, currency: string }} props */
 export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [status, setStatus] = useState(/** @type {CheckStatus | null} */ (null));
   const [postage, setPostage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -59,6 +60,9 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
       setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was recorded." : (r.data?.detail ?? "The check was not recorded."));
       return;
     }
+    // The checked item leaves the list, and this form with it, so the page says what was
+    // recorded from the address (copy audit finding 121).
+    router.replace(`${pathname}?${new URLSearchParams({ checked: status })}`, { scroll: false });
     router.refresh();
   }
 

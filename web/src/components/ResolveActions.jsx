@@ -6,7 +6,7 @@
  * money: under the current rulings no resolution does (0013 ruling 3, TC-DSC-04).
  */
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { newKey } from "@/lib/money-input";
@@ -19,6 +19,7 @@ import { newKey } from "@/lib/money-input";
  */
 export function ResolveActions({ shopId, id, correctable, explainOnly = false }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [mode, setMode] = useState(/** @type {"" | "corrected_seller" | "explained"} */ (""));
   const [text, setText] = useState("");
   const [error, setError] = useState(/** @type {string | null} */ (null));
@@ -46,6 +47,12 @@ export function ResolveActions({ shopId, id, correctable, explainOnly = false })
       setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was changed." : (r.data?.detail ?? "That was not saved. Please try again."));
       return;
     }
+    // The resolved discrepancy leaves the open list, and these actions with it, so the page
+    // says what was recorded from the address (copy audit finding 121).
+    const next = new URLSearchParams(window.location.search);
+    next.delete("cursor");
+    next.set("recorded", resolution);
+    router.replace(`${pathname}?${next}`, { scroll: false });
     router.refresh();
   }
 

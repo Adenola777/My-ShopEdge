@@ -18,6 +18,7 @@ export function AdjustForm({ shopId, skuId }) {
   const [reason, setReason] = useState("");
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(/** @type {string | null} */ (null));
 
   /** @param {React.FormEvent} e */
   async function save(e) {
@@ -32,6 +33,7 @@ export function AdjustForm({ shopId, skuId }) {
     }
     setBusy(true);
     setError(null);
+    setSaved(null);
     const r = await api(`/shops/${encodeURIComponent(shopId)}/stock/${encodeURIComponent(skuId)}/adjustments`, {
       method: "POST",
       body: JSON.stringify({ quantity: Number(quantity), reason: reason.trim() }),
@@ -42,6 +44,13 @@ export function AdjustForm({ shopId, skuId }) {
       setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was changed." : (r.data?.detail ?? "The adjustment was not saved."));
       return;
     }
+    const n = Math.abs(Number(quantity));
+    const units = `${n} ${n === 1 ? "unit" : "units"}`;
+    setSaved(
+      Number(quantity) > 0
+        ? `The adjustment is saved. MyShopEdge added ${units} to your count.`
+        : `The adjustment is saved. MyShopEdge took ${units} off your count.`,
+    );
     setQuantity("");
     setReason("");
     router.refresh();
@@ -67,6 +76,7 @@ export function AdjustForm({ shopId, skuId }) {
                value={reason} onChange={(e) => setReason(e.target.value)} />
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
+      {saved && !error && <p className="rows__sub" role="status">{saved}</p>}
       <p><button className="btn btn--primary" disabled={busy}>{busy ? "Saving" : "Save adjustment"}</button></p>
     </form>
   );

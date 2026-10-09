@@ -36,6 +36,17 @@ const ENTITY = {
 };
 
 /**
+ * What a resolution just recorded, by the resolution ResolveActions put in the address.
+ *
+ * @type {Record<string, string>}
+ */
+const RECORDED = {
+  accepted_tiktok: "Your decision to accept TikTok's value is recorded.",
+  corrected_seller: "Your corrected value is recorded.",
+  explained: "The discrepancy is marked as explained.",
+};
+
+/**
  * A value as the seller reads it. A stock count (the field `tiktok_stock`, written by
  * tiktok_sync._absorb) is a number of units, so it says so.
  *
@@ -81,6 +92,12 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
             : `${open_count} ${open_count === 1 ? "discrepancy is" : "discrepancies are"} open. While one is open, MyShopEdge uses the value shown under "MyShopEdge is using".`}
         </p>
       </header>
+
+      {query.recorded && RECORDED[query.recorded] && (
+        <div className="note note--info" role="status" data-testid="discrepancy-recorded">
+          <p>{RECORDED[query.recorded]} It is listed under Resolved, and no total changed.</p>
+        </div>
+      )}
 
       <nav className="switch" aria-label="Show">
         <Link href={`${base}?status=open`} aria-current={status === "open" ? "true" : undefined}>Open</Link>

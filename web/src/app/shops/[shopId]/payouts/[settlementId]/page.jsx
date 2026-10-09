@@ -13,7 +13,7 @@
  */
 
 import Link from "next/link";
-import { fetchShop, formatDate } from "@/lib/api";
+import { fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 import { InvoiceForm } from "@/components/InvoiceForm";
@@ -89,8 +89,10 @@ export default async function PayoutPage({ params }) {
             <li className="rows__total"><span>Unexplained</span><Figure amount={r.unexplained} /></li>
           </ul>
           <p className="card__why">
+            {/* A18.3 asks for a route to Discrepancies here, but nothing raises a discrepancy for
+                a statement that does not reconcile, so no link is offered (copy audit finding 46). */}
             {unexplained
-              ? "The orders behind this statement do not add up to it. The difference is shown rather than hidden."
+              ? `The orders behind this statement differ from it by ${formatMoney({ ...r.unexplained, amount_minor: Math.abs(r.unexplained.amount_minor) })}. MyShopEdge shows the difference as Unexplained rather than hiding it.`
               : "The orders behind this statement add up to it exactly."}
           </p>
         </div>

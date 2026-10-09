@@ -14,7 +14,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { api, formatDate, formatMoney } from "@/lib/api";
 import { newKey, parsePounds } from "@/lib/money-input";
 
 /** @param {{ shopId: string, skuId: string, currency?: string, variantName?: string }} props */
@@ -25,6 +25,7 @@ export function CostForm({ shopId, skuId, currency = "GBP", variantName }) {
   const [from, setFrom] = useState(today);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(/** @type {string | null} */ (null));
 
   /** @param {React.FormEvent} e */
   async function save(e) {
@@ -40,6 +41,7 @@ export function CostForm({ shopId, skuId, currency = "GBP", variantName }) {
     }
     setBusy(true);
     setError(null);
+    setSaved(null);
     const r = await api(`/shops/${encodeURIComponent(shopId)}/skus/${encodeURIComponent(skuId)}/cost`, {
       method: "PUT",
       body: JSON.stringify({ cost: { amount_minor: pence, currency }, effective_from: from }),
@@ -50,6 +52,9 @@ export function CostForm({ shopId, skuId, currency = "GBP", variantName }) {
       setError(r.unreachable ? "MyShopEdge could not be reached, so nothing was saved." : (r.data?.detail ?? "The cost was not saved."));
       return;
     }
+    setSaved(
+      `The cost of ${formatMoney({ amount_minor: pence, currency })} is saved for units sold from ${formatDate(from)}.`,
+    );
     setValue("");
     setFrom(today);
     router.refresh();
@@ -80,6 +85,7 @@ export function CostForm({ shopId, skuId, currency = "GBP", variantName }) {
         {busy ? "Saving" : "Save cost"}
       </button>
       {error && <p id={`cost-${skuId}-error`} className="form-error" role="alert">{error}</p>}
+      {saved && !error && <p className="rows__sub" role="status">{saved}</p>}
     </form>
   );
 }
