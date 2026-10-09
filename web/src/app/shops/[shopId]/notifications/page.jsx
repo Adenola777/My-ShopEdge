@@ -32,6 +32,8 @@
  * - `return_unchecked`, written by `return_check_notices` in alert_notices.py with
  *   `entity_type` 'return' and the return's id, opens Check returns (S8). S8 lists every
  *   return awaiting a check on one page and has no address for one return.
+ * - `scheduled_export_ready`, written by `export_schedules._notify` with `entity_type` 'export'
+ *   and the export's id, opens Export (S23), whose recent files list it. Added 9 October 2026.
  *
  * Nothing in the service writes a notice about a discrepancy today, so none links to
  * Discrepancies.
@@ -72,6 +74,9 @@ function noticeLink(n, shopId) {
   }
   if (n.type === "first_read_complete" || n.type === "order_limit_passed") {
     return { href: `/shops/${shop}/today`, label: "See Today" };
+  }
+  if (n.type === "scheduled_export_ready") {
+    return { href: `/shops/${shop}/money/export`, label: "Go to Export" };
   }
   return null;
 }
@@ -122,8 +127,9 @@ export default async function NotificationsPage({ params, searchParams }) {
           <p>
             MyShopEdge tells you here when an item runs low on stock, when a return has waited
             longer than your Alerts setting for your check, when TikTok&rsquo;s stock count rises
-            and MyShopEdge reduces your adjustment, or when your TikTok connection is close to
-            expiring.
+            and MyShopEdge reduces your adjustment, when your shops pass the plan&rsquo;s order
+            limit, when your TikTok connection is close to expiring, or when a scheduled export
+            is ready.
           </p>
         </section>
       ) : (

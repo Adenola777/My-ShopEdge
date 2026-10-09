@@ -669,6 +669,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shopId}/export-schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The shop's scheduled exports
+         * @description Traces MON-8 (A5.7). Added on 9 October 2026. Every schedule of the shop, paused ones
+         *     included, oldest first.
+         */
+        get: operations["listExportSchedules"];
+        put?: never;
+        /**
+         * Schedule an export
+         * @description Traces MON-8 (A5.7). Added on 9 October 2026. On the chosen London day the daily job
+         *     builds the file through the same pipeline as createExport, records it as an ordinary
+         *     export of the shop, and raises one in-app notification of type
+         *     `scheduled_export_ready` whose `entity_id` is the export. No email is sent, because
+         *     the service has no email provider.
+         *
+         *     A weekly schedule takes `day_of_week` (1 is Monday, 7 is Sunday) and covers the
+         *     previous Monday to Sunday week. A monthly schedule takes `day_of_month` (1 to 28, so
+         *     no month is skipped) and covers the previous calendar month. A weekly schedule is
+         *     refused on the cash basis with 422, because the ledger records the cash basis by
+         *     settlement month and not by settlement day.
+         */
+        post: operations["createExportSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shops/{shopId}/export-schedules/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a scheduled export
+         * @description Traces MON-8. Added on 9 October 2026. The schedule is removed and builds nothing
+         *     more. Files it has already built stay among the shop's exports until their seven days
+         *     pass. A schedule of another account answers 404.
+         */
+        delete: operations["deleteExportSchedule"];
+        options?: never;
+        head?: never;
+        /**
+         * Pause, resume or change a scheduled export
+         * @description Traces MON-8. Added on 9 October 2026. Only the fields sent are changed. `active`
+         *     false pauses the schedule and true resumes it. Changing `cadence` clears the day that
+         *     belongs to the other cadence, so the matching day must be sent with it. The same
+         *     rules as createExportSchedule apply to the result. A schedule of another account
+         *     answers 404, the same as one that does not exist.
+         */
+        patch: operations["updateExportSchedule"];
+        trace?: never;
+    };
     "/shops/{shopId}/today": {
         parameters: {
             query?: never;
@@ -2412,6 +2477,40 @@ export interface components {
             /** Format: date-time */
             entered_at: string;
         };
+        /** @enum {string} */
+        ExportKind: "month_summary" | "ledger" | "transactions";
+        /** @enum {string} */
+        ExportFormat: "xlsx" | "csv";
+        ExportScheduleInput: {
+            kind: components["schemas"]["ExportKind"];
+            format: components["schemas"]["ExportFormat"];
+            basis: components["schemas"]["Basis"];
+            /** @enum {string} */
+            cadence: "weekly" | "monthly";
+            /** @description Required for `weekly` and absent for `monthly`. 1 is Monday, 7 is Sunday. */
+            day_of_week?: number | null;
+            /** @description Required for `monthly` and absent for `weekly`. */
+            day_of_month?: number | null;
+        };
+        ExportSchedule: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["ExportKind"];
+            format: components["schemas"]["ExportFormat"];
+            basis: components["schemas"]["Basis"];
+            /** @enum {string} */
+            cadence: "weekly" | "monthly";
+            day_of_week: number | null;
+            day_of_month: number | null;
+            active: boolean;
+            /**
+             * Format: date-time
+             * @description When the schedule last built a file. Null until its first run.
+             */
+            last_run_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
         ShopExportJob: components["schemas"]["ExportJob"] & {
             /** @enum {string} */
             kind: "month_summary" | "ledger" | "transactions";
@@ -2537,6 +2636,7 @@ export interface components {
         Limit: number;
         /** @description The `next_cursor` from a previous response. Opaque, do not parse. */
         Cursor: string;
+        ScheduleId: string;
         UploadId: string;
         SkuId: string;
         /** @description Local month in Europe/London, as YYYY-MM. */
@@ -3652,6 +3752,135 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["ForbiddenShop"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listExportSchedules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The schedules */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        schedules: components["schemas"]["ExportSchedule"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
+        };
+    };
+    createExportSchedule: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description A client-generated key. A repeat with the same key returns the first result rather
+                 *     than acting twice. Keys are retained for 24 hours.
+                 */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description Scheduled */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportSchedule"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteExportSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateExportSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    kind?: components["schemas"]["ExportKind"];
+                    format?: components["schemas"]["ExportFormat"];
+                    basis?: components["schemas"]["Basis"];
+                    /** @enum {string} */
+                    cadence?: "weekly" | "monthly";
+                    day_of_week?: number | null;
+                    day_of_month?: number | null;
+                    active?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportSchedule"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     getToday: {

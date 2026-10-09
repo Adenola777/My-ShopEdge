@@ -1912,6 +1912,76 @@ def settlement_fee_lines():
 check("getSettlement lists each fee on its own line, summing to the statement's fees", settlement_fee_lines)
 
 
+
+# --- scheduled exports (MON-8), added 9 October 2026
+from app import export_schedules  # noqa: E402
+
+SCHED = UUID("33333333-3333-4333-8333-333333333333")
+SCHED_COLS = ["id","kind","format","basis","cadence","day_of_week","day_of_month","active",
+              "last_run_at","created_at"]
+
+def _sched(cadence="monthly", dow=None, dom=1, active=True, basis="sales"):
+    return (SCHED, "month_summary", "csv", basis, cadence, dow, dom, active, None, NOW)
+
+def list_schedules():
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("from export_schedules where shop_id", Result(SCHED_COLS, [_sched(), _sched("weekly", 1, None)]))])
+    r = client.get(f"/v1/shops/{SHOP}/export-schedules")
+    _assert(r.status_code == 200, r.text[:300])
+    b = r.json()["schedules"]
+    _assert([x["cadence"] for x in b] == ["monthly", "weekly"] and b[1]["day_of_week"] == 1, b)
+check("GET export-schedules lists the shop's schedules", list_schedules)
+
+def create_schedule_and_replay():
+    from app.idempotency import request_hash
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from idempotency_keys", Result([], [])),
+        ("select request_hash", Result(["h","s","r"], [])),
+        ("insert into export_schedules", Result(SCHED_COLS, [_sched(dom=5)])),
+        ("insert into idempotency_keys", Result([], [])),
+    ])
+    body = {"kind": "month_summary", "format": "csv", "basis": "sales", "cadence": "monthly", "day_of_month": 5}
+    r = client.post(f"/v1/shops/{SHOP}/export-schedules", json=body, headers={"Idempotency-Key": "sched-0001"})
+    _assert(r.status_code == 201 and r.json()["day_of_month"] == 5, r.text[:300])
+    first = r.json()
+    full = {**body, "day_of_week": None}
+    h = request_hash(str(SHOP), full)
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from idempotency_keys", Result([], [])),
+        ("select request_hash", Result(["h","s","r"], [(h, 201, first)])),
+    ])
+    r = client.post(f"/v1/shops/{SHOP}/export-schedules", json=body, headers={"Idempotency-Key": "sched-0001"})
+    _assert(r.status_code == 201 and r.json() == first, f"a repeat must return the first result: {r.text}")
+    r = client.post(f"/v1/shops/{SHOP}/export-schedules", headers={"Idempotency-Key": "sched-0002"},
+                    json={**body, "cadence": "weekly", "day_of_month": None, "day_of_week": 2, "basis": "cash"})
+    _assert(r.status_code == 422 and r.json()["code"] == "validation_failed", r.text)
+check("POST export-schedules creates, replays its key, and refuses a weekly cash schedule", create_schedule_and_replay)
+
+def update_schedule():
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("for update", Result(SCHED_COLS, [_sched()])),
+        ("update export_schedules set", Result(SCHED_COLS, [_sched(active=False)])),
+    ])
+    r = client.patch(f"/v1/shops/{SHOP}/export-schedules/{SCHED}", json={"active": False})
+    _assert(r.status_code == 200 and r.json()["active"] is False, r.text[:300])
+    export_schedules.tenant = with_conn(export_schedules, [("for update", Result(SCHED_COLS, []))])
+    r = client.patch(f"/v1/shops/{SHOP}/export-schedules/{SCHED}", json={"active": True})
+    _assert(r.status_code == 404 and r.json()["code"] == "schedule_not_found", r.text)
+    r = client.patch(f"/v1/shops/{SHOP}/export-schedules/{SCHED}", json={})
+    _assert(r.status_code == 422, r.text)
+check("PATCH export-schedules pauses, and answers 404 for a schedule it cannot see", update_schedule)
+
+def delete_schedule():
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from export_schedules", Result(["id"], [(SCHED,)]))])
+    r = client.delete(f"/v1/shops/{SHOP}/export-schedules/{SCHED}")
+    _assert(r.status_code == 204 and r.content == b"", r.text)
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from export_schedules", Result(["id"], []))])
+    r = client.delete(f"/v1/shops/{SHOP}/export-schedules/{SCHED}")
+    _assert(r.status_code == 404 and r.json()["code"] == "schedule_not_found", r.text)
+check("DELETE export-schedules answers 204, then 404", delete_schedule)
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")

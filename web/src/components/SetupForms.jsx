@@ -609,6 +609,184 @@ export function ExportForm({ shopId, today }) {
   );
 }
 
+// ---------------------------------------------------------------------------------- S23, scheduled
+
+/** @type {Record<number, string>} */
+const WEEKDAYS = { 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday" };
+
+/** @param {number} n */
+function ordinal(n) {
+  const tail = n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th";
+  return `${n}${tail}`;
+}
+
+/** @param {Schemas["ExportSchedule"]} s */
+function describeSchedule(s) {
+  const when = s.cadence === "weekly"
+    ? `every ${WEEKDAYS[s.day_of_week ?? 1]}, covering the Monday to Sunday before`
+    : `on the ${ordinal(s.day_of_month ?? 1)} of each month, covering the month before`;
+  return `${KINDS[s.kind] ?? s.kind}, ${s.format === "xlsx" ? "Excel" : "CSV"}, ${s.basis} basis, ${when}`;
+}
+
+/**
+ * Scheduled exports (MON-8, A5.7), added 9 October 2026 on listExportSchedules,
+ * createExportSchedule, updateExportSchedule and deleteExportSchedule. The daily job builds
+ * each file on its day and raises a notice. Nothing sends email, because the service has no
+ * email provider, so the screen promises only the notice. A weekly schedule is on the sales
+ * basis only, which the service enforces and this form says.
+ *
+ * @param {{ shopId: string }} props
+ */
+export function ScheduledExports({ shopId }) {
+  const path = `/shops/${encodeURIComponent(shopId)}/export-schedules`;
+  const [schedules, setSchedules] = useState(/** @type {Schemas["ExportSchedule"][] | null} */ (null));
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [kind, setKind] = useState("month_summary");
+  const [format, setFormat] = useState("xlsx");
+  const [basis, setBasis] = useState("sales");
+  const [cadence, setCadence] = useState("monthly");
+  const [weekday, setWeekday] = useState("1");
+  const [monthDay, setMonthDay] = useState("1");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
+
+  useEffect(() => {
+    let live = true;
+    api(path, { cache: "no-store" }).then((r) => {
+      if (!live) return;
+      setLoadFailed(!r.ok);
+      if (r.ok) setSchedules(r.data.schedules);
+    });
+    return () => { live = false; };
+  }, [path, version]);
+
+  async function add() {
+    setBusy(true);
+    setError(null);
+    const weekly = cadence === "weekly";
+    const r = await api(path, {
+      method: "POST", idempotencyKey: newKey(),
+      body: JSON.stringify({
+        kind, format, cadence, basis: weekly ? "sales" : basis,
+        day_of_week: weekly ? Number(weekday) : null,
+        day_of_month: weekly ? null : Number(monthDay),
+      }),
+    });
+    setBusy(false);
+    if (!r.ok) { setError(failure(r, "The schedule was not saved.")); return; }
+    setVersion((n) => n + 1);
+  }
+
+  /** @param {string} id @param {any} init @param {string} fallback */
+  async function change(id, init, fallback) {
+    setBusy(true);
+    setError(null);
+    const r = await api(`${path}/${encodeURIComponent(id)}`, init);
+    setBusy(false);
+    if (!r.ok) setError(failure(r, fallback));
+    setVersion((n) => n + 1);
+  }
+
+  return (
+    <div className="card stack" data-testid="scheduled-exports">
+      <h2>Scheduled exports</h2>
+      <p>
+        MyShopEdge can build a file for you each week or each month on the day you choose, and
+        it tells you in Notifications when the file is ready. A weekly file covers the Monday to
+        Sunday before it, and a monthly file covers the month before it.
+      </p>
+      {loadFailed ? (
+        <p className="muted" data-testid="schedules-error">Your scheduled exports cannot be shown just now.</p>
+      ) : schedules === null ? (
+        <p className="muted" data-testid="schedules-loading">Loading your scheduled exports.</p>
+      ) : schedules.length === 0 ? (
+        <p className="muted" data-testid="schedules-empty">You have no scheduled exports.</p>
+      ) : (
+        <ul className="rows">
+          {schedules.map((s) => (
+            <li key={s.id} data-testid="schedule">
+              <span>
+                {describeSchedule(s)}
+                <br />
+                <span className="muted">
+                  {s.active ? "Active" : "Paused"}. {s.last_run_at ? `Last built ${formatDate(s.last_run_at)}.` : "Not built yet."}
+                </span>
+              </span>
+              <span>
+                <button className="btn btn--quiet" disabled={busy} data-testid={s.active ? "schedule-pause" : "schedule-resume"}
+                  onClick={() => change(s.id, { method: "PATCH", body: JSON.stringify({ active: !s.active }) },
+                    s.active ? "The schedule was not paused." : "The schedule was not resumed.")}>
+                  {s.active ? "Pause" : "Resume"}
+                </button>{" "}
+                <button className="btn btn--quiet" disabled={busy} data-testid="schedule-remove"
+                  onClick={() => change(s.id, { method: "DELETE" }, "The schedule was not removed.")}>
+                  Remove
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <h3>Add a schedule</h3>
+      <div>
+        <label htmlFor="sched-kind">What to export</label>
+        <select id="sched-kind" value={kind} onChange={(e) => setKind(e.target.value)} data-testid="sched-kind">
+          {Object.entries(KINDS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="sched-cadence">How often</label>
+        <select id="sched-cadence" value={cadence} onChange={(e) => setCadence(e.target.value)} data-testid="sched-cadence">
+          <option value="monthly">Every month</option>
+          <option value="weekly">Every week</option>
+        </select>
+      </div>
+      {cadence === "weekly" ? (
+        <div>
+          <label htmlFor="sched-weekday">On</label>
+          <select id="sched-weekday" value={weekday} onChange={(e) => setWeekday(e.target.value)} data-testid="sched-weekday">
+            {Object.entries(WEEKDAYS).map(([n, l]) => <option key={n} value={n}>{l}</option>)}
+          </select>
+        </div>
+      ) : (
+        <div>
+          <label htmlFor="sched-day">On day</label>
+          <select id="sched-day" value={monthDay} onChange={(e) => setMonthDay(e.target.value)} data-testid="sched-day">
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((n) => <option key={n} value={String(n)}>{ordinal(n)}</option>)}
+          </select>
+          <p className="footnote">The latest day offered is the 28th, so that February is never missed.</p>
+        </div>
+      )}
+      {cadence === "weekly" ? (
+        <p className="note">A weekly file is on the sales basis. MyShopEdge records the cash basis by the month a payout settled, so a week cannot be shown on the cash basis.</p>
+      ) : (
+        <div>
+          <label htmlFor="sched-basis">Basis</label>
+          <select id="sched-basis" value={basis} onChange={(e) => setBasis(e.target.value)} data-testid="sched-basis">
+            <option value="sales">Sales basis, by the day of the sale</option>
+            <option value="cash">Cash basis, by the settlement</option>
+          </select>
+        </div>
+      )}
+      <div>
+        <label htmlFor="sched-format">Format</label>
+        <select id="sched-format" value={format} onChange={(e) => setFormat(e.target.value)} data-testid="sched-format">
+          <option value="xlsx">Excel</option>
+          <option value="csv">CSV</option>
+        </select>
+      </div>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <p><button className="btn btn--primary btn--block" onClick={add} disabled={busy} data-testid="add-schedule">{busy ? "Saving" : "Add the schedule"}</button></p>
+      <p className="footnote">
+        MyShopEdge builds a scheduled file during its morning read of your shop on the day you
+        choose. Each file appears in your recent files and is kept for seven days. MyShopEdge
+        tells you in Notifications and does not send an email.
+      </p>
+    </div>
+  );
+}
+
 export function DataDownload() {
   const [job, setJob] = useState(/** @type {any} */ (null));
   const [busy, setBusy] = useState(false);
