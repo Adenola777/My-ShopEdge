@@ -1,0 +1,37 @@
+# Keeps the demo service awake for TikTok's Go Live reviewer, on the owner's choice of
+# 9 October 2026.
+#
+# The demo service (Render `My-ShopEdge-demo`, free plan) sleeps after a spell with no
+# requests. Woken on 9 October it took 33.5 seconds to answer, and the web application waits
+# 15 seconds for the service, so the first visit after a sleep showed "Your shops could not
+# be loaded". This asks the service's /health every ten minutes so that it does not sleep.
+#
+# /health answers without touching the database, so the development branch on Neon is not
+# woken by it. The repository is public, so GitHub charges no minutes for it, and the demo
+# service is the only free service on the Render workspace, so running it all month stays
+# inside the free plan's hours.
+#
+# GitHub runs a schedule only from the default branch, may start a run some minutes late
+# when it is busy, and switches a schedule off after sixty days with no activity in the
+# repository. A late run lets the service sleep for that gap only.
+
+name: Keep demo awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A sleeping service can take more than half a minute to wake, so the first request
+      # is given 90 seconds and two more tries follow before the run is marked failed.
+      - run: >-
+          curl --fail --silent --show-error --max-time 90
+          --retry 2 --retry-delay 10 --retry-all-errors
+          https://my-shopedge-demo.onrender.com/health
