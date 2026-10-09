@@ -84,6 +84,32 @@ export default async function ConfirmedPage({ searchParams }) {
     );
   }
 
+  // Stripe sends redirect_status=processing while the bank has not yet answered. The
+  // subscription then still reads as none, so without this state the seller was told there was
+  // nothing waiting (copy audit of 8 October 2026).
+  if (hint === "processing" && (status === "none" || status === null)) {
+    return (
+      <section className="confirmed" data-testid="confirmed-processing">
+        <h1>Your bank is still confirming the card.</h1>
+        <p>
+          Nothing has been charged. Reload this page in a minute to see whether the card was
+          confirmed and your trial has started.
+        </p>
+        <a className="btn btn--primary" href="">Check again</a>
+      </section>
+    );
+  }
+
+  // The seller's plan is shown on Profile and plan, which lives under a shop. A seller with
+  // no plan yet is sent to choose one instead.
+  const noPlan = status === "none" || status === null;
+  let planHref = "/billing";
+  if (!noPlan) {
+    const shops = await api("/shops", { cache: "no-store" });
+    const first = shops.ok ? (shops.data?.shops ?? [])[0] : null;
+    if (first) planHref = `/shops/${first.id}/settings/profile`;
+  }
+
   // Reloaded later, or arrived with no setup in progress. Showing the real state is more
   // useful than an error about a page that was only ever a staging post.
   return (
@@ -94,8 +120,8 @@ export default async function ConfirmedPage({ searchParams }) {
           ? "You have not started a trial yet."
           : status === "trialing" ? "Your free trial is running." : status === "active" ? "Your plan is active." : status === "past_due" ? "Your last payment did not go through." : status === "canceled" ? "Your plan has ended." : "Your plan is being set up."}
       </p>
-      <Link className="btn btn--primary" href="/billing">
-        Go to your plan
+      <Link className="btn btn--primary" href={planHref}>
+        {noPlan ? "Choose a plan" : "See your plan"}
       </Link>
     </section>
   );

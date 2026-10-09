@@ -62,9 +62,21 @@ function describe(d) {
   }
 }
 
+function CheckFailed() {
+  return (
+    <p className="note" role="status" data-testid="sync-check-failed">
+      MyShopEdge could not check the progress just now, so this card may be behind. It keeps
+      checking on its own.
+    </p>
+  );
+}
+
 /** @param {{ shopId: string, initial: SyncStatus }} props */
 export function SyncProgress({ shopId, initial }) {
   const [data, setData] = useState(initial);
+  // A failed check was silent until 9 October 2026, so a lost connection looked like
+  // "Reading" for ever. The card keeps checking and says when it could not.
+  const [checkFailed, setCheckFailed] = useState(false);
   const domains = [...(data?.domains ?? [])].sort(
     (a, b) => ORDER.indexOf(a.domain) - ORDER.indexOf(b.domain),
   );
@@ -75,6 +87,7 @@ export function SyncProgress({ shopId, initial }) {
     const t = setInterval(async () => {
       const r = await api(`/shops/${encodeURIComponent(shopId)}/sync`, { cache: "no-store" });
       if (r.ok) setData(r.data);
+      setCheckFailed(!r.ok);
     }, 4000);
     return () => clearInterval(t);
   }, [shopId, done]);
@@ -88,6 +101,7 @@ export function SyncProgress({ shopId, initial }) {
           part of your shop arrives.
         </p>
         <p className="muted">Checked {formatDate(data.as_of, { time: true })}.</p>
+        {checkFailed && <CheckFailed />}
       </div>
     );
   }
@@ -114,6 +128,7 @@ export function SyncProgress({ shopId, initial }) {
           );
         })}
       </ul>
+      {checkFailed && <CheckFailed />}
       <p className="card__why">
         {done ? "Every part of your shop has been read at least once." : "This card shows each part as it arrives."}
       </p>

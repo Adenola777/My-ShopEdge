@@ -100,7 +100,7 @@ export async function AppBar({ shopId, shopsLink = false }) {
         )}
         {!shopId && shopsLink && (
           <div className="appbar__status">
-            <a className="appbar__link" href="/shops">Your shops</a>
+            <a className="appbar__link" href="/shops?all=1">Your shops</a>
           </div>
         )}
       </div>

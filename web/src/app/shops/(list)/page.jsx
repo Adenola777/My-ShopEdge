@@ -15,14 +15,22 @@ import { nextStep } from "@/lib/onboarding";
 
 export const metadata = { title: "Your shops" };
 
-export default async function ShopsPage() {
+/**
+ * `?all=1` shows the list even to a seller with one shop. "Your shops" in the top bar and in
+ * Settings link there, because without it the link sent a one-shop seller straight back into
+ * the shop and appeared to do nothing (copy audit of 8 October 2026).
+ *
+ * @param {{ searchParams: Promise<{ all?: string }> }} props
+ */
+export default async function ShopsPage({ searchParams }) {
+  const { all } = await searchParams;
   const result = await api("/shops", { cache: "no-store" });
   const problem = apiProblem(result, { what: "your shops" });
   if (problem) return problem;
 
   /** @type {import("@/lib/api-types").components["schemas"]["Shop"][]} */
   const shops = result.data.shops ?? [];
-  const only = shops.length === 1 ? shops[0] : undefined;
+  const only = shops.length === 1 && !all ? shops[0] : undefined;
   if (only) {
     // Resume at the right step of A14.2 rather than always at Today (lib/onboarding.js).
     const [sub, tax, costs] = await Promise.all([

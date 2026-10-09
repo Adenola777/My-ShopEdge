@@ -63,6 +63,19 @@ const NOT_SUPPORTED = {
     "MyShopEdge reads shops that sell locally in the UK, and this shop sells cross border.",
 };
 
+/**
+ * Where "start again" leads. `/shops` sends a seller who already has a shop straight into it,
+ * so that seller is sent to the page that connects another one. When the shops cannot be read,
+ * `/shops` is the safe default.
+ *
+ * @returns {Promise<{ href: string, label: string }>}
+ */
+async function startAgainLink() {
+  const shops = await api("/shops", { cache: "no-store" });
+  const has = shops.ok && (shops.data?.shops ?? []).length > 0;
+  return has ? { href: "/shops/connect", label: "Connect again" } : { href: "/shops", label: "Start again" };
+}
+
 /** @param {{ searchParams: Promise<Record<string, string>> }} props */
 export default async function TikTokCallbackPage({ searchParams }) {
   const { code, state } = await searchParams;
@@ -72,7 +85,7 @@ export default async function TikTokCallbackPage({ searchParams }) {
       <Problem
         title="The connection was not completed."
         note="TikTok sent you back without approving access, so nothing was connected. You can start again whenever you like."
-        startAgain
+        startAgain={await startAgainLink()}
       />
     );
   }
@@ -99,7 +112,7 @@ export default async function TikTokCallbackPage({ searchParams }) {
       "The shop could not be connected.",
       "Nothing has changed. Start again in a few minutes.",
     ]);
-    return <Problem title={title} note={note} startAgain />;
+    return <Problem title={title} note={note} startAgain={await startAgainLink()} />;
   }
 
   /** @type {{ shop: any, accepted: boolean, rejection_reason: string | null }} */
@@ -112,6 +125,7 @@ export default async function TikTokCallbackPage({ searchParams }) {
       <section className="state">
         <h1>{name} is connected, but MyShopEdge cannot read it.</h1>
         <p>{NOT_SUPPORTED[reason] ?? "MyShopEdge does not read this kind of shop."}</p>
+        <p>MyShopEdge does not read this shop, so no figures will appear for it.</p>
         <p>
           <Link className="btn btn--primary" href="/shops">
             Back to your shops

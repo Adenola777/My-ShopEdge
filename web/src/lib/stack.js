@@ -37,7 +37,9 @@ export const stackApp = STACK_CONFIGURED
       urls: {
         afterSignIn: "/shops",
         afterSignUp: "/shops",
-        afterSignOut: "/start",
+        // S37 confirms a deliberate sign-out (copy audit of 8 October 2026). Until then a
+        // seller who signed out landed on Start with no word that it had worked.
+        afterSignOut: "/signed-out",
         home: "/",
       },
     })

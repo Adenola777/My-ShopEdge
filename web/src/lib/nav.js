@@ -57,7 +57,7 @@ export const SETTINGS = {
     ["settings", "Shop connection", ["sync", "connection-problem", "setup", "settings/disconnect"]],
     ["settings/alerts", "Alerts"],
     ["settings/data", "Your data", ["settings/delete"]],
-    ["/shops", "Your shops"],
+    ["/shops?all=1", "Your shops"],
     ["glossary", "Help and glossary"],
   ],
 };

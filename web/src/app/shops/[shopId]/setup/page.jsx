@@ -35,17 +35,28 @@ export default async function SetupPage({ params }) {
   const domains = sync.ok ? sync.data?.domains ?? [] : [];
   const synced = domains.length > 0 && domains.every((d) => d.status === "completed");
   const failedDomain = domains.find((d) => d.status === "failed" || d.status === "needs_reconnect");
+  const part = failedDomain ? DOMAIN_WORDS[failedDomain.domain] ?? "shop" : "";
+  // A failed part is tried again by the next daily read; a part that needs reconnecting is
+  // not, so the two are worded apart.
   const syncNote = !sync.ok ? "Not known right now"
-    : failedDomain ? `Paused while reading your ${DOMAIN_WORDS[failedDomain.domain] ?? "shop"}`
+    : failedDomain?.status === "needs_reconnect" ? `Stopped while reading your ${part}. Reconnect your shop to carry on.`
+    : failedDomain ? `Stopped while reading your ${part}. MyShopEdge tries again at the next daily read.`
     : synced ? undefined : "Still running";
+  const products = `${skus.length} ${skus.length === 1 ? "product" : "products"}`;
+  // Each step is named as the thing to do, and carries its own action. A request that failed
+  // reads as not known rather than as left to do, so a paying seller is not sent to the plans.
+  /** @type {{ label: string, action: string, done: boolean, known: boolean, note?: string, href: string }[]} */
   const steps = [
-    { label: "TikTok Shop connected", done: true, href: `/shops/${shopId}/settings` },
-    { label: "Your shop's history read", done: synced, note: syncNote, href: `/shops/${shopId}/sync` },
-    { label: "Plan chosen", done: sub.ok && sub.data?.status && sub.data.status !== "none", href: "/billing" },
-    { label: "Product costs", done: costed > 0, note: `${costed} of ${skus.length} variants have a cost`, href: `/shops/${shopId}/setup/costs` },
-    { label: "About your business", done: tax.ok && tax.data?.completed, href: `/shops/${shopId}/setup/tax` },
+    { label: "Connect your shop", action: "See your shop connection", done: true, known: true, href: `/shops/${shopId}/settings` },
+    { label: "Read your shop's history", action: "See your shop's progress", done: synced, known: sync.ok, note: syncNote, href: `/shops/${shopId}/sync` },
+    { label: "Choose a plan", action: "Choose a plan", done: Boolean(sub.ok && sub.data?.status && sub.data.status !== "none"), known: sub.ok,
+      note: sub.ok ? undefined : "Not known right now", href: "/billing" },
+    { label: "Add product costs", action: "Add product costs", done: costed > 0, known: true,
+      note: `${costed} of ${products} ${costed === 1 ? "has" : "have"} a cost`, href: `/shops/${shopId}/setup/costs` },
+    { label: "Tell us about your business", action: "Tell us about your business", done: Boolean(tax.ok && tax.data?.completed), known: tax.ok,
+      note: tax.ok ? undefined : "Not known right now", href: `/shops/${shopId}/setup/tax` },
   ];
-  const next = steps.find((s) => !s.done);
+  const next = steps.find((s) => s.known && !s.done);
 
   return (
     <section data-testid="setup-screen">
@@ -58,14 +69,14 @@ export default async function SetupPage({ params }) {
           {steps.map((s) => (
             <li key={s.label}>
               <span>{s.label}{s.note && <div className="rows__sub">{s.note}</div>}</span>
-              <strong className={s.done ? "chip chip--good" : "chip chip--quiet"}>{s.done ? "Done" : "Left to do"}</strong>
+              <strong className={s.done ? "chip chip--good" : "chip chip--quiet"}>{s.done ? "Done" : s.known ? "Left to do" : "Not known"}</strong>
             </li>
           ))}
         </ul>
       </div>
       <p>
         {next
-          ? <Link className="btn btn--primary btn--block" href={next.href} data-testid="setup-continue">Continue: {next.label.toLowerCase()}</Link>
+          ? <Link className="btn btn--primary btn--block" href={next.href} data-testid="setup-continue">{next.action}</Link>
           : <Link className="btn btn--primary btn--block" href={`/shops/${shopId}/today`} data-testid="setup-continue">Go to Today</Link>}
       </p>
       {next && <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/today`}>Go to Today for now</Link></p>}

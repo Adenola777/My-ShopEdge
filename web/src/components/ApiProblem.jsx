@@ -126,8 +126,15 @@ export function apiProblem(result, { what, notFound, note }) {
   return null;
 }
 
-/** @param {{ title: string, note: string, retry?: boolean, signIn?: boolean, startAgain?: boolean }} props */
+/**
+ * `startAgain` is either true, which links to `/shops`, or a link and its label. A seller who
+ * already has a shop is sent from `/shops` straight into it, so a page that knows that passes
+ * the connect page instead.
+ *
+ * @param {{ title: string, note: string, retry?: boolean, signIn?: boolean, startAgain?: boolean | { href: string, label: string } }} props
+ */
 export function Problem({ title, note, retry, signIn, startAgain }) {
+  const again = typeof startAgain === "object" ? startAgain : { href: "/shops", label: "Start again" };
   return (
     <section className="state">
       <h1>{title}</h1>
@@ -141,8 +148,8 @@ export function Problem({ title, note, retry, signIn, startAgain }) {
       )}
       {startAgain && (
         <p>
-          <a className="btn btn--primary" href="/shops">
-            Start again
+          <a className="btn btn--primary" href={again.href}>
+            {again.label}
           </a>
         </p>
       )}

@@ -39,9 +39,14 @@ const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 
 /**
- * @param {{ plans: Plan[], trialDays: number, trialEnds: string }} props
+ * `trialEnds` is an estimate made before the subscription exists. Once Stripe has created it,
+ * the trial end Stripe returned is shown instead (copy audit of 8 October 2026, row on the
+ * trial date). `ended` is true when the seller's earlier plan has ended, because
+ * `start_trial` lets a cancelled account start again.
+ *
+ * @param {{ plans: Plan[], trialDays: number, trialEnds: string, ended?: boolean }} props
  */
-export function PaymentForm({ plans, trialDays, trialEnds }) {
+export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = false }) {
   const preferred = plans.find((p) => p.highlight) ?? plans[0];
   const [slug, setSlug] = useState(preferred ? preferred.slug : "");
   const [phase, setPhase] = useState(
@@ -50,6 +55,8 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
   const [clientSecret, setClientSecret] = useState(/** @type {string | null} */ (null));
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
+  const [stripeTrialEnd, setStripeTrialEnd] = useState(/** @type {string | null} */ (null));
+  const trialEnds = stripeTrialEnd ?? estimate;
 
   // Held for the life of the component so a retry after a dropped connection does not
   // create a second subscription.
@@ -69,6 +76,13 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
       if (!ok) {
         setError(data?.detail ?? "We could not start the trial. Nobody has been charged. Try again in a moment.");
         return;
+      }
+      if (data.trial_ends_at) {
+        setStripeTrialEnd(
+          new Date(data.trial_ends_at).toLocaleDateString("en-GB", {
+            timeZone: "Europe/London", day: "numeric", month: "long", year: "numeric",
+          }),
+        );
       }
       if (data.status === "trialing") {
         setPhase("done");
@@ -114,7 +128,9 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
         <h1>
           {phase === "collecting"
             ? "Add your card to start the trial."
-            : "Your shop is connected. Start your free trial."}
+            : ended
+              ? "Your plan has ended. Choose a plan to start again."
+              : "Your shop is connected. Start your free trial."}
         </h1>
         <p className="billing__lede">
           Every plan begins with {trialDays} days free, and nothing is taken until{" "}
@@ -143,7 +159,7 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
                     onChange={() => setSlug(plan.slug)}
                   />
                   <span className="plan__select" aria-hidden="true" />
-                  {plan.highlight ? <span className="plan__flag">Most chosen</span> : null}
+                  {plan.highlight ? <span className="plan__flag">Suggested</span> : null}
                   <span className="plan__name">{plan.name}</span>
                   <span className="plan__strapline">{plan.strapline}</span>
                   <span className="plan__price">
@@ -202,7 +218,7 @@ export function PaymentForm({ plans, trialDays, trialEnds }) {
           <div className="plan-summary" data-testid="plan-summary">
             <p>
               You are starting <strong>{chosen ? chosen.name : "your plan"}</strong>. Your{" "}
-              {trialDays} free days run until {trialEnds}, and nothing is charged today.
+              {trialDays} free days run until {trialEnds}.
             </p>
           </div>
           <Elements
