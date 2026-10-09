@@ -64,6 +64,11 @@ def decode_cursor(cursor: str) -> tuple[str, str]:
         raise Problem(400, "invalid_cursor", "That list could not be loaded. Refresh the page.") from exc
 
 
+# Imported here rather than at the top because money_view imports products, which imports
+# stock, which imports the three names above from this module. Found by running it.
+from .money_view import TIKTOK_FEES, CalculatorLine, _line  # noqa: E402
+
+
 class Settlement(BaseModel):
     id: UUID
     tiktok_statement_id: str
@@ -87,6 +92,7 @@ class SettlementPage(BaseModel):
 class SettlementComponents(BaseModel):
     net_sales: Money
     fees: Money
+    fee_lines: list[CalculatorLine] = []
     shipping_cost: Money
     adjustments: Money
     difference: Money
@@ -123,6 +129,19 @@ class SettlementDetail(BaseModel):
     reconciliation: SettlementReconciliation
     invoice: SettlementInvoice | None = None
     orders: list[SettledOrder]
+
+
+# The fee categories TikTok's statement counts in `fee_amount`. A8.3 puts each fee on its own
+# line, so `fees` is shown as the lines that make it up, named and ordered as Money names
+# and orders them. TikTok counts shipping fees in `shipping_cost_amount` and platform
+# adjustments in `adjustment_amount`, which already have their own rows on the screen, so
+# those three categories are left out here. That split was checked on 9 October 2026 against
+# the local copy of the test data, where the lines summed to `fee_minor` on all three
+# statements. **No real TikTok statement carrying a fee has been read yet**, so the split is
+# unverified against TikTok itself.
+STATEMENT_FEES = tuple(
+    c for c in TIKTOK_FEES if c not in ("shipping_fee", "fbt_shipping_fee", "platform_adjustment")
+)
 
 
 def _settlement(row: dict[str, Any]) -> Settlement:
@@ -256,15 +275,31 @@ def get_settlement(
             (str(settlementId),),
         ).fetchall()
 
+        cur = conn.execute(
+            "select le.category, le.tiktok_fee_type, sum(le.amount_minor) as amount_minor "
+            "  from ledger_entries le "
+            " where le.settlement_id = %s and le.category = any(%s) "
+            " group by le.category, le.tiktok_fee_type "
+            " order by le.category, le.tiktok_fee_type",
+            (str(settlementId), list(STATEMENT_FEES)),
+        )
+        fcols = [d.name for d in cur.description]
+        fee_rows = [dict(zip(fcols, r, strict=True)) for r in cur.fetchall()]
+
     currency = s["currency"]
     net_sales = s["net_sales_minor"] or 0
     fees = s["fee_minor"] or 0
     shipping = s["shipping_cost_minor"] or 0
     adjustments = s["adjustment_minor"] or 0
 
+    # Money's own line builder and order, so the same fee reads the same on both screens.
+    fee_lines = [_line(r, currency) for r in fee_rows if int(r["amount_minor"]) != 0]
+    fee_lines.sort(key=lambda l: STATEMENT_FEES.index(l.category))
+
     components = SettlementComponents(
         net_sales=money(net_sales, currency),
         fees=money(fees, currency),
+        fee_lines=fee_lines,
         shipping_cost=money(shipping, currency),
         adjustments=money(adjustments, currency),
         # What TikTok's own four components fail to explain about its own total. Zero on

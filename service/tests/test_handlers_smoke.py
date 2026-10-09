@@ -1837,6 +1837,54 @@ def settlement_invoice():
 check("recordSettlementInvoice stores a whole, checked invoice and getSettlement returns it", settlement_invoice)
 
 
+# --- getSettlement puts each fee on its own line, named and ordered as Money does (9 Oct 2026)
+def settlement_fee_lines():
+    SID = UUID("44444444-4444-4444-8444-444444444444")
+    cols = ["id","tiktok_statement_id","tiktok_payment_id","settlement_reference",
+            "statement_time","activity_date","paid_at","payment_status","currency",
+            "statement_amount_minor","payable_amount_minor","total_reserve_amount_minor",
+            "tiktok_invoice_number","net_sales_minor","fee_minor","shipping_cost_minor",
+            "adjustment_minor"]
+    row = (SID, "202608A-0003", None, None, NOW, date(2026,8,20), None, "PAID", "GBP",
+           513, 513, 0, None, 2826, -1363, -450, -500)
+    # The rows of 202608A-0003 on the local copy of the test data, in the SQL's own order.
+    fee_rows = [("platform_commission", "platform_commission_amount", -672),
+                ("return_handling_fee", "refund_administration_fee_amount", -325),
+                ("transaction_fee", "transaction_fee_amount", -167),
+                ("transaction_fee", "zero_fee_amount", 0),
+                ("unmapped_fee", "live_specials_fee_amount", -199)]
+    sent = []
+    class C(Conn):
+        def execute(self, sql, args=None):
+            if "le.category = any" in " ".join(sql.split()):
+                sent.append(args)
+            return super().execute(sql, args)
+    import contextlib
+    @contextlib.contextmanager
+    def fake(_a):
+        yield C([("from settlements where", Result(cols, [row])),
+                 ("from settlement_reconciliation", Result(["a","b","c","d"], [(4, 513, None, 0)])),
+                 ("from tiktok_invoices", Result([], [])),
+                 ("le.category = any", Result(["category","tiktok_fee_type","amount_minor"], fee_rows)),
+                 ("from ledger_entries le", Result(["id","t","s"], []))])
+    settlements.tenant = fake
+    r = client.get(f"/v1/shops/{SHOP}/settlements/{SID}")
+    _assert(r.status_code == 200, r.text[:300])
+    c = r.json()["components"]
+    lines = c["fee_lines"]
+    _assert([l["category"] for l in lines] == ["platform_commission", "transaction_fee",
+                                               "return_handling_fee", "unmapped_fee"], lines)
+    _assert([l["label"] for l in lines] == ["Platform commission", "Transaction fee",
+                                            "Return handling fee", "live_specials_fee_amount"], lines)
+    _assert(lines[-1]["tiktok_fee_type"] == "live_specials_fee_amount"
+            and all(l["tiktok_fee_type"] is None for l in lines[:-1]), lines)
+    _assert(sum(l["amount"]["amount_minor"] for l in lines) == c["fees"]["amount_minor"] == -1363, c)
+    cats = sent[0][1]
+    _assert("shipping_fee" not in cats and "fbt_shipping_fee" not in cats
+            and "platform_adjustment" not in cats and "unmapped_fee" in cats, cats)
+check("getSettlement lists each fee on its own line, summing to the statement's fees", settlement_fee_lines)
+
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")
