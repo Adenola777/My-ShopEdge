@@ -387,19 +387,36 @@ function DownloadButton({ path, label = "Download", testId = "download" }) {
  * Polls a job until it leaves `queued`, then offers the file. Shared by S23 and S31, because
  * A3 S31 says the data download "reuses the export flow rather than defining a second one".
  *
+ * A poll that fails stops polling and says so, with a button to check again. Until
+ * 9 October 2026 a failed poll stopped polling and showed nothing, so the screen sat on
+ * "building" for ever.
+ *
  * @param {{ path: string, job: any, onReset: () => void, onSettled?: () => void }} props
  */
 function JobStatus({ path, job: first, onReset, onSettled }) {
   const [job, setJob] = useState(first);
+  const [pollFailed, setPollFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (job.status !== "queued") { onSettled?.(); return; }
+    if (pollFailed) return;
     const t = setTimeout(async () => {
       const r = await api(path, { cache: "no-store" });
       if (r.ok) setJob(r.data);
+      else setPollFailed(true);
     }, 1500);
     return () => clearTimeout(t);
-  }, [job, path, onSettled]);
+  }, [job, path, onSettled, pollFailed, attempt]);
 
+  if (job.status === "queued" && pollFailed) {
+    return (
+      <div className="stack" data-testid="job-check-failed">
+        <p className="note" role="status">MyShopEdge could not check on your file just now. When it last checked, the file was still being built, and it will appear in your recent files below once it is ready.</p>
+        <p><button className="btn btn--quiet" data-testid="job-check-again"
+          onClick={() => { setPollFailed(false); setAttempt((n) => n + 1); }}>Check again</button></p>
+      </div>
+    );
+  }
   if (job.status === "queued") {
     return <p className="note" role="status" data-testid="job-queued">MyShopEdge is building your file. You can leave this screen and come back, and the file will be in the list below.</p>;
   }

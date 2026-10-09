@@ -12,10 +12,21 @@
  * The owner asked on 25 September for notifications to work properly after QA found that
  * nothing could mark one read, so the bell's count could never fall.
  *
- * **Not yet as the wireframe says.** WFW section 4 says tapping a notice opens the relevant
- * screen. A Notification carries `entity_type` and `entity_id` but no address, and working
- * out an address here from a type would be a rule the service does not state, so a row is
- * not yet a link.
+ * WFW section 4 says tapping a notice opens the relevant screen. A Notification carries
+ * `type`, `shop_id`, `entity_type` and `entity_id` but no address, so since 9 October 2026
+ * `noticeLink` gives a link only for the types whose writer was read in the service, and no
+ * link for any other notice:
+ *
+ * - `stock_absorbed`, written by `_absorb` in tiktok_sync.py with `entity_type` 'sku' and the
+ *   SKU's id, opens that SKU's stock movements (S26).
+ * - `reconnect_needed`, written by tiktok_webhooks.py with `entity_type` 'shop' and the
+ *   shop's id, opens Connection problem (S28), which offers the reconnect button.
+ * - `first_read_complete` opens the shop's Today. Another change is adding that notice, and
+ *   its writer was not in this tree when the link was written, so the link rests on
+ *   `shop_id` alone.
+ *
+ * Nothing in the service writes a notice about a discrepancy today, so none links to
+ * Discrepancies.
  */
 
 import Link from "next/link";
@@ -28,6 +39,28 @@ export const metadata = { title: "Notifications" };
 
 /** @type {Record<string, string>} */
 const SEVERITY_WORD = { critical: "Act now", warning: "Check", info: "Note" };
+
+/**
+ * The screen a notice concerns, or null when that is not known. See the header for where
+ * each rule comes from.
+ *
+ * @param {import("@/lib/api-types").components["schemas"]["Notification"]} n
+ * @param {string} shopId  The shop whose page this is, used when a notice names no shop.
+ * @returns {{ href: string, label: string } | null}
+ */
+function noticeLink(n, shopId) {
+  const shop = encodeURIComponent(n.shop_id ?? shopId);
+  if (n.type === "stock_absorbed" && n.entity_type === "sku" && n.entity_id) {
+    return { href: `/shops/${shop}/stock/${encodeURIComponent(n.entity_id)}`, label: "See this item's stock" };
+  }
+  if (n.type === "reconnect_needed" && n.entity_type === "shop" && n.entity_id) {
+    return { href: `/shops/${encodeURIComponent(n.entity_id)}/connection-problem`, label: "Reconnect your shop" };
+  }
+  if (n.type === "first_read_complete") {
+    return { href: `/shops/${shop}/today`, label: "See Today" };
+  }
+  return null;
+}
 
 /**
  * @param {{
@@ -80,7 +113,9 @@ export default async function NotificationsPage({ params, searchParams }) {
       ) : (
         <div className="card">
           <ul className="rows">
-            {notifications.map((n) => (
+            {notifications.map((n) => {
+              const link = noticeLink(n, shopId);
+              return (
               <li key={n.id}>
                 <span>
                   {n.status === "unread" ? <strong>{n.title}</strong> : n.title}
@@ -88,13 +123,17 @@ export default async function NotificationsPage({ params, searchParams }) {
                     {[n.status === "unread" ? "New" : null, n.body?.replace(/\.\s*$/, ""), formatDate(n.created_at)]
                       .filter(Boolean).join(". ")}
                   </div>
+                  {link && (
+                    <div><Link href={link.href} data-testid="notice-link">{link.label}</Link></div>
+                  )}
                   <NotificationActions id={n.id} status={n.status} title={n.title} />
                 </span>
                 <span className={chipClass(SEVERITY_TONE[n.severity] ?? "quiet")}>
                   {SEVERITY_WORD[n.severity] ?? "Note"}
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       )}
