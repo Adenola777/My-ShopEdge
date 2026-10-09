@@ -64,9 +64,10 @@ def decode_cursor(cursor: str) -> tuple[str, str]:
         raise Problem(400, "invalid_cursor", "That list could not be loaded. Refresh the page.") from exc
 
 
-# Imported here rather than at the top because money_view imports products, which imports
-# stock, which imports the three names above from this module. Found by running it.
-from .money_view import TIKTOK_FEES, CalculatorLine, _line  # noqa: E402
+# From money_lines rather than money_view: money_view imports products, products imports
+# stock, and stock imports this module, so importing money_view here made a cycle that CI
+# found on 9 October 2026 (test_set_aside imports tax, which imports money_view, first).
+from .money_lines import TIKTOK_FEES, CalculatorLine, _line  # noqa: E402
 
 
 class Settlement(BaseModel):
