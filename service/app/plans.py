@@ -55,7 +55,7 @@ PLANS: dict[str, Plan] = {
             "Product costs, uploaded or typed",
             "Gross profit after returns, calculated line by line",
             "Stock levels and what runs out first",
-            "VAT threshold tracking and set-aside guidance",
+            "VAT registration threshold tracking, and guidance on what to set aside for tax",
         ],
     ),
     "growth": Plan(

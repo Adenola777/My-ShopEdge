@@ -9,11 +9,11 @@ This file records what became of every Major and Minor finding in Area B of `aud
 | Status | Rows | Major | Minor |
 |---|---|---|---|
 | already fixed | 95 | 39 | 56 |
-| fixed now | 6 | 5 | 1 |
+| fixed now | 9 | 8 | 1 |
 | kept | 3 | 0 | 3 |
 | owner decision | 2 | 1 | 1 |
 | needs building | 4 | 3 | 1 |
-| needs Area D | 3 | 3 | 0 |
+| needs Area D | 0 | 0 | 0 |
 | **Total** | **113** | **51** | **62** |
 
 "Needs Area D" marks a change to text or a link that the Python service produces, which Area D owns. "Owner decision" marks the open naming decision between A8.4 and A29.7.
@@ -35,12 +35,12 @@ This file records what became of every Major and Minor finding in Area B of `aud
 | 22 | Today, Needs your attention | `n.label ?? "Something needs your attention"` | Minor | already fixed | A missing label now falls back to words rather than the item's type. |
 | 23 | Today, Needs your attention | "{amount} is affected." | Minor | already fixed | The fragment is now a sentence. |
 | 24 | Today and Notifications | "Act now" / "Check" / "Note" on both screens | Minor | already fixed | Notifications now uses the same three words as Today. |
-| 25 | Today, Needs you item | "Your TikTok Shop needs reconnecting" (today_view.py, no href) | Major | needs Area D | The label has no full stop and no next step, and `needs_href` in today_view.py gives `connection_action_required` no link; both are service output, so Area D owns the change (suggested: link to `/shops/{id}/connection-problem` and add "Reconnect it in Settings."). |
+| 25 | Today, Needs you item | "Your TikTok Shop needs reconnecting. Reconnect it to keep your figures up to date." | Major | fixed now | `today_view.py` now gives this item, and the other three connection items, a link to `/shops/{id}/connection-problem`, and the label ends with a next step. Changed on 9 October 2026 when the four areas were brought together. |
 | 26 | Today, Needs you item | "TikTok would not renew MyShopEdge's access to your shop. Reconnect the shop to keep your figures up to date." | Major | already fixed | Batch 3 in today_view.py removed TikTok's error code and added the next step. |
 | 27 | Today, Needs you item | "TikTok has not given MyShopEdge all the access it needs. Reconnect the shop and approve every permission on TikTok's page." | Major | already fixed | Batch 3 in today_view.py removed the scope identifiers. |
 | 28 | Today, Needs you item | "Your figures may be out of date. MyShopEdge last brought them up to date {n} hours ago." | Minor | already fixed | Batch 3 in today_view.py gave both sentences a subject and a full stop. |
 | 29 | Today, Needs you item | "{n} fee this month has a name MyShopEdge does not recognise" | Major | already fixed | Batch 3 in today_view.py replaced "has no category". |
-| 30 | Today, Needs you item | "{n} return is waiting to be checked" (no href) | Major | needs Area D | The wording is fixed, but `needs_href` in today_view.py still gives `returns_to_check` no link, and the link is service output (suggested: `/shops/{id}/returns`). |
+| 30 | Today, Needs you item | "{n} return is waiting to be checked" | Major | fixed now | `needs_href` in `today_view.py` now links `returns_to_check` to `/shops/{id}/returns`. Changed on 9 October 2026. |
 | 31 | Money, header | "This shows where every pound went from {from} to {to}." | Minor | already fixed | Copy batch 3 used the audit's sentence, with "on {date}" for the one-day view. |
 | 32 | Money, basis switch | "Sales basis counts money on the day of the sale." (under the switch) | Minor | already fixed | The explanation now sits directly under the basis switch. |
 | 33 | Money, footnote | "Cash basis counts money in the month TikTok settled it." | Minor | kept | The cash basis filters on `settlement_month`, which holds the first day of the month a payout settled (tiktok_sync.london_month), so "month" is true and the audit's "on the date" would be false. |
@@ -70,7 +70,7 @@ This file records what became of every Major and Minor finding in Area B of `aud
 | 57 | Product detail | "Stock on hand is {n}." | Major | already fixed | The withdrawn "on the shelf" is gone. |
 | 58 | Product detail | "{n} units sold from {from} to {to}" and the card heading "{from} to {to}" | Major | already fixed | Both now state the period. |
 | 59 | Product detail | `<LineLabel line={l} />` on every product line | Major | already fixed | An unrecognised fee now reads "Fee MyShopEdge does not recognise" with TikTok's name beneath it. |
-| 60 | Product detail | "Sales after refunds" (products.py SECTIONS) | Major | needs Area D | The product calculator in products.py still puts refunds before TikTok fees under a subtotal A8 does not have; reordering it to A8.5 changes service output and is Area D's. |
+| 60 | Product detail | "Net sales", "Net proceeds before refunds", "Net proceeds" | Major | fixed now | `products.SECTIONS` now follows A8.5 and Money's chain: refunds come after TikTok fees, and "Sales after refunds" is gone. Only the stages moved, so the figure the chain ends on is the same. Changed on 9 October 2026. |
 | 61 | Product detail | heading "One unit, pound by pound", no "per unit" suffix | Minor | already fixed | The card heading carries "one unit" and the suffix on the last subtotal is gone. |
 | 62 | Product detail | "This variant has no seller SKU." | Minor | already fixed | The two facts were separated and the fragment is now a sentence. |
 | 63 | Product detail | "See every record behind these figures" (passes from, to, basis) | Major | already fixed | The link now passes the product's period and basis, so the records match the figures. |

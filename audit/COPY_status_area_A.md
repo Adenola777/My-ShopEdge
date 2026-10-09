@@ -11,9 +11,9 @@ Each row was checked against the current file rather than against the audit's li
 | Already fixed | 45 |
 | Fixed now | 38 |
 | Kept | 2 |
-| Owner decision | 7 |
+| Owner decision | 8 |
 | Needs building | 1 |
-| Needs Area D | 1 |
+| Needs Area D | 0 |
 | **Total** | **94** (29 Major, 65 Minor) |
 
 ## Findings
@@ -23,12 +23,12 @@ The "Audit line" column is the row's line in `audit/COPY_audit_8_october.md`. Pa
 | Audit line | Screen | Current text (short) | Severity | Status | What was done, or why |
 |---|---|---|---|---|---|
 | 136 | S2 First sync | "This card shows each part as it arrives." | Major | Already fixed | `SyncProgress.jsx` no longer promises a notification, and the card now says only what it shows. |
-| 137 | S33 plan cards | "Suggested" | Major | Fixed now | The flag "Most chosen" rested on no sign-up data, so `PaymentForm.jsx` now reads "Suggested", which is what the hard-coded highlight is. |
+| 137 | S33 plan cards | "Most chosen" | Major | Owner decision | No sign-up data supports "Most chosen". The flag stays as it is, because copy batch 1 left the word for the owner to rule on. |
 | 138 | S33 plan cards (service) | "Growth covers a shop taking up to 500 orders a month." | Major | Already fixed | The straplines in `service/app/plans.py` are now full sentences, after Area D's copy batch. |
 | 139 | S33 plan cards (service) | "One TikTok Shop connection" | Major | Owner decision | Whether Starter allows one shop is one of the owner's open decisions, so the line is unchanged. |
 | 140 | S33 plan cards (service) | "Everything in Starter" / "Exports on a sales basis or a cash basis" | Minor | Owner decision | What Growth and Pro hold back is an open owner decision, and no plan gating exists, so the lists are unchanged. |
 | 141 | S33 plan cards | "Made for up to {n} orders a month. Nothing stops if you sell more." | Minor | Already fixed | The limit now reads as a guide, which matches the soft limit ruled in A16.3. |
-| 142 | S33 plan cards (service) | "VAT threshold tracking and set-aside guidance" | Minor | Needs Area D | The text is a service string in `service/app/plans.py`, and A8.4 names the term "VAT registration threshold", so Area D owns the change. |
+| 142 | S33 plan cards (service) | "VAT registration threshold tracking, and guidance on what to set aside for tax" | Minor | Fixed now | `service/app/plans.py` now uses A8.4's term, changed on 9 October 2026 when the four areas were brought together. |
 | 143 | S33 plan step | "Continue with {plan}" and "Your plan is fixed once you continue to the card." | Major | Already fixed | The button names the plan, and the summary says the plan is fixed at the card step. |
 | 144 | S33 plan step | "Setting up your trial" | Minor | Already fixed | The busy label says what is happening. |
 | 145 | S33 plan error | `data?.detail ?? "We could not start the trial. Nobody has been charged. ..."` | Major | Already fixed | Every refusal `start_trial` can give (`service/app/billing.py`) now says in its own detail that nothing was charged or started, so the detail no longer drops the reassurance. |
