@@ -28,7 +28,7 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   *, *::before, *::after { box-sizing: border-box; }
-  html { scroll-padding-top: 84px; scroll-behavior: smooth; }
+  html { scroll-padding-top: 112px; scroll-behavior: smooth; }
   html, body {
     margin: 0;
     background: var(--white);
@@ -51,10 +51,17 @@
     backdrop-filter: blur(10px);
     box-shadow: 0 1px 0 rgba(18,20,28,0.05), 0 8px 24px -12px rgba(18,20,28,0.08);
   }
-  .nav-inner { display:flex; align-items:center; justify-content:space-between; height: 76px; }
+  .nav-inner { display:flex; align-items:center; justify-content:space-between; height: 104px; }
   .logo-lockup { display:flex; align-items:center; gap: 9px; text-decoration:none; }
-  .logo-lockup img { height: 48px; width:auto; display:block; }
-  footer .logo-lockup img { height: 40px; }
+  /* A7.6: the lockup with "Know Your Numbers" is never below 180 px wide, which is 67 px tall
+     for this artwork. Below 520 px of screen the header uses the lockup without it. */
+  .logo-lockup img { height: 80px; width:auto; display:block; flex-shrink:0; }
+  .logo-lockup { flex-shrink:0; }
+  footer .logo-lockup img { height: 72px; }
+  @media (max-width: 520px) { .nav-inner { height: 76px; } .nav .logo-lockup img { height: 48px; } }
+  /* Below 420 px the wordmark does not fit beside both buttons, so the mark stands alone (A7.6). */
+  @media (max-width: 420px) { .nav .logo-lockup img { height: 40px; } }
+  .footer-brand .ico-badge { height: 96px; width:auto; margin-top:20px; display:block; }
   .logo-lockup .word { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size: 19px; letter-spacing:-0.01em; }
   .logo-lockup .word .b1 { color: var(--ink); }
   .logo-lockup .word .b2 { color: var(--orange-solid); }
@@ -271,7 +278,7 @@
 <section id="marketing" class="screen">
   <nav class="nav">
     <div class="wrap nav-inner">
-      <div class="logo-lockup"><img src="brand/mse-logo-horizontal-notagline.svg" alt="MyShopEdge"></div>
+      <div class="logo-lockup"><picture><source media="(max-width: 420px)" srcset="brand/mse-mark-colour.svg"><source media="(max-width: 520px)" srcset="brand/mse-logo-horizontal-notagline.svg"><img src="brand/mse-logo-horizontal.svg" alt="MyShopEdge, Know Your Numbers"></picture></div>
       <div class="nav-links">
         <a href="#problem">Why MyShopEdge</a>
         <a href="#trust">Security</a>
@@ -463,9 +470,9 @@
     <div class="wrap">
       <div class="footer-top">
         <div class="footer-brand">
-          <div class="logo-lockup" style="margin-bottom:14px;"><img src="brand/mse-logo-horizontal-notagline.svg" alt="MyShopEdge"></div>
+          <div class="logo-lockup" style="margin-bottom:14px;"><img src="brand/mse-logo-horizontal.svg" alt="MyShopEdge, Know Your Numbers"></div>
           <p>MyShopEdge is a product of Inspirecraft Global Ltd, Leicester. It is bookkeeping built for UK TikTok Shop sellers. Inspirecraft Global Ltd is registered with Companies House and with the Information Commissioner's Office.</p>
-          <img src="brand/ico-registered.avif" alt="Registered with the Information Commissioner's Office" style="height:52px;width:auto;margin-top:16px;display:block;">
+          <img class="ico-badge" src="brand/ico-registered.avif" alt="Registered with the Information Commissioner's Office">
         </div>
         <div class="footer-nav">
           <div class="footer-col">
