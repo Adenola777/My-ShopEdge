@@ -291,27 +291,39 @@ def _job(row, url: str | None = None) -> ShopExportJob:
                          row_count=count)
 
 
+def build_in(conn, export_id: UUID) -> bool:
+    """Builds one queued export on a connection the caller has scoped, and stores it.
+
+    Returns whether it built the file. A job that is missing or no longer queued is left
+    alone. Any fault raises, and the caller's transaction decides what survives. Split out of
+    `build_shop_export` on 9 October 2026 so the scheduled exports (`export_schedules.py`)
+    build their files here rather than through a second builder.
+    """
+    row = conn.execute(f"select {JOB_COLS} from exports where id = %s for update",
+                       (str(export_id),)).fetchone()
+    if row is None or row[1] != "queued":
+        return False
+    kind, fmt, basis, start, end, shop_id = row[6], row[7], row[8], row[9], row[10], row[14]
+    name = conn.execute("select coalesce(shop_name, tiktok_shop_id) from shops where id = %s",
+                        (str(shop_id),)).fetchone()[0]
+    built = now_utc()
+    table = BUILDERS[kind](conn, shop_id, start, end, basis)
+    data, content_type = render(fmt, _header(name, start, end, basis, built), table)
+    key = f"exports/{shop_id}/{export_id}/{storage.nonce()}.{fmt}"
+    storage.put_bytes(key, data, content_type)
+    conn.execute(
+        "update exports set status = 'ready', storage_key = %s, ready_at = %s, "
+        "expires_at = %s, size_bytes = %s, row_count = %s where id = %s",
+        (key, built, built + LIFE, len(data), max(len(table) - 2, 0), str(export_id)),
+    )
+    return True
+
+
 def build_shop_export(account_id: UUID, export_id: UUID) -> None:
     """Builds one queued export and stores it. Safe to call twice: a finished job is left alone."""
     try:
         with tenant(account_id) as conn:
-            row = conn.execute(f"select {JOB_COLS} from exports where id = %s for update",
-                               (str(export_id),)).fetchone()
-            if row is None or row[1] != "queued":
-                return
-            kind, fmt, basis, start, end, shop_id = row[6], row[7], row[8], row[9], row[10], row[14]
-            name = conn.execute("select coalesce(shop_name, tiktok_shop_id) from shops where id = %s",
-                                (str(shop_id),)).fetchone()[0]
-            built = now_utc()
-            table = BUILDERS[kind](conn, shop_id, start, end, basis)
-            data, content_type = render(fmt, _header(name, start, end, basis, built), table)
-            key = f"exports/{shop_id}/{export_id}/{storage.nonce()}.{fmt}"
-            storage.put_bytes(key, data, content_type)
-            conn.execute(
-                "update exports set status = 'ready', storage_key = %s, ready_at = %s, "
-                "expires_at = %s, size_bytes = %s, row_count = %s where id = %s",
-                (key, built, built + LIFE, len(data), max(len(table) - 2, 0), str(export_id)),
-            )
+            build_in(conn, export_id)
     except Exception:  # noqa: BLE001
         log.exception("export %s failed", export_id)
         reason = ("We could not prepare this download because of a fault at our end. Your "

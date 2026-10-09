@@ -23,7 +23,7 @@ export default async function AlertSettingsPage({ params }) {
     <section data-testid="alert-settings-screen">
       <header className="page-head">
         <h1>Alert settings</h1>
-        <p>These thresholds decide when a variant is low, coming back or raised as a discrepancy.</p>
+        <p>These thresholds decide when a variant is marked low on stock, when MyShopEdge reminds you about a return you have not checked, and when a rise in TikTok&rsquo;s stock count is raised for you to check.</p>
       </header>
       <AlertSettingsForm shopId={shopId} initial={result.data} />
     </section>

@@ -26,7 +26,7 @@ recent weeks read low and the screens mark them incomplete.
 THE MAPPING
 
 Every mapping rule is the one `testdata/ingest.py` applies, because the screens were built
-and checked against that ingester's output (A11.2, A11.3, A17.1, A19.5). Four differences:
+and checked against that ingester's output (A11.2, A11.3, A17.1, A19.5). Five differences:
 
   * No `cost_of_goods_sold` entry. Every figure reads cost from `product_costs` on each
     unit's sale date (A31.4), and the product and money queries already exclude the category.
@@ -38,6 +38,31 @@ and checked against that ingester's output (A11.2, A11.3, A17.1, A19.5). Four di
     ledger's idempotency index. The ingester's references could.
   * A stock write-off is not posted here. It follows the seller's own check of a returned
     item (checkReturnItem, A30.2), not anything TikTok states.
+  * The fields corrected on 9 October 2026, below. The ingester was left as it was, because
+    the generated payloads carry none of them and changing it would rebuild `rows.json`.
+    `testdata/posting_fields_check.py` covers them instead.
+
+FIELDS CORRECTED ON 9 OCTOBER 2026, FROM PRODUCTION
+
+Production then held 107 real statements, and 78 did not reconcile: the statement's own
+total differed from what its entries came to. Querying the ledger found why.
+
+  * Two fields repeat another field and are not posted (RESTATED). On every row on
+    production, `affiliate_commission_amount_before_pit` equalled `affiliate_commission_amount`
+    (216 of 216) and `tiktok_shop_shipping_incentive_amount` equalled
+    `shipping_fee_discount_amount` (36 of 36). Each statement's own fee and shipping totals
+    match only when they are left out. Posting both counted the commission twice.
+    Leaving the two out reconciled 104 of the 107 statements.
+  * `seller_discount_refund_amount`, which A11 lists as "Discounts returned on refund", was
+    never posted. It is posted now, as a refund line, so a refund reads as what the customer
+    got back. **Unverified**: the field is not stored, so its effect is inferred. On statement
+    7686421137164715798 the fees and shipping match TikTok's header to the penny and net sales
+    are short by exactly 801, the size of a discount on the refunded item. The other two
+    statements still out are short by 1 pence each. The first statement read after this
+    change that carries the field will settle it.
+  * `smart_promotion_fee_amount` and `free_return_subsidy_amount` were posted as
+    `unmapped_fee`. Their money was right, and they now carry their own categories, the
+    second as A11 lists it under return shipping.
 
 UNVERIFIED FIELDS
 
@@ -53,6 +78,7 @@ UNVERIFIED FIELDS
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
@@ -62,6 +88,7 @@ from zoneinfo import ZoneInfo
 
 from psycopg.types.json import Jsonb
 
+from .alert_notices import raise_alert_notices
 from .tiktok_api import (
     INVENTORY_MAX_PRODUCTS,
     INVENTORY_SEARCH_PATH,
@@ -80,6 +107,7 @@ from .tiktok_api import (
 )
 
 LONDON = ZoneInfo("Europe/London")
+logger = logging.getLogger("myshopedge.sync")
 
 # The ingester's maps, unchanged. testdata/ingest.py records where each came from.
 FEE_MAP = {
@@ -90,6 +118,7 @@ FEE_MAP = {
     "transaction_fee_amount": "transaction_fee",
     "refund_administration_fee_amount": "return_handling_fee",
     "cofunded_promotion_service_fee_amount": "smart_promotions_fee",
+    "smart_promotion_fee_amount": "smart_promotions_fee",
 }
 SHIP_MAP = {
     "actual_shipping_fee_amount": "shipping_fee",
@@ -97,7 +126,11 @@ SHIP_MAP = {
     "shipping_fee_discount_amount": "shipping_fee",
     "fbt_free_shipping_fee_amount": "fbt_shipping_fee",
     "return_shipping_fee_amount": "return_shipping",
+    "free_return_subsidy_amount": "return_shipping",
 }
+# Fields that repeat another field on the same transaction, so posting them counts the money
+# twice. Proved on production on 9 October 2026; see FIELDS CORRECTED in the docstring.
+RESTATED = {"affiliate_commission_amount_before_pit", "tiktok_shop_shipping_incentive_amount"}
 # UK VAT is not a MyShopEdge deduction category. Every other tax field is recorded when it
 # carries money, and the run is then partial, because money would otherwise leave the
 # ledger with nothing to find it by (A19.5).
@@ -359,16 +392,19 @@ def _post_order(p: _Poster, conn, order_id: str, tiktok_order: str, calc: dict[s
         spread("seller_discount", pence(rb.get("seller_discount_amount")), "seller_discount_amount")
         spread("refund", pence(rb.get("refund_subtotal_before_discount_amount")),
                "refund_subtotal_before_discount_amount")
+        spread("refund", pence(rb.get("seller_discount_refund_amount")), "seller_discount_refund_amount")
         breakdown = t.get("fee_tax_breakdown") or {}
         for fee, amount in (breakdown.get("fee") or {}).items():
+            if fee in RESTATED:
+                continue
             spread(FEE_MAP.get(fee, "unmapped_fee"), pence(amount), fee)
         for tax, amount in (breakdown.get("tax") or {}).items():
             if tax not in TAX_MAP and pence(amount):
                 p.tally.notes.append(f"statement {p.stmt}: tax field {tax} carried {amount} and is not mapped")
                 p.tally.failed += 1
         for ship, amount in (t.get("shipping_cost_breakdown") or {}).items():
-            if ship == "supplementary_component":
-                continue   # explains its parents, never summed (LED-23)
+            if ship == "supplementary_component" or ship in RESTATED:
+                continue   # explains its parents, never summed (LED-23), or repeats one
             spread(SHIP_MAP.get(ship, "unmapped_fee"), pence(amount), ship)
 
 
@@ -673,7 +709,30 @@ def sync_shop(conn, shop_id: UUID | str, client: Client, since: datetime, until:
     if all(s in ("completed", "partial") for s in outcome.values()):
         conn.execute("update shops set connection_status = 'connected', last_synced_at = now(), "
                      "first_synced_at = coalesce(first_synced_at, now()) where id = %s", (shop,))
+    _notify_order_limit(conn, shop, until)
+    # The low stock and return check notices S27's settings promise (STK-3), added 9 October
+    # 2026. They are not a domain: they write no `sync_runs` row and leave `outcome` as it
+    # was, so a fault in them never makes a read partial or failed. alert_notices explains.
+    raise_alert_notices(conn, shop, until, outcome)
     return outcome
+
+
+def _notify_order_limit(conn, shop: str, now: datetime) -> None:
+    """A16.3's notice at 100 per cent of the plan's orders, written here because every read of
+    a shop passes through `sync_shop` and Today only reads. `until` is the caller's now in every
+    caller (`window`, the webhook). The notice is account-wide, so the account is read from the
+    shop. It runs in its own savepoint and a fault is logged, not raised: A16.3 says the sync
+    never stops over the limit, so it must not stop over the notice either. The email A16.3
+    also asks for is not sent, because nothing here can send email (order_usage.py)."""
+    from .order_usage import notify_order_limit
+
+    try:
+        with conn.transaction():
+            account = conn.execute("select account_id from shops where id = %s",
+                                   (shop,)).fetchone()[0]
+            notify_order_limit(conn, account, now)
+    except Exception:  # noqa: BLE001  the notice must never stop a sync
+        logger.exception("order limit notice failed for shop %s", shop)
 
 
 # --- every due shop --------------------------------------------------------------------------

@@ -391,12 +391,17 @@ def _needs(**over):
     return Result(NEEDS_COLS, [tuple(base[c] for c in NEEDS_COLS)])
 
 
-def _today(products_rows, needs):
+USAGE_COLS = ["plan_slug", "status", "current_period_start", "current_period_end",
+              "orders_in_period"]
+
+
+def _today(products_rows, needs, usage_rows=()):
     today_view.tenant = with_conn(today_view, [
         ("count(*) filter (where le.settlement_id is null", Result(MONEY_LINE_COLS, MONEY_LINES)),
         ("with scoped as", Result(PRODUCT_COLS, products_rows)),
         ("left join order_settlements os", Result(SHOP_MONEY_COLS, SHOP_MONEY_ROWS)),
         ("seller_check_status = 'pending'", needs),
+        ("from order_quota", Result(USAGE_COLS, list(usage_rows))),
     ])
     r = client.get(f"/v1/shops/{SHOP}/today")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
@@ -489,6 +494,28 @@ def today_health():
                                refresh_succeeded_at=now - timedelta(hours=1)))
     _assert(all(i["type"] != "refresh_failed" for i in b["needs_you"]))
 check("GET today raises refresh, scope and sync failures at their ruled severities", today_health)
+
+
+def today_order_usage():
+    # A16.3. No subscription serves null; a live period serves the account's count and state.
+    _assert(_today([DESK], _needs())["order_usage"] is None, "no subscription, no usage")
+    now = datetime.now(timezone.utc)
+    start, end = now - timedelta(days=10), now + timedelta(days=20)
+    b = _today([DESK], _needs(), [("starter", "trialing", start, end, 80)])
+    u = b["order_usage"]
+    _assert(u["state"] == "approaching" and u["order_count"] == 80 and u["order_limit"] == 100, u)
+    _assert(u["plan_name"] == "Starter" and u["larger_plan"]["slug"] == "growth"
+            and u["larger_plan"]["order_limit"] == 500, u)
+    u = _today([DESK], _needs(), [("pro", "active", start, end, 2000)])["order_usage"]
+    _assert(u["state"] == "passed" and u["larger_plan"] is None, u)
+    u = _today([DESK], _needs(), [("growth", "active", start, end, 399)])["order_usage"]
+    _assert(u["state"] == "below", u)
+    # A period that has ended, or a plan that is not live, serves nothing.
+    old = _today([DESK], _needs(), [("growth", "active", start - timedelta(days=40),
+                                     start, 900)])["order_usage"]
+    _assert(old is None, old)
+    _assert(_today([DESK], _needs(), [("growth", "canceled", start, end, 900)])["order_usage"] is None)
+check("GET today serves the order count against the plan's limit (A16.3)", today_order_usage)
 
 
 # --- the two connection handlers
@@ -1884,6 +1911,76 @@ def settlement_fee_lines():
             and "platform_adjustment" not in cats and "unmapped_fee" in cats, cats)
 check("getSettlement lists each fee on its own line, summing to the statement's fees", settlement_fee_lines)
 
+
+
+# --- scheduled exports (MON-8), added 9 October 2026
+from app import export_schedules  # noqa: E402
+
+SCHED = UUID("33333333-3333-4333-8333-333333333333")
+SCHED_COLS = ["id","kind","format","basis","cadence","day_of_week","day_of_month","active",
+              "last_run_at","created_at"]
+
+def _sched(cadence="monthly", dow=None, dom=1, active=True, basis="sales"):
+    return (SCHED, "month_summary", "csv", basis, cadence, dow, dom, active, None, NOW)
+
+def list_schedules():
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("from export_schedules where shop_id", Result(SCHED_COLS, [_sched(), _sched("weekly", 1, None)]))])
+    r = client.get(f"/v1/shops/{SHOP}/export-schedules")
+    _assert(r.status_code == 200, r.text[:300])
+    b = r.json()["schedules"]
+    _assert([x["cadence"] for x in b] == ["monthly", "weekly"] and b[1]["day_of_week"] == 1, b)
+check("GET export-schedules lists the shop's schedules", list_schedules)
+
+def create_schedule_and_replay():
+    from app.idempotency import request_hash
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from idempotency_keys", Result([], [])),
+        ("select request_hash", Result(["h","s","r"], [])),
+        ("insert into export_schedules", Result(SCHED_COLS, [_sched(dom=5)])),
+        ("insert into idempotency_keys", Result([], [])),
+    ])
+    body = {"kind": "month_summary", "format": "csv", "basis": "sales", "cadence": "monthly", "day_of_month": 5}
+    r = client.post(f"/v1/shops/{SHOP}/export-schedules", json=body, headers={"Idempotency-Key": "sched-0001"})
+    _assert(r.status_code == 201 and r.json()["day_of_month"] == 5, r.text[:300])
+    first = r.json()
+    full = {**body, "day_of_week": None}
+    h = request_hash(str(SHOP), full)
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from idempotency_keys", Result([], [])),
+        ("select request_hash", Result(["h","s","r"], [(h, 201, first)])),
+    ])
+    r = client.post(f"/v1/shops/{SHOP}/export-schedules", json=body, headers={"Idempotency-Key": "sched-0001"})
+    _assert(r.status_code == 201 and r.json() == first, f"a repeat must return the first result: {r.text}")
+    r = client.post(f"/v1/shops/{SHOP}/export-schedules", headers={"Idempotency-Key": "sched-0002"},
+                    json={**body, "cadence": "weekly", "day_of_month": None, "day_of_week": 2, "basis": "cash"})
+    _assert(r.status_code == 422 and r.json()["code"] == "validation_failed", r.text)
+check("POST export-schedules creates, replays its key, and refuses a weekly cash schedule", create_schedule_and_replay)
+
+def update_schedule():
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("for update", Result(SCHED_COLS, [_sched()])),
+        ("update export_schedules set", Result(SCHED_COLS, [_sched(active=False)])),
+    ])
+    r = client.patch(f"/v1/shops/{SHOP}/export-schedules/{SCHED}", json={"active": False})
+    _assert(r.status_code == 200 and r.json()["active"] is False, r.text[:300])
+    export_schedules.tenant = with_conn(export_schedules, [("for update", Result(SCHED_COLS, []))])
+    r = client.patch(f"/v1/shops/{SHOP}/export-schedules/{SCHED}", json={"active": True})
+    _assert(r.status_code == 404 and r.json()["code"] == "schedule_not_found", r.text)
+    r = client.patch(f"/v1/shops/{SHOP}/export-schedules/{SCHED}", json={})
+    _assert(r.status_code == 422, r.text)
+check("PATCH export-schedules pauses, and answers 404 for a schedule it cannot see", update_schedule)
+
+def delete_schedule():
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from export_schedules", Result(["id"], [(SCHED,)]))])
+    r = client.delete(f"/v1/shops/{SHOP}/export-schedules/{SCHED}")
+    _assert(r.status_code == 204 and r.content == b"", r.text)
+    export_schedules.tenant = with_conn(export_schedules, [
+        ("delete from export_schedules", Result(["id"], []))])
+    r = client.delete(f"/v1/shops/{SHOP}/export-schedules/{SCHED}")
+    _assert(r.status_code == 404 and r.json()["code"] == "schedule_not_found", r.text)
+check("DELETE export-schedules answers 204, then 404", delete_schedule)
 
 print()
 if failures:

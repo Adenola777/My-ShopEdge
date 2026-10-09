@@ -24,6 +24,16 @@
  * - `first_read_complete` opens the shop's Today. Another change is adding that notice, and
  *   its writer was not in this tree when the link was written, so the link rests on
  *   `shop_id` alone.
+ * - `order_limit_passed`, written by `notify_order_limit` in order_usage.py with no shop,
+ *   because the plan's limit is the account's, opens Today of the shop whose page this is,
+ *   where the order count is shown (A16.3, 9 October 2026).
+ * - `low_stock`, written by `low_stock_notices` in alert_notices.py with `entity_type` 'sku'
+ *   and the SKU's id, opens that SKU's stock screen (S26), as S7 links each variant.
+ * - `return_unchecked`, written by `return_check_notices` in alert_notices.py with
+ *   `entity_type` 'return' and the return's id, opens Check returns (S8). S8 lists every
+ *   return awaiting a check on one page and has no address for one return.
+ * - `scheduled_export_ready`, written by `export_schedules._notify` with `entity_type` 'export'
+ *   and the export's id, opens Export (S23), whose recent files list it. Added 9 October 2026.
  *
  * Nothing in the service writes a notice about a discrepancy today, so none links to
  * Discrepancies.
@@ -56,8 +66,17 @@ function noticeLink(n, shopId) {
   if (n.type === "reconnect_needed" && n.entity_type === "shop" && n.entity_id) {
     return { href: `/shops/${encodeURIComponent(n.entity_id)}/connection-problem`, label: "Reconnect your shop" };
   }
-  if (n.type === "first_read_complete") {
+  if (n.type === "low_stock" && n.entity_type === "sku" && n.entity_id) {
+    return { href: `/shops/${shop}/stock/${encodeURIComponent(n.entity_id)}`, label: "See this item's stock" };
+  }
+  if (n.type === "return_unchecked" && n.entity_type === "return") {
+    return { href: `/shops/${shop}/returns`, label: "Check returns" };
+  }
+  if (n.type === "first_read_complete" || n.type === "order_limit_passed") {
     return { href: `/shops/${shop}/today`, label: "See Today" };
+  }
+  if (n.type === "scheduled_export_ready") {
+    return { href: `/shops/${shop}/money/export`, label: "Go to Export" };
   }
   return null;
 }
@@ -106,8 +125,11 @@ export default async function NotificationsPage({ params, searchParams }) {
         <section className="state">
           <h2>{resolved ? "Nothing resolved yet." : "You have no open notices."}</h2>
           <p>
-            MyShopEdge tells you here when TikTok&rsquo;s stock count rises and MyShopEdge reduces
-            your adjustment, or when your TikTok connection is close to expiring.
+            MyShopEdge tells you here when an item runs low on stock, when a return has waited
+            longer than your Alerts setting for your check, when TikTok&rsquo;s stock count rises
+            and MyShopEdge reduces your adjustment, when your shops pass the plan&rsquo;s order
+            limit, when your TikTok connection is close to expiring, or when a scheduled export
+            is ready.
           </p>
         </section>
       ) : (
