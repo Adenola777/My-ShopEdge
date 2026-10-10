@@ -1,0 +1,46 @@
+/* The three legal pages (privacy, terms, cookies). The colours and fonts follow site/index.html. */
+:root {
+  --ink: #12141C;
+  --ink-soft: #5B6472;
+  --ink-faint: #8C93A1;
+  --white: #FFFFFF;
+  --paper-alt: #F6F7F9;
+  --line: #E7E8EC;
+  --orange-solid: #D9480F;
+  color-scheme: light;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; background: var(--white); color: var(--ink); }
+body {
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, Segoe UI, sans-serif;
+  font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: -0.01em; line-height: 1.25; }
+h1 { font-size: clamp(30px, 5vw, 40px); margin: 8px 0 6px; }
+h2 { font-size: 21px; margin: 40px 0 10px; }
+h3 { font-size: 17px; margin: 24px 0 6px; }
+a { color: var(--orange-solid); }
+.wrap { max-width: 820px; margin: 0 auto; padding: 0 16px; }
+header { border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 76px; }
+header img { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; }
+header nav a { color: var(--ink-soft); text-decoration: none; }
+header nav a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+main { padding: 32px 0 56px; }
+.dates { color: var(--ink-soft); font-size: 14px; margin: 0 0 24px; }
+.table-wrap { overflow-x: auto; margin: 12px 0 20px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { background: var(--paper-alt); font-weight: 600; }
+code { font-size: 13.5px; background: var(--paper-alt); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+ul { padding-left: 22px; }
+li { margin-bottom: 6px; }
+address { font-style: normal; }
+footer { background: var(--paper-alt); padding: 28px 0; font-size: 13.5px; color: var(--ink-soft); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+footer a { color: var(--ink-soft); }
+@media (max-width: 560px) {
+  header .wrap { height: auto; padding-top: 14px; padding-bottom: 14px; flex-direction: column; align-items: flex-start; }
+  header img { height: 36px; }
+}
