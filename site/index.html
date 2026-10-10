@@ -292,6 +292,27 @@
   .pricing-note { margin: 22px 0 0; font-size: 0.95rem; color: var(--ink-soft); max-width: 70ch; }
   .final-note { margin: 18px 0 0; color: var(--ink-soft); font-size: 0.98rem; }
   @media (max-width: 860px) { .pricing-grid { grid-template-columns: 1fr; } .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
+
+  /* ---------- Revised 10 October 2026 after the owner's review ---------- */
+  .hero-shot { width: 100%; max-width: 360px; }
+  .feature-visual img { max-width: 340px; }
+  .shot-pair { grid-template-columns: repeat(2, minmax(0, 340px)); }
+  .how-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items:center; }
+  .steps-grid--stacked { grid-template-columns: 1fr; gap: 32px; }
+  .mobile-menu { display:none; position: relative; margin-left: auto; margin-right: 12px; }
+  .mobile-menu summary { list-style: none; cursor: pointer; padding: 8px; border-radius: 10px; color: var(--ink); }
+  .mobile-menu summary::-webkit-details-marker { display: none; }
+  .mobile-menu summary svg { width: 24px; height: 24px; display:block; }
+  .mobile-menu[open] summary { background: var(--paper-alt); }
+  .mobile-menu__panel { position:absolute; right: 0; top: calc(100% + 8px); background: var(--white); border-radius: 14px; padding: 8px; min-width: 210px; box-shadow: 0 16px 40px -12px rgba(18,20,28,0.25); display:flex; flex-direction:column; z-index: 50; }
+  .mobile-menu__panel a { padding: 12px 14px; font-size: 15px; font-weight: 500; text-decoration:none; color: var(--ink); border-radius: 10px; }
+  .mobile-menu__panel a:hover { background: var(--paper-alt); }
+  @media (max-width: 860px) {
+    .mobile-menu { display:block; }
+    .how-grid { grid-template-columns: 1fr; gap: 36px; }
+    .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 420px) { .nav-actions .btn-ghost { display:none; } }
 </style>
 </head>
 <body>
@@ -307,6 +328,17 @@
         <a href="#trust">Security</a>
         <a href="#pricing">Pricing</a>
       </div>
+      <details class="mobile-menu">
+        <summary aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <div class="mobile-menu__panel">
+          <a href="#problem">Why MyShopEdge</a>
+          <a href="#how">How it works</a>
+          <a href="#features">Features</a>
+          <a href="#trust">Security</a>
+          <a href="#pricing">Pricing</a>
+          <a href="https://app.myshopedge.inspirecraftglobal.com/start">Sign in</a>
+        </div>
+      </details>
       <div class="nav-actions">
         <a class="btn-ghost" href="https://app.myshopedge.inspirecraftglobal.com/start">Sign in</a>
         <a class="btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Get started</a>
@@ -334,8 +366,7 @@
       </div>
       <div class="hero-visual-wrap">
         <div class="hero-glow" aria-hidden="true"></div>
-        <img class="hero-shot" src="shots/hero-money.webp" width="600" alt="Where the money went, showing gross sales, seller discounts, net sales and each TikTok fee for the demo shop">
-        <img class="hero-shot second" src="shots/hero-overview.webp" width="600" alt="The Overview screen for the demo shop">
+        <img class="hero-shot" src="shots/hero-money.webp" width="720" height="1558" alt="Where the money went for the demo shop: gross sales of &pound;7,173.00, seller discounts, net sales and each TikTok fee">
       </div>
     </div>
   </header>
@@ -368,6 +399,24 @@
     </div>
   </section>
 
+  <section class="band" id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow-line"><span>How it works</span></div>
+        <h2>You are set up in three steps.</h2>
+        <p>Connect your shop once, and MyShopEdge updates your figures every day.</p>
+      </div>
+      <div class="how-grid">
+      <div class="steps-grid steps-grid--stacked">
+        <div class="step-card"><span class="step-badge">1</span><h3>Connect your TikTok Shop</h3><p>You approve read-only access on TikTok&rsquo;s own page, and MyShopEdge starts reading up to 24 months of your orders and payouts.</p></div>
+        <div class="step-card"><span class="step-badge">2</span><h3>Choose a plan and start your trial</h3><p>You add a card through Stripe and pay nothing today. Your 30-day free trial starts when you finish.</p></div>
+        <div class="step-card"><span class="step-badge">3</span><h3>See what you keep</h3><p>Your net proceeds are there first. Add product costs whenever you are ready to see gross profit by product.</p></div>
+      </div>
+      <div class="feature-visual"><img src="shots/overview.webp" width="720" loading="lazy" alt="The Overview screen for the demo shop, with gross sales of &pound;7,173.00 and gross profit after returns of &pound;3,387.95 this month"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="band alt" id="features">
     <div class="wrap">
       <div class="section-head">
@@ -378,8 +427,8 @@
         <p class="callout">Missing costs are clearly shown, so you know when a profit figure is incomplete.</p>
       </div>
       <div class="shot-pair">
-        <img src="shots/costs-choice.webp" width="600" loading="lazy" alt="The question Do you have your product costs, with Excel or CSV, type them in, and skip costs for now">
-        <img src="shots/costs-products.webp" width="600" loading="lazy" alt="The Products screen for the demo shop, with the product costs card and products ranked by gross profit after returns">
+        <img src="shots/costs-choice.webp" width="720" loading="lazy" alt="The question Do you have your product costs, with Excel or CSV, type them in, and skip costs for now">
+        <img src="shots/costs-manual.webp" width="720" loading="lazy" alt="Typing product costs, with the share of units sold in the last 30 days that have a cost">
       </div>
     </div>
   </section>
@@ -392,7 +441,7 @@
           <h3>Every fee, refund and adjustment is named and reconciled.</h3>
           <p>See platform commission, affiliate commission, shipping, promotions, refunds and other deductions separately. Nothing is folded into an unexplained total.</p>
         </div>
-        <div class="feature-visual"><img src="shots/money-fees.webp" alt="Each TikTok fee on its own line, then net proceeds before refunds, refunds and net proceeds, for the demo shop" width="600" loading="lazy"></div>
+        <div class="feature-visual"><img src="shots/money-fees.webp" width="720" alt="Each TikTok fee on its own line, then net proceeds before refunds, refunds and net proceeds, for the demo shop" loading="lazy"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -401,7 +450,7 @@
           <h3>See which products earn you the most, and which cost you.</h3>
           <p>Rank products by gross profit after returns, and see the units, returns and net proceeds behind each one.</p>
         </div>
-        <div class="feature-visual"><img src="shots/products-ranking.webp" alt="Products ranked by gross profit after returns for the demo shop" width="600" loading="lazy"></div>
+        <div class="feature-visual"><img src="shots/products-ranking.webp" width="720" alt="Products ranked by gross profit after returns for the demo shop" loading="lazy"></div>
       </div>
 
       <div class="feature-row">
@@ -411,7 +460,7 @@
           <p>Export a monthly summary, a full ledger or one row per order line in Excel or CSV. Choose sales basis to review activity by the day of sale, or cash basis to review it by the month TikTok settled it. A month summary has the same totals as MyShopEdge shows for the same period and basis.</p>
           <p class="feature-sub">On the Pro plan, schedule weekly or monthly exports and receive an in-app notification when your file is ready.</p>
         </div>
-        <div class="feature-visual"><img src="shots/exports.webp" alt="The Exports screen, with what to export, period, basis and format" width="600" loading="lazy"></div>
+        <div class="feature-visual"><img src="shots/exports.webp" width="720" alt="The Exports screen, with what to export, period, basis and format" loading="lazy"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -420,7 +469,7 @@
           <h3>Every return is checked, counted once and reflected in your figures.</h3>
           <p>Mark returns as resellable or unsellable so stock, write-offs and product-profit figures remain accurate.</p>
         </div>
-        <div class="feature-visual"><img src="shots/returns.webp" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back" width="600" loading="lazy"></div>
+        <div class="feature-visual"><img src="shots/returns.webp" width="720" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back" loading="lazy"></div>
       </div>
 
       <div class="feature-row">
@@ -430,7 +479,7 @@
           <p>MyShopEdge tracks your rolling 12-month turnover against the current &pound;90,000 VAT registration threshold and shows how much headroom remains. It also gives an estimated Income Tax and National Insurance reserve for sole traders, based on the shop data MyShopEdge holds.</p>
           <p class="feature-sub">Tax figures are estimates based on the information in MyShopEdge and are not tax advice. Scottish Income Tax rates are not yet included.</p>
         </div>
-        <div class="feature-visual"><img src="shots/tax.webp" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve" width="600" loading="lazy"></div>
+        <div class="feature-visual"><img src="shots/tax.webp" width="720" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve" loading="lazy"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -439,7 +488,7 @@
           <h3>Know what is running out before it does.</h3>
           <p>See what is on hand, what has sold, what is coming back and what needs attention first.</p>
         </div>
-        <div class="feature-visual"><img src="shots/stock.webp" alt="The Stock screen, with units on hand and days of cover for each product" width="600" loading="lazy"></div>
+        <div class="feature-visual"><img src="shots/stock.webp" width="720" alt="The Stock screen, with units on hand and days of cover for each product" loading="lazy"></div>
       </div>
     </div>
   </section>
@@ -462,20 +511,7 @@
     </div>
   </section>
 
-  <section class="band" id="how">
-    <div class="wrap">
-      <div class="section-head">
-        <div class="eyebrow-line"><span>How it works</span></div>
-        <h2>You are set up in three steps.</h2>
-        <p>Connect your shop once, and MyShopEdge updates your figures every day.</p>
-      </div>
-      <div class="steps-grid">
-        <div class="step-card"><span class="step-badge">1</span><h3>Connect your TikTok Shop</h3><p>You approve read-only access on TikTok&rsquo;s own page, and MyShopEdge starts reading up to 24 months of your orders and payouts.</p></div>
-        <div class="step-card"><span class="step-badge">2</span><h3>Choose a plan and start your trial</h3><p>You add a card through Stripe and pay nothing today. Your 30-day free trial starts when you finish.</p></div>
-        <div class="step-card"><span class="step-badge">3</span><h3>See what you keep</h3><p>Your net proceeds are there first. Add product costs whenever you are ready to see gross profit by product.</p></div>
-      </div>
-    </div>
-  </section>
+
 
   <section class="band alt" id="pricing">
     <div class="wrap">
@@ -553,5 +589,11 @@
   </footer>
 </section>
 
+<script>
+  // Close the phone menu once a link in it is chosen.
+  document.querySelectorAll(".mobile-menu__panel a").forEach(function (a) {
+    a.addEventListener("click", function () { a.closest("details").removeAttribute("open"); });
+  });
+</script>
 </body>
 </html>

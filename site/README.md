@@ -46,4 +46,19 @@ Where the brief's copy promised more than the app does, the copy was narrowed:
 The read-only claims stand as before, though A24 records that the minimal TikTok scopes have
 never been checked against them.
 
+Revised later on 10 October 2026 after the owner's review of the page:
+
+- The screenshots are retaken on a busier made-up shop. `testdata/generate_payloads.py` gained
+  a showcase mode (`MSE_TESTDATA_SHOWCASE=1`) that replaces the August test orders with 235
+  ordinary ones settled in six statements, with no unrecognised fee, no unexplained
+  adjustment and no reserve, so a visitor sees a working shop rather than the edge cases the
+  tests need. `testdata/rows_showcase.json` holds its rows; `load_demo.py` loads it with
+  `MSE_ROWS=rows_showcase.json`. The test data itself is unchanged, byte for byte.
+- The hero shows one screen at up to 360 px wide, so its figures can be read, instead of two
+  at 240 px.
+- Below 860 px the links sit behind a menu button, which also carries Sign in.
+- How it works follows the problem, so "See how it works" no longer jumps past every feature.
+- Product costs shows the cost question and the typing screen, so the Products screen is not
+  shown twice.
+
 The page needs no build.
