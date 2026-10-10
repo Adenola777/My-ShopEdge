@@ -26,8 +26,13 @@ Since 9 October 2026 each run then builds the scheduled exports due on today's L
 variables are absent is reported as not built, is not marked as run, and fails nothing. Before
 migration 0030 is applied the schedules cannot be listed, and the run says so and fails
 nothing. A scheduled export that fails for any other reason fails the run, so it shows in the
-job's history. No email is sent: the service has no email provider, so the in-app notice is
-the only telling.
+job's history.
+
+Since 10 October 2026 each run then emails the notices NTF-2, A16.3 and A5.7 ask for, through
+Resend (`app.notice_email.send_due`). Without `RESEND_API_KEY` on the job it reports "not sent"
+and leaves every notice pending. Before migration 0031 is applied the notices cannot be listed,
+and the run says so and fails nothing. A notice that Resend refuses for the third time fails
+the run, so it shows in the job's history.
 
 The secrets come from the environment and are never printed. The output names shops by
 MyShopEdge id and gives TikTok's own error code and message when a call is refused.
@@ -41,7 +46,7 @@ import psycopg
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app import data_api_guard, export_schedules  # noqa: E402
+from app import data_api_guard, export_schedules, notice_email  # noqa: E402
 from app.tiktok_sync import run_due  # noqa: E402
 
 
@@ -66,12 +71,33 @@ def scheduled_exports() -> bool:
     return errors > 0
 
 
+def notice_emails() -> bool:
+    """Emails the notices due and prints what happened. True if one failed for good."""
+    try:
+        summary = notice_email.send_due()
+    except (psycopg.errors.UndefinedFunction, psycopg.errors.UndefinedColumn):
+        print("Notice emails were not sent, because migration 0031 is not applied to this "
+              "database.")
+        return False
+    except Exception as err:  # noqa: BLE001  the sync above has already been committed
+        print(f"Notice emails could not be listed: {type(err).__name__}: {err}")
+        return True
+    if summary["state"] == "unconfigured":
+        print("Notice emails were not sent, because RESEND_API_KEY is not set on this job.")
+        return False
+    print(f"Notice emails: {summary['sent']} sent, {summary['not_emailed']} not emailed by rule, "
+          f"{summary['retry']} refused and kept for another try, {summary['failed']} failed "
+          f"for good, across {summary['accounts']} account(s), {summary['errors']} with an error.")
+    return summary["failed"] > 0 or summary["errors"] > 0
+
+
 if __name__ == "__main__":
     results = run_due()
     print(json.dumps(results, indent=2, default=str))
     failed = [r for r in results if "error" in r]
     print(f"{len(results)} shop(s) run, {len(failed)} with an error.")
     exports_failed = scheduled_exports()
+    emails_failed = notice_emails()
     state, sentence = data_api_guard.check()
     print(sentence)
-    sys.exit(1 if failed or exports_failed or state == "on" else 0)
+    sys.exit(1 if failed or exports_failed or emails_failed or state == "on" else 0)

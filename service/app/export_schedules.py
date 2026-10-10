@@ -42,9 +42,9 @@ transaction rolls back, so the schedule is not marked as run and no notice is se
 result says so. A file whose upload succeeded before a later step failed is left in the store
 without a row, under the shop's `exports/` prefix.
 
-**Email waits on a provider.** A5.7 says the seller is told in the app and by email. Nothing
-in this service can send email and the owner has not chosen a provider, so the in-app notice
-is the only telling.
+**Email.** A5.7 says the seller is told in the app and, if they have not opted out, by email.
+Since 10 October 2026 `notice_email` emails the `scheduled_export_ready` notice through Resend,
+once migration 0031 is applied.
 
 **Plans.** A18.6 and the price sheet sell scheduled exports on Pro. No code gates any feature
 by plan and the owner has not ruled which features to gate, so this is not gated.

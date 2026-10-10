@@ -29,6 +29,10 @@ the raw body for the de-duplication key, so an identical redelivery is always dr
 the field names turn out to be. The signature algorithm, which is the part that must be exact,
 is recorded. The data-update behaviour is checked against crafted payloads only, because no
 real TikTok event has reached this receiver (the same standing as the rest of the TikTok code).
+
+Since 10 October 2026 a deauthorisation also writes a `connection_revoked` notice, which NTF-2
+names, and after a deauthorisation or an expiry warning the account's pending notices are
+emailed at once through `notice_email.send_now` rather than at the next daily run.
 """
 
 from __future__ import annotations
@@ -44,7 +48,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Header, Request, Response
 from psycopg.types.json import Jsonb
 
-from . import db
+from . import db, notice_email
 from .problems import Problem
 
 logger = logging.getLogger("myshopedge.tiktok_webhook")
@@ -142,7 +146,21 @@ def process_event(dedupe_key: str, account_id: str, shop_id: str, event_type: st
                              (shop_id,))
                 conn.execute("update tiktok_connections set revoked_at = coalesce(revoked_at, now()) "
                              "where shop_id = %s", (shop_id,))
+                # NTF-2 names a revoked connection as a critical event to tell the seller
+                # about. Keyed on the event, so a redelivery of the same event adds nothing.
+                conn.execute(
+                    "insert into notifications (account_id, shop_id, type, severity, title, body, "
+                    "entity_type, entity_id, dedupe_key) values "
+                    "(%s, %s, 'connection_revoked', 'critical', %s, %s, 'shop', %s, %s) "
+                    "on conflict (account_id, dedupe_key) do nothing",
+                    (account_id, shop_id,
+                     "Your TikTok Shop is no longer connected to MyShopEdge.",
+                     "TikTok told MyShopEdge that the shop removed its access. MyShopEdge can no "
+                     "longer read orders or payouts for this shop. Connect the shop again to "
+                     "carry on.",
+                     shop_id, f"connection_revoked:{shop_id}:{dedupe_key}"))
             mark(dedupe_key, "done", "seller deauthorised: shop disconnected and tokens revoked")
+            notice_email.send_now(account_id)
             return
 
         if kind == "authorization_expiring":
@@ -160,6 +178,7 @@ def process_event(dedupe_key: str, account_id: str, shop_id: str, event_type: st
                      "Reconnect your shop so MyShopEdge keeps reading your orders and payouts.",
                      shop_id, f"reconnect_needed:{shop_id}"))
             mark(dedupe_key, "done", "authorisation expiring: shop marked needs_reconnect")
+            notice_email.send_now(account_id)
             return
 
         if kind == "sync":

@@ -42,11 +42,12 @@ THE THRESHOLDS
 arithmetic only, so 80 of 100 is approaching and 100 of 100 is passed. Nothing stops at either:
 the sync, the figures and the exports carry on (A16.3, "What never happens").
 
-THE EMAIL A16.3 ASKS FOR IS NOT SENT
+THE EMAIL A16.3 ASKS FOR
 
-Nothing in this service can send email, and the owner has not chosen a provider. In its place
 `notify_order_limit` writes one in-app notice per account per billing period when the count
-reaches 100 per cent. The email waits on a provider.
+reaches 100 per cent. Since 10 October 2026 `notice_email` emails that notice through Resend
+unless the seller has switched email off, once migration 0031 is applied. The note of
+9 October saying the email waited on a provider is replaced by this one.
 """
 
 from __future__ import annotations

@@ -226,7 +226,8 @@ def refresh_connection(conn, shop_id: UUID | str, now: datetime | None = None,
 
     Returns `not_due`, `refreshed` or `failed`. A failure is recorded with TikTok's own code
     and message (0022), which is what Needs you reads. When the access token has already
-    lapsed the shop is marked `needs_reconnect`, because nothing can be read from it.
+    lapsed the shop is marked `needs_reconnect`, because nothing can be read from it, and a
+    `connection_lapsed` notice is written, which `notice_email` emails.
     """
     now = now or datetime.now(timezone.utc)
     row = conn.execute(
@@ -246,6 +247,21 @@ def refresh_connection(conn, shop_id: UUID | str, now: datetime | None = None,
         if row[1] is None or row[1] <= now:
             conn.execute("update shops set connection_status = 'needs_reconnect' where id = %s",
                          (str(shop_id),))
+            # NTF-2 names a failing feed as a critical event to tell the seller about, added
+            # 10 October 2026. One notice per lapsed token: the key carries the expiry, so a
+            # refresh that fails again the next day adds nothing, and a later lapse of a new
+            # token is told again.
+            conn.execute(
+                "insert into notifications (account_id, shop_id, type, severity, title, body, "
+                "entity_type, entity_id, dedupe_key) "
+                "select account_id, id, 'connection_lapsed', 'critical', %s, %s, 'shop', id, %s "
+                "from shops where id = %s "
+                "on conflict (account_id, dedupe_key) do nothing",
+                ("MyShopEdge can no longer read your TikTok Shop.",
+                 "TikTok refused to renew MyShopEdge's access to the shop. Connect the shop "
+                 "again so MyShopEdge can read your orders and payouts.",
+                 f"connection_lapsed:{shop_id}:{row[1].isoformat() if row[1] else 'none'}",
+                 str(shop_id)))
         return "failed"
     # The same fields as the code exchange, read the same way. That the refresh answer also
     # carries Unix times is UNVERIFIED: no refresh has reached TikTok yet.

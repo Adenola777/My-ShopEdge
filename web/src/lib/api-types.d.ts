@@ -39,7 +39,15 @@ export interface paths {
         delete: operations["deleteMe"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change the account's email setting
+         * @description Switches email notices on or off (NTF-2: "Opted-out sellers receive no email"). It is
+         *     the only field a seller can change, because the name and email come from the sign-in
+         *     provider. Setting the value the account already has changes nothing, so a repeated
+         *     request is harmless. Added 10 October 2026 with migration 0031; before that migration
+         *     is applied the service answers 503 `migration_pending` and changes nothing.
+         */
+        patch: operations["updateMe"];
         trace?: never;
     };
     "/me/deletion/cancel": {
@@ -1705,6 +1713,13 @@ export interface components {
              *     deletion with cancelAccountDeletion. Null for an account that is not closing.
              */
             deletion_scheduled_at?: string | null;
+            /**
+             * @description Whether MyShopEdge emails this account's critical notices, the plan limit notice
+             *     and scheduled export notices (NTF-2, A16.3, A5.7). On unless the seller switches it
+             *     off with updateMe. Every notice still appears in the notification centre.
+             * @default true
+             */
+            email_notices: boolean;
         };
         Shop: {
             /** Format: uuid */
@@ -2726,6 +2741,52 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["RateLimited"];
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email_notices: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The account as it now stands */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description The account is closing, suspended, or its email is not verified */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            /** @description Migration 0031 is not applied to this database yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     cancelAccountDeletion: {
