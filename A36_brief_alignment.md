@@ -123,8 +123,29 @@ Desk's costs set aside, gross profit so far read £2,660.07, equal to the sum of
 products' gross profit after returns, and coverage read 73.9% with 1 product and £1,675.00 of
 sales missing, the same on Money and Products.
 
-## A36.6 Still to build, each step with the owner's approval
-4. The navigation in A36.1 item 4.
+## A36.6 Built in step 4, 10 October 2026
+
+- **The map** (`web/src/lib/nav.js`). The eight areas are in the brief's order: Overview,
+  Reconcile, Products, Returns, Stock, Exports, VAT and tax, and Settings. Returns and Stock
+  were one area until now, and Exports was a page of Reconcile. No page address changed.
+- **A larger screen.** The sidebar lists all eight, with Settings at its foot. The area in
+  use opens to list its pages.
+- **A phone.** The bottom tabs are Overview, Reconcile, Products, Exports and More. The new
+  More page (`/shops/{id}/more`) lists Returns, Stock, VAT and tax, Notifications, Settings,
+  Help and glossary, and Sign out. More is marked while the seller is on it or on any area it
+  holds.
+- **The top bar** keeps the Updated stamp and the bell. The Settings gear is removed, because
+  Settings is now in the sidebar and on More.
+- **Back links.** Returns no longer points back to Stock, and Exports no longer points back to
+  Where the money went, because each is now an area of its own.
+- **The glossary**, which step 3 missed, now defines net sales as gross sales less seller
+  discounts and less refunds, and adds Gross profit so far.
+
+Checked in a browser on the local copy at 390 and 1280 pixels wide, on ten pages. Each page
+marked the right area, the phone showed the five tabs, the sidebar showed the eight, and no
+page scrolled sideways.
+
+## A36.7 Still to build, each step with the owner's approval
 5. Overview and Reconcile, with the six statuses and "Explain this payout".
 6. Products, Returns, Stock, Exports, and VAT and tax, as the brief sets them out.
 7. The cost upload: a template, a preview, and the five row statuses. Existing costs are shown
