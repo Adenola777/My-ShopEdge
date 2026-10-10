@@ -14,7 +14,7 @@ and the refresh refusal to a stand-in. Drop the database afterwards.
 
 What it checks:
 - With RESEND_API_KEY unset, the sweep sends nothing and leaves every notice pending.
-- Each of the five emailed types is sent once, to the account's email, from the default sender,
+- Each emailed type is sent once, to the account's email, from the default sender,
   with the notice's own title as the subject, the Bearer key, and `notice-<id>` as the
   idempotency key; the notice records `sent`, the time, one attempt and Resend's id.
 - A second sweep sends nothing.
@@ -127,8 +127,9 @@ def main():
     # --- one account, configured -------------------------------------------------------------
     os.environ["RESEND_API_KEY"] = "re_test_not_a_real_key"
     counts = notice_email.send_for_account(a, NOW, fake)
-    check(counts == {"sent": 5, "not_emailed": 3, "failed": 0, "retry": 0},
-          f"account A: five sent, three not emailed ({counts})")
+    n = len(notice_email.EMAILED_TYPES)
+    check(counts == {"sent": n, "not_emailed": 3, "failed": 0, "retry": 0},
+          f"account A: one sent per emailed type ({n}), three not emailed ({counts})")
     check(state(url, b_notice)[0] == "pending", "account B's notice is untouched by A's sweep")
     to = {tuple(p["to"]) for _, _, p in fake.sent}
     check(to == {("mail-1@example.test",)}, "every email goes to account A's address")

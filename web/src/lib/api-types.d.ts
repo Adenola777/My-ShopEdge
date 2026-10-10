@@ -1459,6 +1459,306 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every account
+         * @description Every account, newest first, with its plan and number of shops. `email` narrows the list to the one account that holds that address, compared without regard to case, which is how an admin finds the account named in a data protection request.
+         */
+        get: operations["listAdminAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every shop and its connection
+         * @description Every shop with its account, its connection state, its last sync, the latest token refresh failure, and how many of its statements reconcile and how many do not. No TikTok token is returned, and no money figure (A34.8, ruling 4).
+         */
+        get: operations["listAdminShops"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/sync-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The latest sync runs
+         * @description The latest sync runs across every shop, newest first, with each run's status, record counts and error.
+         */
+        get: operations["listAdminSyncRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/webhook-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The latest TikTok webhook events
+         * @description The latest TikTok webhook events, newest first, with how each was processed. The payload is not returned.
+         */
+        get: operations["listAdminWebhookEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/notice-emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notice emails by state, and the ones not yet sent
+         * @description How many notices are in each email state, and the notices whose email is pending or has failed, with Resend's last answer.
+         */
+        get: operations["getAdminNoticeEmails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The latest audit log entries
+         * @description The latest audit log entries across every account, newest first. Every admin action writes one; views write none.
+         */
+        get: operations["listAdminAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/figures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sign-ups, trials and plans
+         * @description Sign-ups by month in Europe/London, and per plan the accounts on trial, paying and with a failed payment. Revenue is each paying plan's list price each month, not money taken, because Stripe holds the money actually taken (A34.5).
+         */
+        get: operations["getAdminFigures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{accountId}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend an account
+         * @description Suspends an active account (A34.8, rulings 2 and 3). Renewal is stopped at Stripe first, so a Stripe failure changes nothing. The seller is then refused on every route but getMe, the daily sync skips the account, and a critical `account_suspended` notice is written and emailed. Writes one audit log entry.
+         */
+        post: operations["suspendAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{accountId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reactivate a suspended account
+         * @description Reactivates a suspended account. Renewal is turned back on only where the suspension stopped it, and an `account_reactivated` notice is written and emailed. Writes one audit log entry.
+         */
+        post: operations["reactivateAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shops/{shopId}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync one shop now
+         * @description Refreshes and syncs one shop in the background, as the daily run does. Writes one audit log entry.
+         */
+        post: operations["syncShopNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/notifications/{notificationId}/retry-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Try a failed notice email again
+         * @description Puts a notice whose email failed back to pending with no attempts, and runs the account's email sweep in the background. Writes one audit log entry.
+         */
+        post: operations["retryNoticeEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{accountId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build an account's data export on its seller's request
+         * @description Builds an account's data export on its seller's request, as requestAccountExport does for the seller. Writes one audit log entry.
+         */
+        post: operations["requestAccountExportForAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{accountId}/export/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An account export's status and signed link
+         * @description An account export's status, and its signed link once ready, as getAccountExport gives the seller.
+         */
+        get: operations["getAccountExportForAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{accountId}/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close an account for deletion on its seller's request
+         * @description Closes an account for deletion on its seller's request, with the thirty days A30.1 sets, exactly as deleteMe does. A suspended account is refused with 409 and must be reactivated first. Writes one audit log entry.
+         */
+        post: operations["deleteAccountForSeller"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{accountId}/deletion/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel an account's deletion on its seller's request
+         * @description Cancels a deletion within the thirty days, on its seller's request, exactly as cancelAccountDeletion does. Writes one audit log entry.
+         */
+        post: operations["cancelAccountDeletionForSeller"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2574,6 +2874,179 @@ export interface components {
                 amount?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
                 rule_key?: string | null;
             }[];
+        };
+        AccountStatusOut: {
+            /** Format: uuid */
+            account_id: string;
+            /** @enum {string} */
+            status: "active" | "suspended";
+            renewal: string;
+        };
+        AdminAccount: {
+            /** Format: uuid */
+            account_id: string;
+            email: string;
+            display_name?: string | null;
+            /** @enum {string} */
+            status: "active" | "suspended" | "deleted";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            deleted_at?: string | null;
+            /** Format: date-time */
+            erased_at?: string | null;
+            email_notices: boolean;
+            plan_slug?: string | null;
+            plan_status?: string | null;
+            /** Format: date-time */
+            trial_end?: string | null;
+            /** Format: date-time */
+            current_period_end?: string | null;
+            cancel_at_period_end?: boolean | null;
+            shop_count: number;
+        };
+        AdminAccountList: {
+            accounts: components["schemas"]["AdminAccount"][];
+        };
+        AdminAuditEntry: {
+            /** Format: uuid */
+            audit_id: string;
+            /** Format: date-time */
+            occurred_at: string;
+            /** Format: uuid */
+            account_id?: string | null;
+            actor: string;
+            action: string;
+            entity_type?: string | null;
+            /** Format: uuid */
+            entity_id?: string | null;
+        };
+        AdminAuditList: {
+            entries: components["schemas"]["AdminAuditEntry"][];
+        };
+        AdminEmailProblem: {
+            /** Format: uuid */
+            notification_id: string;
+            /** Format: uuid */
+            account_id: string;
+            account_email: string;
+            type: string;
+            /** Format: date-time */
+            created_at: string;
+            /** @enum {string} */
+            email_status: "pending" | "failed";
+            email_attempts: number;
+            email_note?: string | null;
+        };
+        AdminFigures: {
+            currency: string;
+            accounts: number;
+            accounts_active: number;
+            signups_by_month: components["schemas"]["MonthCount"][];
+            plans: components["schemas"]["PlanFigure"][];
+            list_revenue_minor: number;
+            note: string;
+        };
+        AdminNoticeEmails: {
+            counts: {
+                [key: string]: number;
+            };
+            problems: components["schemas"]["AdminEmailProblem"][];
+        };
+        AdminShop: {
+            /** Format: uuid */
+            shop_id: string;
+            /** Format: uuid */
+            account_id: string;
+            account_email: string;
+            shop_name?: string | null;
+            tiktok_shop_code?: string | null;
+            region: string;
+            seller_type?: string | null;
+            connection_status: string;
+            /** Format: date-time */
+            first_synced_at?: string | null;
+            /** Format: date-time */
+            last_synced_at?: string | null;
+            /** Format: date-time */
+            access_expires_at?: string | null;
+            /** Format: date-time */
+            refresh_succeeded_at?: string | null;
+            refresh_failure_code?: string | null;
+            refresh_failure_reason?: string | null;
+            /** Format: date-time */
+            revoked_at?: string | null;
+            statements: number;
+            statements_unexplained: number;
+        };
+        AdminShopList: {
+            shops: components["schemas"]["AdminShop"][];
+        };
+        AdminSyncRun: {
+            /** Format: uuid */
+            run_id: string;
+            /** Format: uuid */
+            shop_id: string;
+            shop_name?: string | null;
+            kind: string;
+            domain: string;
+            status: string;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            finished_at?: string | null;
+            records_read?: number | null;
+            records_written?: number | null;
+            records_failed?: number | null;
+            error?: string | null;
+        };
+        AdminSyncRunList: {
+            runs: components["schemas"]["AdminSyncRun"][];
+        };
+        AdminWebhookEvent: {
+            /** Format: uuid */
+            event_id: string;
+            /** Format: date-time */
+            received_at: string;
+            event_type?: string | null;
+            tiktok_shop_id?: string | null;
+            /** Format: uuid */
+            shop_id?: string | null;
+            /** Format: date-time */
+            processed_at?: string | null;
+            process_status?: string | null;
+            process_note?: string | null;
+        };
+        AdminWebhookEventList: {
+            events: components["schemas"]["AdminWebhookEvent"][];
+        };
+        CancelOut: {
+            /** Format: uuid */
+            account_id: string;
+            status: string;
+            shops_disconnected: number;
+        };
+        MonthCount: {
+            month: string;
+            signups: number;
+        };
+        PlanFigure: {
+            plan_slug: string;
+            trialing: number;
+            paying: number;
+            past_due: number;
+            list_revenue_minor: number;
+        };
+        QueuedOut: {
+            queued: boolean;
+            /** Format: uuid */
+            shop_id: string;
+        };
+        RetryOut: {
+            /** Format: uuid */
+            notification_id: string;
+            /** @constant */
+            email_status: "pending";
         };
     };
     responses: {
@@ -5158,6 +5631,571 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listAdminAccounts: {
+        parameters: {
+            query?: {
+                email?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountList"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listAdminShops: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminShopList"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listAdminSyncRuns: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSyncRunList"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listAdminWebhookEvents: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminWebhookEventList"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getAdminNoticeEmails: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNoticeEmails"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listAdminAudit: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditList"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getAdminFigures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFigures"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    suspendAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountStatusOut"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The account is not active */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            /** @description Stripe could not be reached, so nothing was changed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reactivateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountStatusOut"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The account is not suspended */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            /** @description Stripe could not be reached, so nothing was changed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    syncShopNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shopId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueuedOut"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    retryNoticeEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetryOut"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description That notice's email has not failed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    requestAccountExportForAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description An export of this account is already being prepared */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getAccountExportForAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+                exportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteAccountForSeller: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionAcknowledgement"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The account is suspended */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            /** @description Stripe could not be reached, so nothing was changed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancelAccountDeletionForSeller: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelOut"];
+                };
+            };
+            /** @description Not an admin, not signed in, or no such account, shop, notice or export. A refused admin request is answered exactly as a path that does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The account has no deletion to cancel */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            /** @description Stripe could not be reached, so nothing was changed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
         };
     };

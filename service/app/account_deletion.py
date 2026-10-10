@@ -164,67 +164,81 @@ def delete_me(
                           "This account is suspended, so it cannot be used. Email "
                           "info@inspirecraftglobal.com and we will tell you why and what happens next.")
 
-        renewal = "none"
-        if status != "deleted":
-            # Stripe goes first, inside this transaction. If it cannot be reached the
-            # Problem it raises rolls the transaction back, so the seller is told nothing
-            # was deleted rather than left closed and still being charged.
-            renewal = billing.set_renewal_for_deletion(account.id, closing=True)
-            deleted_at = conn.execute(
-                "update accounts set status = 'deleted', deleted_at = now() where id = %s "
-                "returning deleted_at",
-                (str(account.id),),
-            ).fetchone()[0]
-            conn.execute(
-                "update tiktok_connections set revoked_at = coalesce(revoked_at, now()) "
-                "where shop_id in (select id from shops where account_id = %s)",
-                (str(account.id),),
-            )
-            conn.execute(
-                "update shops set connection_status = 'disconnected' "
-                "where account_id = %s and connection_status in ('pending', 'connected', 'needs_reconnect')",
-                (str(account.id),),
-            )
-            log.info("account %s closed for deletion", account.id)
-
-        latest = conn.execute(
-            "select max(coalesce(i.period_end, i.issued_on)) from tiktok_invoices i "
-            "join shops s on s.id = i.shop_id where s.account_id = %s",
-            (str(account.id),),
-        ).fetchone()[0]
-
-        erase_at = deleted_at + GRACE
-        out = DeletionAcknowledgement(
-            account_id=account.id, scheduled_at=erase_at,
-            includes=_includes(erase_at, plan_stopped=renewal != "none"),
-            invoices_retained_until=_six_years_after(latest) if latest else None,
-            cancel_by=erase_at,
-        )
+        out = close_account(conn, account.id, status, deleted_at)
         record(conn, account.id, op, idempotency_key, digest, 202, out.model_dump(mode="json"))
     return JSONResponse(status_code=202, content=out.model_dump(mode="json"))
+
+
+def close_account(conn, account_id, status: str, deleted_at) -> DeletionAcknowledgement:
+    """Closes an account for deletion inside the caller's `tenant()` transaction and says what
+    will happen. Shared by deleteMe and, since 10 October 2026, by the admin's deletion on a
+    seller's request (A34). A repeat for an account already closing changes nothing and
+    returns the same dates."""
+    renewal = "none"
+    if status != "deleted":
+        # Stripe goes first, inside this transaction. If it cannot be reached the
+        # Problem it raises rolls the transaction back, so the seller is told nothing
+        # was deleted rather than left closed and still being charged.
+        renewal = billing.set_renewal_for_deletion(account_id, closing=True)
+        deleted_at = conn.execute(
+            "update accounts set status = 'deleted', deleted_at = now() where id = %s "
+            "returning deleted_at",
+            (str(account_id),),
+        ).fetchone()[0]
+        conn.execute(
+            "update tiktok_connections set revoked_at = coalesce(revoked_at, now()) "
+            "where shop_id in (select id from shops where account_id = %s)",
+            (str(account_id),),
+        )
+        conn.execute(
+            "update shops set connection_status = 'disconnected' "
+            "where account_id = %s and connection_status in ('pending', 'connected', 'needs_reconnect')",
+            (str(account_id),),
+        )
+        log.info("account %s closed for deletion", account_id)
+
+    latest = conn.execute(
+        "select max(coalesce(i.period_end, i.issued_on)) from tiktok_invoices i "
+        "join shops s on s.id = i.shop_id where s.account_id = %s",
+        (str(account_id),),
+    ).fetchone()[0]
+
+    erase_at = deleted_at + GRACE
+    return DeletionAcknowledgement(
+        account_id=account_id, scheduled_at=erase_at,
+        includes=_includes(erase_at, plan_stopped=renewal != "none"),
+        invoices_retained_until=_six_years_after(latest) if latest else None,
+        cancel_by=erase_at,
+    )
 
 
 @router.post("/me/deletion/cancel", response_model=CancelOut,
              summary="Cancel a requested account deletion")
 def cancel_account_deletion(account: Annotated[Account, Depends(require_signed_in)]) -> CancelOut:
     with tenant(account.id) as conn:
-        row = conn.execute(
-            "update accounts set status = 'active', deleted_at = null "
-            "where id = %s and status = 'deleted' "
-            "and deleted_at > now() - interval '30 days' returning id",
-            (str(account.id),),
-        ).fetchone()
-        if row is None:
-            raise Problem(409, "not_closing", "This account is not being deleted, so there is nothing to cancel.")
-        # Renewal comes back only where the deletion stopped it. A Stripe failure raises
-        # and rolls back, so the account stays closing and the seller can try again.
-        billing.set_renewal_for_deletion(account.id, closing=False)
-        shops = conn.execute(
-            "select count(*) from shops where account_id = %s and connection_status = 'disconnected'",
-            (str(account.id),),
-        ).fetchone()[0]
-    log.info("account %s deletion cancelled", account.id)
-    return CancelOut(account_id=account.id, status="active", shops_disconnected=shops)
+        return cancel_closing(conn, account.id)
+
+
+def cancel_closing(conn, account_id) -> CancelOut:
+    """Reopens a closing account inside the caller's `tenant()` transaction. Shared by
+    cancelAccountDeletion and the admin's cancellation (A34)."""
+    row = conn.execute(
+        "update accounts set status = 'active', deleted_at = null "
+        "where id = %s and status = 'deleted' "
+        "and deleted_at > now() - interval '30 days' returning id",
+        (str(account_id),),
+    ).fetchone()
+    if row is None:
+        raise Problem(409, "not_closing", "This account is not being deleted, so there is nothing to cancel.")
+    # Renewal comes back only where the deletion stopped it. A Stripe failure raises
+    # and rolls back, so the account stays closing and the seller can try again.
+    billing.set_renewal_for_deletion(account_id, closing=False)
+    shops = conn.execute(
+        "select count(*) from shops where account_id = %s and connection_status = 'disconnected'",
+        (str(account_id),),
+    ).fetchone()[0]
+    log.info("account %s deletion cancelled", account_id)
+    return CancelOut(account_id=account_id, status="active", shops_disconnected=shops)
 
 
 def erase_due() -> list[dict]:

@@ -1,8 +1,8 @@
 # A34. The admin backend
 
 Written 10 October 2026, after the owner asked for an admin backend and answered two questions
-the same day. **This document is a proposal awaiting the owner's approval.** Nothing in it is
-built. The facts it rests on were read from the repository on 10 October 2026 and are cited by
+the same day. **Approved by the owner on 10 October 2026**, with the four answers recorded in
+A34.8. The facts it rests on were read from the repository on 10 October 2026 and are cited by
 file and line.
 
 ## A34.1 What the owner chose
@@ -48,10 +48,16 @@ their own Vercel project at their own address.
 - **The token.** An admin signs in with the same Stack sign-in a seller uses, and the token is
   verified the same way (ES256 against the fetched JWKS, `auth.py:238-288`). On top of that,
   `require_admin` requires three things:
-  - the token's email is on the list, compared in lower case;
-  - the token's `emailVerified` is true (a seller's request is refused only when the claim is
-    false, `auth.py:332`, but an admin's request is refused when it is absent too);
-  - the token is not a reviewer token (`auth.py:180-235`).
+  - the token is not a reviewer token (`auth.py:180-235`);
+  - the provider's own record of the subject, `neon_auth.users_sync`, has
+    `raw_json.primary_email_verified` true;
+  - that record's email is on the list, compared in lower case.
+- **Why the record and not the token.** The repository disagrees with itself about whether a
+  Stack token carries `email` and `emailVerified`: `README_v0.2.md:64-65` says it does,
+  `db.py:121-122` says managed tokens carry no custom claims, and A25 records the question as
+  open. The synced record was queried on production on 10 October 2026 and holds both fields.
+  Of 35 users, 29 were anonymous, 3 were verified and 3 were not. `inspirecraftglobal@gmail.com`
+  and `adenola.adegbesan@gmail.com` were both verified.
 - **What a refusal looks like.** Anyone else, signed in or not, gets the same 404 that a path
   which does not exist gives, so the admin routes do not announce themselves.
 - **The routes.** Every admin route is under `/v1/admin/` and is documented in the contract
@@ -155,17 +161,43 @@ Each batch is shown to the owner and approved before the next starts.
    - add the DNS record on Namecheap;
    - approve the creation of the Vercel project.
 
-## A34.8 Open questions for the owner
+## A34.8 The owner's rulings of 10 October 2026
 
-1. **Which addresses go on the allow-list.** The variable holds them, so the answer is never
-   written into the repository.
-2. **Does suspending stop the plan renewing?** Today a suspension would refuse the seller and
-   stop the sync, but nothing would tell Stripe, so a suspended seller would go on being
-   charged. The choices are to leave billing alone, or to stop renewal as a deletion does
-   (A30.1).
-3. **Does the seller hear about a suspension?** No notice type exists for it, and no email is
-   sent.
-4. **May an admin see a seller's money figures?** This proposal shows only counts of
-   reconciled statements, never a seller's sales, fees or payouts. Showing figures would mean
-   an admin reading a seller's financial data, which the data protection notice should then
-   say.
+1. **The allow-list holds the admin email.** The owner sets `ADMIN_EMAILS` on `My-ShopEdge-1`
+   himself, so the address is not written into the repository.
+2. **Suspending stops the plan renewing.** It uses the same call a deletion uses
+   (`billing.set_renewal_for_deletion`), so renewal stops at the end of the period or trial
+   under way, with no refund. Reactivating turns renewal back on only where the suspension
+   stopped it, which is how cancelling a deletion behaves (A30.1).
+3. **The seller is told.** A suspension writes a critical `account_suspended` notice and a
+   reactivation an `account_reactivated` notice, and both are emailed (`notice_email`).
+   **Derived, not ruled:** a seller who switched email notices off still receives no email,
+   because NTF-2's acceptance reads "Opted-out sellers receive no email". The suspended
+   seller can still read the notice's text in the email, but cannot open the notification
+   centre, because a suspended account is refused on every route but getMe.
+4. **An admin does not see a seller's money figures.** The admin views show counts of
+   statements that reconcile and do not, and never a seller's sales, fees, payouts or ledger
+   lines.
+
+## A34.9 Where the build stands
+
+**Batch 2, the service, was built on 10 October 2026.** It is unverified against Neon, Stack
+and Stripe:
+
+- `schema/0032_admin_views.sql` holds the seven read functions. **It is applied to no Neon
+  branch**, and applying it needs the owner's authority.
+- `service/app/admin.py` holds `require_admin`, seven views and eight actions under
+  `/v1/admin/`.
+- The deletion steps moved into `account_deletion.close_account` and `cancel_closing`, so the
+  seller's routes and the admin's share them.
+- `notice_email` emails the two new notice types.
+- The contract holds 87 operations across 75 paths.
+
+What has run:
+
+- `testdata/admin_check.py` passed 51 of 51 on a local PostgreSQL 16. It used stand-ins for
+  Stack's verification, Resend and the sync.
+- No account in it held a live Stripe subscription, so the Stripe half of suspension has not
+  run.
+
+Batches 3 and 4 are not started.

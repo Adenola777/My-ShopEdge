@@ -17,6 +17,10 @@ each for a reason on the record:
   * `order_limit_passed`, warning. A16.3: at 100 per cent "an email is sent".
   * `scheduled_export_ready`, info. A5.7: the seller "is told in the app and, if they have not
     opted out, by email".
+  * `account_suspended`, critical, and `account_reactivated`, info, written by the admin's
+    actions. A34.8 ruling 3: the seller is told. A suspension notice is the one notice emailed
+    to an account that is not active, because a suspended seller cannot open the app to read
+    it. Added 10 October 2026.
 
 The rest, `low_stock`, `return_unchecked`, `first_read_complete` and `stock_absorbed`, stay in
 the app, because the SRD's interfaces table says "Transactional email for verification and
@@ -59,7 +63,11 @@ EMAILED_TYPES = frozenset({
     "reconnect_needed",
     "order_limit_passed",
     "scheduled_export_ready",
+    "account_suspended",
+    "account_reactivated",
 })
+# The one type emailed to an account whose status is `suspended` (A34.8 ruling 3).
+SENT_WHILE_SUSPENDED = frozenset({"account_suspended"})
 MAX_AGE = timedelta(days=3)
 MAX_ATTEMPTS = 3
 DEFAULT_APP_URL = "https://app.myshopedge.inspirecraftglobal.com"
@@ -94,7 +102,8 @@ def _reason_not_to_send(notice: dict[str, Any], account: dict[str, Any],
                         now: datetime) -> str | None:
     if notice["type"] not in EMAILED_TYPES:
         return "this type of notice is shown in the app only"
-    if account["status"] != "active":
+    if account["status"] != "active" and not (
+            account["status"] == "suspended" and notice["type"] in SENT_WHILE_SUSPENDED):
         return "the account is not active"
     if not account["email_notices"]:
         return "the seller has switched email notices off"
