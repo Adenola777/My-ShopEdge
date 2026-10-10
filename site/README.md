@@ -21,7 +21,7 @@ decisions: the company is written Inspirecraft Global Ltd, as registered, and th
 "Maisonette 3". Headlines are sentences, "what you keep" became gross profit, and "Under a
 minute" and "Stock and loss update themselves" are gone, because neither was measured or true.
 
-Still open: the footer carries no privacy notice, terms or cookie notice, because none of the three pages exists (A14). The brief asks for all three.
+The footer links to the Privacy Policy, the Terms and Conditions and the Cookie Policy, published on 10 October 2026 from the owner's drafts. They live in `web/public/legal/` and are served by the app at `app.myshopedge.inspirecraftglobal.com/legal/`, because that address is known to answer and the Start page needs the same pages (A14).
 
 The logo is the official artwork from `brand/` (A7): `site/brand/` holds byte-for-byte copies of
 `mse-logo-horizontal-notagline.svg`, `mse-mark-colour.svg` and `mse-favicon.svg`, replacing the
@@ -60,5 +60,10 @@ Revised later on 10 October 2026 after the owner's review of the page:
 - How it works follows the problem, so "See how it works" no longer jumps past every feature.
 - Product costs shows the cost question and the typing screen, so the Products screen is not
   shown twice.
+- Four screenshots were retaken after the owner reported them cut at the side:
+  `hero-money`, `exports`, `tax` and `costs-manual`. On a 390 px phone the row of page tabs on
+  Reconcile and VAT and tax ran past the right edge, and the cost box showed "For examp". On
+  the owner's ruling the app now wraps that row onto a second line, and the cost box's hint
+  reads "3.40", so the images show the app as a seller sees it.
 
 The page needs no build.

@@ -9,10 +9,10 @@
  * A15 section 15.3 folds the old S18 wait into this screen. A seller who is already signed in
  * is sent straight to their shops, so the wait never needs a page of its own.
  *
- * **Not yet as A14 specifies.** A14 requires links to the privacy notice and the terms below
- * the actions, and section 11 of the Data Protection Document requires the privacy notice.
- * Neither page exists anywhere in this repository or at a known address, so no link is drawn
- * rather than a link to nothing. This must be closed before a real seller is invited.
+ * A14 requires links to the privacy notice and the terms below the actions, and section 11 of
+ * the Data Protection Document requires the privacy notice. Both pages, with the cookie policy,
+ * were published on 10 October 2026 as static files in `public/legal/`, built from the owner's
+ * drafts, so this app serves them at its own address.
  *
  * The three providers switched on in Neon Auth on 24 September 2026 are Google, GitHub and
  * Microsoft. Email and password sign-in is off. The provider's page shows whichever are on.
@@ -56,6 +56,11 @@ export default async function StartPage() {
         <a className="btn btn--primary btn--block" href="/handler/sign-up">Create account and connect my shop</a>
         <a className="btn btn--quiet btn--block" href="/handler/sign-in">Sign in</a>
       </div>
+      <p className="muted" style={{ fontSize: 14, marginTop: 20 }}>
+        By creating an account you agree to the <a href="/legal/terms.html">Terms and Conditions</a>.
+        The <a href="/legal/privacy.html">Privacy Policy</a> and the <a href="/legal/cookies.html">Cookie Policy</a> explain
+        how we handle your data.
+      </p>
     </section>
   );
 }
