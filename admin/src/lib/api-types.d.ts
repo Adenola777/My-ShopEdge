@@ -1823,6 +1823,13 @@ export interface components {
             /** @description What TikTok will actually pay. Null where TikTok returned no value. */
             payable_amount?: components["schemas"]["Money"];
             tiktok_invoice_number?: string | null;
+            /**
+             * @description The payout status the owner ruled on 10 October 2026 (A36.1 item 8 and A36.2 item 2). reconciled means TikTok paid it and the orders behind it add up to it. pending_payment means TikTok has not paid it yet. needs_review means the orders do not add up to it or the payment failed. sync_delayed means it is not yet paid and the last read of the shop's statements failed or is more than a day old. A paid statement is never sync_delayed. awaiting_settlement and unmatched are never given to a statement: the first belongs to orders not yet on any statement, and the second to a payout with no statement, which MyShopEdge does not read yet. Served by listSettlements and getSettlement, and null where a write answers with the settlement.
+             * @enum {string|null}
+             */
+            reconcile_status?: "reconciled" | "awaiting_settlement" | "pending_payment" | "needs_review" | "unmatched" | "sync_delayed" | null;
+            /** @description What the orders behind the statement fail to explain, the same figure as `unexplained` on getSettlement. Zero when they add up. Null where a write answers with the settlement. */
+            difference?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
         };
         /** @description The four figures the statement is made of, as TikTok states them. */
         SettlementComponents: {
@@ -1839,6 +1846,11 @@ export interface components {
         };
         SettlementDetail: {
             settlement: components["schemas"]["Settlement"];
+            /**
+             * Format: date-time
+             * @description When MyShopEdge last read the shop's statements from TikTok without an error. Null when it never has. Added 10 October 2026 for Explain this payout.
+             */
+            finance_read_at?: string | null;
             components: components["schemas"]["SettlementComponents"];
             reconciliation: components["schemas"]["SettlementReconciliation"];
             invoice?: components["schemas"]["SettlementInvoice"];

@@ -145,7 +145,59 @@ Checked in a browser on the local copy at 390 and 1280 pixels wide, on ten pages
 marked the right area, the phone showed the five tabs, the sidebar showed the eight, and no
 page scrolled sideways.
 
-## A36.7 Still to build, each step with the owner's approval
+## A36.7 Built in step 5, 10 October 2026
+
+The owner approved steps 5 to 8 together on 10 October 2026. Step 5 follows the brief's
+sections 11 and 12, read from `update.docx`.
+
+- **The payout status** (`settlements.payout_status`). Each statement carries one payment, so a
+  payout is a statement and its payment. The service serves `reconcile_status` and `difference`
+  on listSettlements and getSettlement:
+  - Reconciled: TikTok paid it, and the orders behind it add up to it.
+  - Pending payment: TikTok has issued it and not paid it.
+  - Needs review: the orders do not add up to it, or TikTok reports the payment failed.
+  - Sync delayed: it is not paid, and the last read of the shop's statements failed or is more
+    than a day old. A paid statement is final and is never Sync delayed.
+  - Awaiting settlement belongs to orders not yet on a statement. Payouts shows TikTok's
+    expected payouts under it.
+  - **Unmatched is never given.** MyShopEdge reads payouts only as part of statements, so it
+    holds no payout without one. Reading TikTok's own list of payments would be needed, and it
+    is not built.
+- **Reconcile** opens on Payouts, with the brief's title and subtitle. Its tabs are Payouts,
+  Where the money went, Transactions and Issues. Issues is the discrepancy list, moved from
+  Overview. **The brief names a Statements tab.** TikTok pays each statement once, so a
+  separate Statements list would repeat Payouts row for row. Each payout row names its linked
+  statement instead. Each row shows the payout date, the payout amount, the linked statement,
+  the status and the difference. What TikTok has paid and still owes, the Shop Money card,
+  moved from Overview to the top of Payouts.
+- **Explain this payout** shows:
+  - the payout received, the status, the linked statement and the difference;
+  - a plain sentence on what the status means;
+  - the statement's fee lines, shipping, adjustments and reserve;
+  - the included orders, and a pointer to Awaiting settlement;
+  - when TikTok issued and paid the statement, and when MyShopEdge last read it
+    (`finance_read_at`).
+
+  Refunds are not a separate line, because TikTok's statement does not state them on their own.
+- **Overview** has these parts:
+  - the brief's controls: today, this month or last month; the sales or cash basis; the
+    export; and the time of the last update. No refresh is offered, because the daily read
+    cannot be started from the app.
+  - one primary answer, which follows the period's cost coverage. With every cost it is gross
+    profit after returns with the margin, keeping A8's label. With some costs it is gross
+    profit so far with the coverage sentence. With none it is net proceeds with the brief's
+    definition.
+  - the full calculation under "Where the money went".
+  - "What needs your attention", which the service caps at five items. It now includes
+    "Payout needs review", and when the list is empty it reads "You are up to date".
+
+Checked on the local copy at 390 and 1280 pixels wide. Fifteen statements read Reconciled. One
+statement, not yet paid on a shop with no recorded read of TikTok's statements, read Sync
+delayed. TikTok's expected payouts were not shown, because the local copy cannot reach TikTok.
+**Unverified on production**: Needs review has run in the smoke test only, because the local
+copy has no statement with a difference.
+
+## A36.8 Still to build, each step with the owner's approval
 5. Overview and Reconcile, with the six statuses and "Explain this payout".
 6. Products, Returns, Stock, Exports, and VAT and tax, as the brief sets them out.
 7. The cost upload: a template, a preview, and the five row statuses. Existing costs are shown

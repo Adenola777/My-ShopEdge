@@ -156,17 +156,37 @@ def settlements_list():
     cols = ["id","tiktok_statement_id","tiktok_payment_id","settlement_reference",
             "statement_time","activity_date","paid_at","payment_status","currency",
             "statement_amount_minor","payable_amount_minor","total_reserve_amount_minor",
-            "tiktok_invoice_number"]
+            "tiktok_invoice_number","unexplained_minor"]
     row = (UUID("33333333-3333-4333-8333-333333333333"), "202608A-0002", None, None,
-           NOW, date(2026,8,15), None, "PAID", "GBP", 14750, 13750, -1000, None)
-    settlements.tenant = with_conn(settlements, [("from settlements where", Result(cols, [row]))])
+           NOW, date(2026,8,15), None, "PAID", "GBP", 14750, 13750, -1000, None, 0)
+    settlements.tenant = with_conn(settlements, [
+        ("domain = 'finance'", Result(["latest","last_success"], [("completed", NOW)])),
+        ("from settlements where", Result(cols, [row]))])
     r = client.get(f"/v1/shops/{SHOP}/settlements")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
     b = r.json()["settlements"][0]
     _assert(b["statement_amount"]["amount_minor"] == 14750)
     _assert(b["total_reserve"]["amount_minor"] == -1000, "reserve must keep its sign")
     _assert(b["payable_amount"]["amount_minor"] == 13750)
+    _assert(b["reconcile_status"] == "reconciled" and b["difference"]["amount_minor"] == 0, b)
 check("GET settlements returns statement, reserve and payout as three figures", settlements_list)
+
+
+# --- A36 step 5: the payout status rule
+def payout_status_rule():
+    from app.settlements import PAYOUT_STATUSES, payout_status
+    _assert(payout_status("PAID", 0, False) == "reconciled")
+    _assert(payout_status("PAID", 0, True) == "reconciled", "a paid statement is final")
+    _assert(payout_status("PAID", 801, False) == "needs_review")
+    _assert(payout_status("FAILED", 0, False) == "needs_review")
+    _assert(payout_status("PROCESSING", 0, False) == "pending_payment", "timing is not an error")
+    _assert(payout_status(None, 0, False) == "pending_payment")
+    _assert(payout_status("PROCESSING", 0, True) == "sync_delayed")
+    _assert(payout_status("PROCESSING", -1, True) == "needs_review")
+    _assert(set(PAYOUT_STATUSES) == {"reconciled", "awaiting_settlement", "pending_payment",
+                                     "needs_review", "unmatched", "sync_delayed"})
+check("the payout status follows the owner's six statuses, and timing is never an error",
+      payout_status_rule)
 
 
 # --- records
@@ -384,7 +404,7 @@ SHOP_MONEY_COLS = ["status","amount_minor","postage_minor","orders","currency"]
 SHOP_MONEY_ROWS = [("delivered_awaiting_settlement", 1850, None, 1, "GBP"),
                    ("settled", 45388, -450, 18, "GBP"),
                    ("waiting_delivery", 1850, None, 1, "GBP")]
-NEEDS_COLS = ["returns_to_check","open_discrepancies","out_of_stock","missing_costs",
+NEEDS_COLS = ["returns_to_check","open_discrepancies","payouts_to_review","out_of_stock","missing_costs",
               "unmapped_fees","unmapped_fee_minor","last_synced_at","connection_status",
               "access_expires_at","refresh_expires_at","revoked_at","connections",
               "refresh_failure_code","refresh_attempted_at","refresh_succeeded_at",
@@ -392,7 +412,7 @@ NEEDS_COLS = ["returns_to_check","open_discrepancies","out_of_stock","missing_co
 
 
 def _needs(**over):
-    base = dict(returns_to_check=0, open_discrepancies=1, out_of_stock=1, missing_costs=0,
+    base = dict(returns_to_check=0, open_discrepancies=1, payouts_to_review=0, out_of_stock=1, missing_costs=0,
                 unmapped_fees=1, unmapped_fee_minor=199, last_synced_at=None,
                 connection_status="connected", access_expires_at=None,
                 refresh_expires_at=None, revoked_at=None, connections=1,
@@ -1865,6 +1885,7 @@ def settlement_invoice():
 
     dcols = cols + ["net_sales_minor", "fee_minor", "shipping_cost_minor", "adjustment_minor"]
     settlements.tenant = with_conn(settlements, [
+        ("domain = 'finance'", Result(["latest","last_success"], [("completed", NOW)])),
         ("from settlements where", Result(dcols, [row + (16000, -1250, 0, 0)])),
         ("from settlement_reconciliation", Result(["a","b","c","d"], [(1, 14750, 1200, 0)])),
         ("from tiktok_invoices", Result(["n","t","i","ps","pe","net","vat","g","c"], [
@@ -1905,7 +1926,8 @@ def settlement_fee_lines():
     import contextlib
     @contextlib.contextmanager
     def fake(_a):
-        yield C([("from settlements where", Result(cols, [row])),
+        yield C([("domain = 'finance'", Result(["latest","last_success"], [("completed", NOW)])),
+                 ("from settlements where", Result(cols, [row])),
                  ("from settlement_reconciliation", Result(["a","b","c","d"], [(4, 513, None, 0)])),
                  ("from tiktok_invoices", Result([], [])),
                  ("le.category = any", Result(["category","tiktok_fee_type","amount_minor"], fee_rows)),
