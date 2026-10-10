@@ -1578,7 +1578,7 @@ export interface paths {
         };
         /**
          * Notice emails by state, and the ones not yet sent
-         * @description How many notices are in each email state, and the notices whose email is pending or has failed, with Resend's last answer.
+         * @description How many notices are in each email state, and the notices whose email is pending or has failed, with the email provider's last answer.
          */
         get: operations["getAdminNoticeEmails"];
         put?: never;

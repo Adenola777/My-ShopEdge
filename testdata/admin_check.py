@@ -10,12 +10,12 @@ SECURITY DEFINER functions of 0032 can read them. A local build run as a superus
 to that superuser; hand them over first. Rows are written as the connecting role; the service
 reads them as it does in production, through `db.tenant()` and `db.unscoped()` as `mse_app`.
 
-Nothing reaches Stack, Stripe, Resend or TikTok:
+Nothing reaches Stack, Stripe, Postmark or TikTok:
   * `auth.verify` is replaced by a stand-in that reads the claims out of the test's own token
     string, so the check covers everything `require_admin` does after verification;
   * no account here holds a live Stripe subscription, so `set_renewal_for_deletion` answers
     `none` without calling Stripe, and the Stripe half of suspension is **unverified**;
-  * every email goes to a stand-in for Resend;
+  * every email goes to a stand-in for Postmark;
   * the sync is replaced by a recorder.
 
 What it checks:
@@ -33,7 +33,8 @@ What it checks:
 - The figures count sign-ups, trials and paying plans, and price only paying plans.
 
 **Run on 10 October 2026** against a database built from empty by `migrate.py`, with its tables
-and views handed to `mse_migrator`: 51 passed, 0 failed.
+and views handed to `mse_migrator`: 51 passed, 0 failed. Run again the same day after the move to Postmark: 51 passed,
+0 failed.
 """
 
 import json
@@ -76,13 +77,13 @@ class Fake:
 
     def __call__(self, url, headers, payload):
         self.sent.append(payload)
-        return 200, {"id": f"re_{len(self.sent)}"}
+        return 200, {"ErrorCode": 0, "MessageID": f"pm-{len(self.sent)}"}
 
 
 def main():
     url = os.environ["DATABASE_URL"]
     auth.verify = fake_verify
-    os.environ["RESEND_API_KEY"] = "re_test_not_a_real_key"
+    os.environ["POSTMARK_SERVER_TOKEN"] = "pm-test-not-a-real-token"
     mail = Fake()
     mailer.http_transport = mail
     synced = []
@@ -196,7 +197,7 @@ def main():
           f"suspend sets the account suspended ({r.status_code} {r.text[:120]})")
     check(audit_rows(a) == [("admin:boss@example.test", "suspend_account", "account")],
           f"suspend writes one audit row naming the admin ({audit_rows(a)})")
-    subjects = [p["subject"] for p in mail.sent[before:]]
+    subjects = [p["Subject"] for p in mail.sent[before:]]
     check(subjects == ["Your MyShopEdge account is suspended."],
           f"the suspended seller is emailed the notice ({subjects})")
     check(client.post(f"/v1/admin/accounts/{a}/suspend", headers=boss).status_code == 409,
@@ -219,7 +220,7 @@ def main():
     check(refused == "account_suspended", f"the seller is refused as suspended ({refused})")
     r = client.post(f"/v1/admin/accounts/{a}/reactivate", headers=boss)
     check(r.status_code == 200 and status(a) == "active", "reactivate sets it active again")
-    check([p["subject"] for p in mail.sent][-1] == "Your MyShopEdge account is active again.",
+    check([p["Subject"] for p in mail.sent][-1] == "Your MyShopEdge account is active again.",
           "the seller is emailed the reactivation")
     check(client.post(f"/v1/admin/accounts/{a}/reactivate", headers=boss).status_code == 409,
           "reactivating an active account is refused with 409")

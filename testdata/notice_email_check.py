@@ -1,4 +1,4 @@
-"""Checks the notice emails (NTF-2, A16.3, A5.7) against a stand-in for Resend. 10 October 2026.
+"""Checks the notice emails (NTF-2, A16.3, A5.7) against a stand-in for Postmark. 10 October 2026.
 
     createdb mse_mail
     DATABASE_URL=... python3 service/scripts/migrate.py
@@ -9,14 +9,15 @@ they do on Neon, so that the SECURITY DEFINER functions can read them. A local b
 superuser leaves the tables to that superuser; hand them over first with
 `alter table ... owner to mse_migrator` for each table in `public`. Rows are written as the
 connecting role and read back as the service reads them, through `db.tenant()` as `mse_app`
-under row level security. Nothing reaches Resend or TikTok: every send goes to `Fake` below,
+under row level security. Nothing reaches Postmark or TikTok: every send goes to `Fake` below,
 and the refresh refusal to a stand-in. Drop the database afterwards.
 
 What it checks:
-- With RESEND_API_KEY unset, the sweep sends nothing and leaves every notice pending.
+- With POSTMARK_SERVER_TOKEN unset, the sweep sends nothing and leaves every notice pending.
 - Each emailed type is sent once, to the account's email, from the default sender,
-  with the notice's own title as the subject, the Bearer key, and `notice-<id>` as the
-  idempotency key; the notice records `sent`, the time, one attempt and Resend's id.
+  with the notice's own title as the subject, the server token, no tracking, and
+  `notice-<id>` as the metadata reference; the notice records `sent`, the time, one attempt and
+  Postmark's MessageID. A 200 carrying a non-zero ErrorCode is a refusal.
 - A second sweep sends nothing.
 - An in-app-only type, an opted-out account, a closing account, a notice marked done, and a
   notice four days old are each marked `not_emailed` with the reason, and none is sent.
@@ -30,6 +31,10 @@ What it checks:
 **Run on 10 October 2026** against a database built from empty by `migrate.py`: 35 passed,
 0 failed. `tiktok_sync_check.py` was run again the same day on a fresh database, because the
 token refresh changed, and passed 45 of 45.
+
+**Run again on 10 October 2026** after the move to Postmark, against a database built from empty
+by `migrate.py`: 37 passed, 0 failed. The two added checks are the tracking switches and a 200
+carrying a non-zero ErrorCode.
 """
 
 import os
@@ -62,17 +67,22 @@ def check(cond, what):
 
 
 class Fake:
-    """Stands in for Resend. Answers 200 with an id, or refuses with `refuse` as the status."""
+    """Stands in for Postmark. Answers 200 with a MessageID, or refuses with `refuse` as the
+    status, or answers 200 with `error_code` as Postmark's ErrorCode."""
 
-    def __init__(self, refuse=None):
+    def __init__(self, refuse=None, error_code=None):
         self.sent = []
         self.refuse = refuse
+        self.error_code = error_code
 
     def __call__(self, url, headers, payload):
         self.sent.append((url, headers, payload))
         if self.refuse:
-            return self.refuse, {"message": "The domain is not verified."}
-        return 200, {"id": f"re_{len(self.sent)}"}
+            return self.refuse, {"ErrorCode": 400, "Message": "The sender signature is not confirmed."}
+        if self.error_code:
+            return 200, {"ErrorCode": self.error_code, "Message": "Refused."}
+        return 200, {"ErrorCode": 0, "Message": "OK", "MessageID": f"pm-{len(self.sent)}",
+                     "SubmittedAt": "2026-10-10T00:00:00Z"}
 
 
 def new_account(conn, n, status="active"):
@@ -104,7 +114,7 @@ def state(url, notice_id):
 
 def main():
     url = os.environ["DATABASE_URL"]
-    os.environ.pop("RESEND_API_KEY", None)
+    os.environ.pop("POSTMARK_SERVER_TOKEN", None)
     os.environ.pop("EMAIL_FROM", None)
     with psycopg.connect(url) as conn:
         a = new_account(conn, 1)
@@ -121,35 +131,39 @@ def main():
     # --- unconfigured ------------------------------------------------------------------------
     fake = Fake()
     check(notice_email.send_due(transport=fake) == {"state": "unconfigured"} and not fake.sent,
-          "without RESEND_API_KEY nothing is sent")
+          "without POSTMARK_SERVER_TOKEN nothing is sent")
     check(state(url, emailed["reconnect_needed"])[0] == "pending", "and the notice stays pending")
 
     # --- one account, configured -------------------------------------------------------------
-    os.environ["RESEND_API_KEY"] = "re_test_not_a_real_key"
+    os.environ["POSTMARK_SERVER_TOKEN"] = "pm-test-not-a-real-token"
     counts = notice_email.send_for_account(a, NOW, fake)
     n = len(notice_email.EMAILED_TYPES)
     check(counts == {"sent": n, "not_emailed": 3, "failed": 0, "retry": 0},
           f"account A: one sent per emailed type ({n}), three not emailed ({counts})")
     check(state(url, b_notice)[0] == "pending", "account B's notice is untouched by A's sweep")
-    to = {tuple(p["to"]) for _, _, p in fake.sent}
-    check(to == {("mail-1@example.test",)}, "every email goes to account A's address")
+    to = {p["To"] for _, _, p in fake.sent}
+    check(to == {"mail-1@example.test"}, "every email goes to account A's address")
     url0, headers0, payload0 = fake.sent[0]
-    check(url0 == "https://api.resend.com/emails", "sent to Resend's emails endpoint")
-    check(headers0["Authorization"] == "Bearer re_test_not_a_real_key", "with the Bearer key")
-    check(payload0["from"] == mailer.DEFAULT_FROM, "from the default sender")
-    keys = {h["Idempotency-Key"] for _, h, _ in fake.sent}
-    check(keys == {f"notice-{i}" for i in emailed.values()}, "idempotency key is notice-<id>")
-    subjects = {p["subject"] for _, _, p in fake.sent}
+    check(url0 == "https://api.postmarkapp.com/email", "sent to Postmark's email endpoint")
+    check(headers0["X-Postmark-Server-Token"] == "pm-test-not-a-real-token"
+          and headers0["Accept"] == "application/json", "with the server token")
+    check(payload0["From"] == mailer.DEFAULT_FROM and payload0["MessageStream"] == "outbound",
+          "from the default sender, on the outbound stream")
+    check(payload0["TrackOpens"] is False and payload0["TrackLinks"] == "None",
+          "with opens and links not tracked")
+    refs = {p["Metadata"]["reference"] for _, _, p in fake.sent}
+    check(refs == {f"notice-{i}" for i in emailed.values()}, "reference is notice-<id>")
+    subjects = {p["Subject"] for _, _, p in fake.sent}
     check(subjects == {f"Title of a-{t}" for t in emailed}, "subject is the notice's title")
-    limit_text = next(p["text"] for _, _, p in fake.sent if p["subject"] == "Title of a-order_limit_passed")
-    shop_text = next(p["text"] for _, _, p in fake.sent if p["subject"] == "Title of a-reconnect_needed")
+    limit_text = next(p["TextBody"] for _, _, p in fake.sent if p["Subject"] == "Title of a-order_limit_passed")
+    shop_text = next(p["TextBody"] for _, _, p in fake.sent if p["Subject"] == "Title of a-reconnect_needed")
     check("/shops\n" in limit_text + "\n" and f"/shops/{shop_a}/notifications" in shop_text,
           "the link goes to the shop's notices, or to the shop list for an account notice")
     check("Body text." in shop_text and "switch them off in Settings" in shop_text,
           "the text carries the notice's body and how to switch email off")
     s = state(url, emailed["scheduled_export_ready"])
-    check(s[0] == "sent" and s[1] == 1 and s[2] is not None and s[3].startswith("re_"),
-          f"a sent notice records sent, one attempt, the time and Resend's id ({s})")
+    check(s[0] == "sent" and s[1] == 1 and s[2] is not None and s[3].startswith("pm-"),
+          f"a sent notice records sent, one attempt, the time and Postmark's id ({s})")
     check(state(url, in_app)[:2] == ("not_emailed", 0)
           and "app only" in state(url, in_app)[3], "low stock is not emailed, with the reason")
     check("marked the notice done" in state(url, done)[3], "a notice already done is not emailed")
@@ -184,14 +198,22 @@ def main():
     refusing = Fake(refuse=403)
     notice_email.send_for_account(e, NOW, refusing)
     s = state(url, e_notice)
-    check(s[0] == "pending" and s[1] == 1 and s[3].startswith("403"),
-          f"a refusal keeps the notice pending with Resend's answer ({s})")
+    check(s[0] == "pending" and s[1] == 1 and s[3].startswith("403/400"),
+          f"a refusal keeps the notice pending with Postmark's answer ({s})")
     notice_email.send_for_account(e, NOW, refusing)
     counts = notice_email.send_for_account(e, NOW, refusing)
     s = state(url, e_notice)
     check(s[0] == "failed" and s[1] == 3 and counts["failed"] == 1,
           f"the third refusal marks it failed ({s})")
     check(len(refusing.sent) == 3, "and nothing is tried a fourth time")
+
+    with psycopg.connect(url) as conn:
+        k = new_account(conn, 9)
+        k_notice = notice(conn, k, None, "order_limit_passed", "k-limit")
+    notice_email.send_for_account(k, NOW, Fake(error_code=300))
+    s = state(url, k_notice)
+    check(s[0] == "pending" and s[3].startswith("200/300"),
+          f"a 200 carrying a non-zero ErrorCode is treated as a refusal ({s})")
 
     # --- getMe and PATCH /me -----------------------------------------------------------------
     from fastapi.testclient import TestClient

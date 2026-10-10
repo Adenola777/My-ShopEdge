@@ -29,9 +29,9 @@ nothing. A scheduled export that fails for any other reason fails the run, so it
 job's history.
 
 Since 10 October 2026 each run then emails the notices NTF-2, A16.3 and A5.7 ask for, through
-Resend (`app.notice_email.send_due`). Without `RESEND_API_KEY` on the job it reports "not sent"
+Postmark (`app.notice_email.send_due`). Without `POSTMARK_SERVER_TOKEN` on the job it reports "not sent"
 and leaves every notice pending. Before migration 0031 is applied the notices cannot be listed,
-and the run says so and fails nothing. A notice that Resend refuses for the third time fails
+and the run says so and fails nothing. A notice that Postmark refuses for the third time fails
 the run, so it shows in the job's history.
 
 The secrets come from the environment and are never printed. The output names shops by
@@ -83,7 +83,7 @@ def notice_emails() -> bool:
         print(f"Notice emails could not be listed: {type(err).__name__}: {err}")
         return True
     if summary["state"] == "unconfigured":
-        print("Notice emails were not sent, because RESEND_API_KEY is not set on this job.")
+        print("Notice emails were not sent, because POSTMARK_SERVER_TOKEN is not set on this job.")
         return False
     print(f"Notice emails: {summary['sent']} sent, {summary['not_emailed']} not emailed by rule, "
           f"{summary['retry']} refused and kept for another try, {summary['failed']} failed "

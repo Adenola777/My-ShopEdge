@@ -89,7 +89,7 @@ migration's closing check proves.
 | Sync runs | The last runs per shop, with status, records read and written, and the error |
 | Reconciliation | Per shop, how many statements reconcile and how many do not, from `settlement_totals_check` |
 | Webhook log | Recent TikTok events, their type, shop and processing outcome |
-| Notice emails | Counts by email status, and the failed ones with Resend's answer |
+| Notice emails | Counts by email status, and the failed ones with the email provider's answer |
 
 **Act on an account**
 

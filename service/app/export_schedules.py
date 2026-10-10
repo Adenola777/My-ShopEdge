@@ -43,7 +43,7 @@ result says so. A file whose upload succeeded before a later step failed is left
 without a row, under the shop's `exports/` prefix.
 
 **Email.** A5.7 says the seller is told in the app and, if they have not opted out, by email.
-Since 10 October 2026 `notice_email` emails the `scheduled_export_ready` notice through Resend,
+Since 10 October 2026 `notice_email` emails the `scheduled_export_ready` notice through Postmark,
 once migration 0031 is applied.
 
 **Plans.** Since 10 October 2026 scheduled exports belong to Pro (`entitlements.py`). The four
