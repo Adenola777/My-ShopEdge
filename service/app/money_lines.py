@@ -50,6 +50,13 @@ LABELS = {
     "settlement": "Payout",
 }
 VERBATIM = ("unmapped_fee", "platform_adjustment")
+# Categories that TikTok fills from more than one field (tiktok_sync.FEE_MAP and SHIP_MAP).
+# Each field arrives as its own line, so under the category's name alone they read as
+# duplicates: production showed "Affiliate commission" twice and "Shipping fee" three times
+# on 10 October 2026. On the owner's instruction of that day each such line carries TikTok's
+# own name for its field, as an unrecognised fee does. test_handlers_smoke checks this set
+# against the two maps.
+SHARED = ("affiliate_commission", "shipping_fee", "smart_promotions_fee", "return_shipping")
 
 
 def tiktok_name(raw: str) -> str:
@@ -65,6 +72,13 @@ def tiktok_name(raw: str) -> str:
     name = raw[:-len("_amount")] if raw.lower().endswith("_amount") else raw
     words = " ".join(name.replace("_", " ").split()).lower()
     return words[:1].upper() + words[1:] if words else raw
+
+
+def line_label(category: str, raw: str | None) -> str:
+    """The name a line carries: TikTok's own words where the category alone is ambiguous."""
+    if raw and (category in VERBATIM or category in SHARED):
+        return tiktok_name(raw)
+    return LABELS.get(category, category)
 
 
 class CalculatorLine(BaseModel):
@@ -88,11 +102,8 @@ def _line(row: dict[str, Any], currency: str) -> CalculatorLine:
     """
     category = row["category"]
     raw = row["tiktok_fee_type"]
-    label = LABELS.get(category, category)
-    if category in VERBATIM and raw:
-        label = tiktok_name(raw)
     return CalculatorLine(
-        label=label,
+        label=line_label(category, raw),
         amount=money(int(row["amount_minor"]), currency),
         category=category,
         tiktok_field=raw if category != "platform_adjustment" else None,

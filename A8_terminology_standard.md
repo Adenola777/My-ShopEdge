@@ -137,6 +137,8 @@ The order is fixed and is the same on every period, every product and every expo
 
 A fee that is zero for the period is omitted rather than shown as £0.00, except on the one-unit view where a zero is informative. A fee that exists is never omitted, whatever its size.
 
+**Amended 10 October 2026, on the owner's instruction.** Four of these lines are filled by TikTok from more than one field: affiliate commission (`affiliate_commission_amount`, `affiliate_ads_commission_amount`, `affiliate_partner_commission_amount`), shipping fee (`actual_shipping_fee_amount`, `customer_paid_shipping_fee_amount`, `shipping_fee_discount_amount`), Smart Promotions fee (`smart_promotion_fee_amount`, `cofunded_promotion_service_fee_amount`) and return shipping (`return_shipping_fee_amount`, `free_return_subsidy_amount`). Each field arrives as its own line, so under the category's name alone production showed "Affiliate commission" twice and "Shipping fee" three times. Each of those lines now carries TikTok's own name for its field, such as "Affiliate ads commission" or "Customer paid shipping fee", as an unrecognised fee already does. The order above and the totals are unchanged.
+
 ### Worked example, August 2026, the sample shop
 
 | Line | Amount |
