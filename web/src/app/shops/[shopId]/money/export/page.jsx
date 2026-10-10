@@ -52,7 +52,7 @@ export default async function ExportPage({ params }) {
     <section data-testid="export-screen">
       <header className="page-head">
         <h1>Exports</h1>
-        <p>This page builds an Excel or CSV file of your figures. A month summary has the same totals as Where the money went for the same period.</p>
+        <p>Build reconciliation-ready files for your records, accountant or bookkeeping workflow.</p>
       </header>
       <ExportForm shopId={shopId} today={today} history={has("export_history")} />
       {has("scheduled_exports") ? (

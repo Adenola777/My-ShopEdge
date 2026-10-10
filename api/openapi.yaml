@@ -2145,6 +2145,23 @@ paths:
                       type: array
                       items:
                         $ref: '#/components/schemas/StockPosition'
+                    totals:
+                      type: [object, 'null']
+                      description: 'The whole shop''s units on hand, sold but not yet dispatched,
+                        coming back and written off, whatever the filter. Served on the first
+                        page only, and null on later pages. Added 10 October 2026 (A36 step 6).'
+                      required: [on_shelf, sold_not_posted, coming_back, written_off]
+                      properties:
+                        on_shelf: {type: integer}
+                        sold_not_posted: {type: integer}
+                        coming_back: {type: integer}
+                        written_off: {type: integer}
+                    runs_out_first:
+                      type: [array, 'null']
+                      description: 'At most three variants still in stock with the fewest days
+                        of cover, fewest first, across the whole shop. First page only.'
+                      items:
+                        $ref: '#/components/schemas/StockPosition'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -5593,6 +5610,30 @@ components:
           description: Gross margin after returns, as a fraction of net sales to four places
             (0.4752 is 47.52 per cent). Null wherever gross profit after returns is unknown, and
             when net sales are zero. Ruled by the owner on 10 October 2026.
+        net_sales:
+          type: [object, 'null']
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: Gross sales less seller discounts less refunds (A36.1 item 5). Added 10 October 2026 for the brief's product table.
+        tiktok_deductions:
+          type: [object, 'null']
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: What TikTok took between net sales and net proceeds, negative.
+        product_cost:
+          type: [object, 'null']
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: The cost of the units sold less the cost of those returned, negative. Null unless every variant sold had a cost on its sale day, and on a plan without profit.
+        return_impact:
+          type: [object, 'null']
+          allOf:
+          - $ref: '#/components/schemas/Money'
+          description: Return shipping paid and stock written off for the product, negative. Null on a plan without profit, because stock written off is costed.
+        cost_status:
+          type: [string, 'null']
+          enum: [complete, cost_needed, partially_costed, needs_review, null]
+          description: complete when every variant sold had a cost, cost_needed when none did, partially_costed between. needs_review is reserved for a cost an upload could not match with certainty and is not given yet. Null on a plan without profit.
     ProductDetail:
       type: object
       required:
@@ -6490,6 +6531,10 @@ components:
         created_at:
           type: string
           format: date-time
+        next_run_on:
+          type: [string, 'null']
+          format: date
+          description: The London date of the next daily run that builds this file. Today counts only when the file has not been built today. Null while the schedule is paused. Added 10 October 2026 (A36 step 6).
     ShopExportJob:
       allOf:
       - $ref: '#/components/schemas/ExportJob'
@@ -6571,6 +6616,9 @@ components:
           - string
           - 'null'
           format: date
+        share_of_threshold:
+          type: [number, 'null']
+          description: Rolling twelve-month turnover as a fraction of the threshold, to four places (0.8125 is 81.25 per cent), for the progress bar. Null when the threshold is zero. Added 10 October 2026 (A36 step 6).
     SetAside:
       type: object
       required:

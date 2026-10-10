@@ -20,6 +20,11 @@
  * as `unattributed` and the sum as `shop_total`, and the screen shows both beneath the
  * products, so the last figure on this screen is the one Money shows for the same period.
  *
+ * **The brief's table**, since 10 October 2026 (A36 step 6, section 13): product, units sold,
+ * net sales, TikTok deductions, product cost, return impact, gross profit after returns, gross
+ * margin and cost status, each served by `listProducts`. Starter's table stops at net
+ * proceeds. A product whose cost status is not complete links to its page to add the cost.
+ *
  * **Starter ranks by net proceeds** (the pricing ruling of 10 October 2026). The service
  * answers the default ranking with `measure` net_proceeds and no profit on any row, so the
  * first switch reads Net proceeds, each row shows its net proceeds, and the page carries the
@@ -31,7 +36,7 @@ import { fetchProducts, formatDate } from "@/lib/api";
 import { Figure } from "@/components/Figure";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
-import { BEFORE_OVERHEADS, coverageSentence, formatMargin } from "@/lib/terms";
+import { BEFORE_OVERHEADS, chipClass, coverageSentence, formatMargin } from "@/lib/terms";
 import { NOT_ON_PLAN } from "@/lib/upgrade";
 
 export const metadata = { title: "Products" };
@@ -42,6 +47,14 @@ const SWITCH = [
   ["units", "Units"],
   ["returns", "Returns"],
 ];
+
+/** The brief's cost statuses (section 13), as the service serves them. @type {Record<string, [string, string]>} */
+const COST_STATUS = {
+  complete: ["Complete", "good"],
+  cost_needed: ["Cost needed", "strong"],
+  partially_costed: ["Partially costed", "warn"],
+  needs_review: ["Needs review", "strong"],
+};
 
 /** @type {Record<string, string>} */
 const RANKED_BY = {
@@ -86,7 +99,8 @@ export default async function ProductsPage({ params, searchParams }) {
     <section>
       <header className="page-head">
         <h1>Products</h1>
-        <p>{RANKED_BY[measure] ?? "Ranked"}{dates}.</p>
+        <p>See which products make money after TikTok fees, returns and product costs.</p>
+        <p className="muted" data-testid="products-measure">{RANKED_BY[measure] ?? "Ranked"}{dates}.</p>
       </header>
 
       <nav className="switch" aria-label="Rank by">
@@ -126,43 +140,66 @@ export default async function ProductsPage({ params, searchParams }) {
         </section>
       ) : (
         <div className="card">
-          <ul className="rows rows--products">
-            {ranked.map((p) => (
-              <li key={p.product_id}>
-                <span>
-                  <Link className="rowlink" href={`${base}/${p.product_id}`}>
-                    {p.title || "Untitled product"}
-                  </Link>
-                  <div className="rows__sub">
-                    {p.units} sold{p.returns_units ? `, ${p.returns_units} returned` : ""}
-                    {measure !== "net_proceeds" && <>. Net proceeds{" "}<Figure amount={p.net_proceeds} /></>}
-                    {formatMargin(p.gross_margin_after_returns) && <>. Gross margin {formatMargin(p.gross_margin_after_returns)}</>}
-                  </div>
-                </span>
-                <span>
-                  <span className="visually-hidden">{FIGURE_NAME[measure] ?? "Figure"}: </span>
-                  {measure === "units" ? <strong className="money">{p.units}</strong>
-                    : measure === "returns" ? <strong className="money">{p.returns_units || 0}</strong>
-                    : measure === "net_proceeds" ? <Figure amount={p.net_proceeds} />
-                    : measure === "gross_sales" ? <Figure amount={p.gross_sales} />
-                    : <Figure amount={p.kept} reason={p.kept_reason} />}
-                </span>
-              </li>
-            ))}
-            {uncosted.map((p) => (
-              <li key={p.product_id}>
-                <span>
-                  <Link className="rowlink" href={`${base}/${p.product_id}`}>
-                    {p.title || "Untitled product"}
-                  </Link>
-                  <div className="rows__sub">
-                    This product has no cost price for some of its sales in this period. Its net
-                    proceeds are <Figure amount={p.net_proceeds} />.
-                  </div>
-                </span>
-                <Link className="chip chip--strong" href={`${base}/${p.product_id}`}>Add cost</Link>
-              </li>
-            ))}
+          {/* The brief's product table (section 13). Every figure is the service's. A
+              product without a full cost shows its cost status and no profit figure. */}
+          {!starter && <p className="rows__sub scroll-hint">Scroll the table sideways to see every column.</p>}
+          <div className={starter ? "table-scroll" : "table-scroll table-scroll--sticky"}>
+            <table data-testid="products-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th className="num">Units sold</th>
+                  <th className="num">Net sales</th>
+                  <th className="num">TikTok deductions</th>
+                  {starter ? (
+                    <th className="num">Net proceeds</th>
+                  ) : (
+                    <>
+                      <th className="num">Product cost</th>
+                      <th className="num">Return impact</th>
+                      <th className="num">Gross profit after returns</th>
+                      <th className="num">Gross margin</th>
+                      <th>Cost status</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {[...ranked, ...uncosted].map((p) => {
+                  const [word, tone] = COST_STATUS[p.cost_status ?? ""] ?? [null, "quiet"];
+                  return (
+                    <tr key={p.product_id} data-testid="product-row">
+                      <td>
+                        <Link className="rowlink" href={`${base}/${p.product_id}`}>{p.title || "Untitled product"}</Link>
+                        {p.returns_units ? <div className="rows__sub">{p.returns_units} returned</div> : null}
+                      </td>
+                      <td className="num">{p.units}</td>
+                      <td className="num"><Figure amount={p.net_sales} /></td>
+                      <td className="num"><Figure amount={p.tiktok_deductions} /></td>
+                      {starter ? (
+                        <td className="num"><Figure amount={p.net_proceeds} /></td>
+                      ) : (
+                        <>
+                          <td className="num"><Figure amount={p.product_cost} reason="Not every variant sold has a cost price." /></td>
+                          <td className="num"><Figure amount={p.return_impact} /></td>
+                          <td className="num"><Figure amount={p.kept} reason={p.kept_reason} /></td>
+                          <td className="num">{formatMargin(p.gross_margin_after_returns) ?? <span className="muted">Not known</span>}</td>
+                          <td>
+                            {word ? (
+                              p.cost_status === "complete"
+                                ? <span className={chipClass(tone)}>{word}</span>
+                                : <Link className={chipClass(tone)} href={`${base}/${p.product_id}`}>{word}</Link>
+                            ) : null}
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <ul className="rows">
             {total && measure === "kept" && (
               <li className="rows__total">
                 <span>{unattributed ? "Total across products" : "Total gross profit after returns"}</span>

@@ -189,6 +189,33 @@ check("the payout status follows the owner's six statuses, and timing is never a
       payout_status_rule)
 
 
+# --- A36 step 6: a product's cost status, from the variants it sold
+def product_cost_status():
+    from app.products import cost_status
+    _assert(cost_status(3, 0) == "complete")
+    _assert(cost_status(3, 3) == "cost_needed")
+    _assert(cost_status(3, 1) == "partially_costed")
+    _assert(cost_status(0, 0) is None, "nothing sold has no status")
+check("a product's cost status is complete, cost needed or partially costed", product_cost_status)
+
+
+# --- A36 step 6: a scheduled export's next run
+def schedule_next_run():
+    from app.export_schedules import ExportSchedule, next_run_on
+    def mk(**k):
+        return ExportSchedule(id=UUID(int=9), kind="month_summary", format="xlsx", basis="sales",
+                              created_at=NOW, **k)
+    sat = date(2026, 10, 10)
+    _assert(next_run_on(mk(cadence="monthly", day_of_month=1, active=True), sat) == date(2026, 11, 1))
+    _assert(next_run_on(mk(cadence="weekly", day_of_week=1, active=True), sat) == date(2026, 10, 12))
+    _assert(next_run_on(mk(cadence="weekly", day_of_week=6, active=True), sat) == sat)
+    ran = datetime(2026, 10, 10, 6, 0, tzinfo=timezone.utc)
+    _assert(next_run_on(mk(cadence="weekly", day_of_week=6, active=True, last_run_at=ran), sat)
+            == date(2026, 10, 17), "a file built today runs again next week")
+    _assert(next_run_on(mk(cadence="weekly", day_of_week=6, active=False), sat) is None)
+check("a scheduled export names its next run, and none while paused", schedule_next_run)
+
+
 # --- records
 def records_page():
     cols = ["id","entry_type","category","tiktok_fee_type","amount_minor","currency",
@@ -825,8 +852,11 @@ def stock_page():
     _assert(b["items"][0]["days_left"] == 3.5, b["items"][0])
     _assert(b["items"][0]["state"] == "low")
     _assert(b["next_cursor"] is not None)
+    # A36 step 6: the first page carries the shop's totals and what runs out first.
+    _assert(b["totals"]["on_shelf"] == 15 and len(b["runs_out_first"]) == 3, b["totals"])
     r2 = client.get(f"/v1/shops/{SHOP}/stock?cursor={b['next_cursor']}")
     _assert(r2.status_code == 200, f"status {r2.status_code}: {r2.text[:300]}")
+    _assert(r2.json()["totals"] is None, "totals belong to the first page only")
 check("GET stock pages by SKU and serves days left as a number", stock_page)
 
 def stock_out_is_null():

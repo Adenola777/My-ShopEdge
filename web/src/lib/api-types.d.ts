@@ -2566,6 +2566,19 @@ export interface components {
             cost_known?: boolean;
             /** @description Gross margin after returns, as a fraction of net sales to four places (0.4752 is 47.52 per cent). Null wherever gross profit after returns is unknown, and when net sales are zero. Ruled by the owner on 10 October 2026. */
             gross_margin_after_returns?: number | null;
+            /** @description Gross sales less seller discounts less refunds (A36.1 item 5). Added 10 October 2026 for the brief's product table. */
+            net_sales?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+            /** @description What TikTok took between net sales and net proceeds, negative. */
+            tiktok_deductions?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+            /** @description The cost of the units sold less the cost of those returned, negative. Null unless every variant sold had a cost on its sale day, and on a plan without profit. */
+            product_cost?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+            /** @description Return shipping paid and stock written off for the product, negative. Null on a plan without profit, because stock written off is costed. */
+            return_impact?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+            /**
+             * @description complete when every variant sold had a cost, cost_needed when none did, partially_costed between. needs_review is reserved for a cost an upload could not match with certainty and is not given yet. Null on a plan without profit.
+             * @enum {string|null}
+             */
+            cost_status?: "complete" | "cost_needed" | "partially_costed" | "needs_review" | null;
         };
         ProductDetail: {
             product: components["schemas"]["ProductRow"];
@@ -2896,6 +2909,11 @@ export interface components {
             last_run_at: string | null;
             /** Format: date-time */
             created_at: string;
+            /**
+             * Format: date
+             * @description The London date of the next daily run that builds this file. Today counts only when the file has not been built today. Null while the schedule is paused. Added 10 October 2026 (A36 step 6).
+             */
+            next_run_on?: string | null;
         };
         ShopExportJob: components["schemas"]["ExportJob"] & {
             /** @enum {string} */
@@ -2929,6 +2947,8 @@ export interface components {
             rule_key?: string;
             /** Format: date */
             reviewed_at?: string | null;
+            /** @description Rolling twelve-month turnover as a fraction of the threshold, to four places (0.8125 is 81.25 per cent), for the progress bar. Null when the threshold is zero. Added 10 October 2026 (A36 step 6). */
+            share_of_threshold?: number | null;
         };
         SetAside: {
             /** Format: date-time */
@@ -4904,6 +4924,15 @@ export interface operations {
                         /** Format: date-time */
                         as_of: string;
                         items: components["schemas"]["StockPosition"][];
+                        /** @description The whole shop's units on hand, sold but not yet dispatched, coming back and written off, whatever the filter. Served on the first page only, and null on later pages. Added 10 October 2026 (A36 step 6). */
+                        totals?: {
+                            on_shelf: number;
+                            sold_not_posted: number;
+                            coming_back: number;
+                            written_off: number;
+                        } | null;
+                        /** @description At most three variants still in stock with the fewest days of cover, fewest first, across the whole shop. First page only. */
+                        runs_out_first?: components["schemas"]["StockPosition"][] | null;
                     };
                 };
             };

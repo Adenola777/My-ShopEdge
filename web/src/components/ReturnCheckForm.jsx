@@ -5,6 +5,10 @@
  * item came back usable, enters any return shipping they paid, sees what the check will do,
  * and records it. Checking is one way, so no choice is made for the seller in advance.
  *
+ * Since 10 October 2026 (A36 step 6) it carries the brief's wording for Resellable and
+ * Unsellable, and Unsellable asks for a second press before it records, because a write-off
+ * cannot be undone.
+ *
  * What each choice writes is the service's rule (checkReturnItem, A30.2), and the "What this check records"
  * card describes it without working out any money here: a write-off is valued by the service
  * at the cost in force when the unit sold, so the card names the rule rather than a figure.
@@ -25,6 +29,9 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
   const [postage, setPostage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
+  // The brief asks for a confirmation before Unsellable (section 14), because a write-off
+  // cannot be undone. The first press asks; the second records.
+  const [confirming, setConfirming] = useState(false);
   const [key] = useState(() => newKey());
 
   const units = `${quantity} ${quantity === 1 ? "unit" : "units"}`;
@@ -35,6 +42,11 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
     e.preventDefault();
     if (status === null) {
       setError("Say how the item came back before you record the check.");
+      return;
+    }
+    if (status === "unsellable" && !confirming) {
+      setConfirming(true);
+      setError(null);
       return;
     }
     let postageMinor = null;
@@ -77,7 +89,7 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
         ]).map(([value, label]) => (
           <label key={value} className={status === value ? "segmented__on" : undefined}>
             <input type="radio" name={`status-${itemId}`} value={value} checked={status === value}
-                   onChange={() => setStatus(value)} />
+                   onChange={() => { setStatus(value); setConfirming(false); }} />
             {label}
           </label>
         ))}
@@ -107,13 +119,35 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
               <li><span>Return shipping you paid</span><strong>{formatMoney({ amount_minor: shownPostage, currency })}</strong></li>
             )}
           </ul>
+          {/* The brief's required wording (section 14). */}
+          {status === "resellable" && (
+            <p className="card__why" data-testid="return-wording">
+              {quantity === 1 ? "This unit returns to available stock." : "These units return to available stock."}
+            </p>
+          )}
+          {status === "unsellable" && (
+            <p className="card__why" data-testid="return-wording">
+              {quantity === 1
+                ? "This unit is recorded as written off and reflected in your figures."
+                : "These units are recorded as written off and reflected in your figures."}
+            </p>
+          )}
+        </div>
+      )}
+
+      {confirming && status === "unsellable" && (
+        <div className="note note--warn" role="alert" data-testid="confirm-write-off">
+          <p>
+            Writing off {units} cannot be undone. Press the button again to confirm that{" "}
+            {quantity === 1 ? "it cannot" : "they cannot"} be sold again.
+          </p>
         </div>
       )}
 
       {error && <p className="form-error" role="alert">{error}</p>}
       <p>
         <button className="btn btn--primary btn--block" disabled={busy} data-testid="confirm-return">
-          {busy ? "Recording" : "Record this check"}
+          {busy ? "Recording" : confirming && status === "unsellable" ? "Confirm the write-off" : "Record this check"}
         </button>
       </p>
       <p className="footnote">A check is recorded once and cannot be changed.</p>

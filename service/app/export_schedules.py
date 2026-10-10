@@ -112,6 +112,9 @@ class ExportSchedule(BaseModel):
     active: bool
     last_run_at: datetime | None = None
     created_at: datetime
+    # The London date of the next daily run that builds this file, from `due_on`. Null while
+    # the schedule is paused. Added 10 October 2026 for the brief's "Next run" (A36 step 6).
+    next_run_on: date | None = None
 
 
 class ExportScheduleList(BaseModel):
@@ -123,7 +126,22 @@ COLS = ("id, kind, format, basis, cadence, day_of_week, day_of_month, active, la
 
 
 def _schedule(row) -> ExportSchedule:
-    return ExportSchedule(**dict(zip(COLS.split(", "), row, strict=True)))
+    s = ExportSchedule(**dict(zip(COLS.split(", "), row, strict=True)))
+    s.next_run_on = next_run_on(s, business_today())
+    return s
+
+
+def next_run_on(s: ExportSchedule, today: date) -> date | None:
+    """The first London date from today on which the daily run builds this schedule's file.
+    Today counts only when the file has not been built today."""
+    if not s.active:
+        return None
+    ran_today = s.last_run_at is not None and business_today(s.last_run_at) == today
+    for offset in range(0 if not ran_today else 1, 63):
+        day = today + timedelta(days=offset)
+        if due_on(s.cadence, s.day_of_week, s.day_of_month, day):
+            return day
+    return None
 
 
 def _check(s: dict[str, Any]) -> None:

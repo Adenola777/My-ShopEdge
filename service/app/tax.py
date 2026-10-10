@@ -73,6 +73,9 @@ class VatMonitorOut(BaseModel):
     months: list[MonthTurnover]
     rule_key: str
     reviewed_at: str | None = None
+    # Turnover as a share of the threshold, to four places, for the brief's progress bar
+    # (A36 step 6). Worked out here so the browser does no arithmetic on money (A29.1).
+    share_of_threshold: float | None = None
 
 
 class BasisItem(BaseModel):
@@ -238,6 +241,9 @@ def get_vat_monitor(
         months=months,
         rule_key=rule_key,
         reviewed_at=reviewed_at.isoformat() if reviewed_at else None,
+        share_of_threshold=(float((Decimal(turnover) / Decimal(threshold_minor))
+                                  .quantize(Decimal("0.0001"), ROUND_HALF_UP))
+                            if threshold_minor > 0 else None),
     )
 
 

@@ -29,6 +29,14 @@ import { BEFORE_OVERHEADS, STOCK_STATE, chipClass, formatMargin } from "@/lib/te
 
 export const metadata = { title: "Product" };
 
+/** The brief's cost statuses, in words. @type {Record<string, string>} */
+const COST_WORD = {
+  complete: "complete",
+  cost_needed: "cost needed",
+  partially_costed: "partially costed",
+  needs_review: "needs review",
+};
+
 /**
  * @param {{
  *   params: Promise<{ shopId: string, productId: string }>,
@@ -119,6 +127,12 @@ export default async function ProductDetailPage({ params, searchParams }) {
             <p className="hero__line" data-testid="product-margin">Gross margin after returns {formatMargin(p.gross_margin_after_returns)} of net sales.</p>
           )}
           <p className="hero__line">{p.kept ? BEFORE_OVERHEADS : p.kept_reason}</p>
+          {/* A36 step 6: net proceeds and the cost status sit with the headline, as the
+              brief's product detail lists them. */}
+          <p className="hero__line" data-testid="product-net-proceeds">
+            Net proceeds <Figure amount={p.net_proceeds} />
+            {p.cost_status && COST_WORD[p.cost_status] ? `. Cost status: ${COST_WORD[p.cost_status]}.` : "."}
+          </p>
         </div>
 
         <div className="card">
@@ -144,7 +158,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
         </div>
 
         <div className="card">
-          <h2>Product cost</h2>
+          <h2>Edit product cost</h2>
           <p className="card__why">
             What one unit costs you. It drives every profit figure here. Each unit is costed at
             the cost in force on the day it sold, so choose the first day the cost applies to.
@@ -185,7 +199,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
       {/* The link to S16 is Emergent AI's, brought across on 28 September 2026. */}
       <p className="card__foot">
         <Link data-testid="product-transactions-link" href={`/shops/${shopId}/products/${productId}/transactions${recordsQuery ? `?${recordsQuery}` : ""}`}>
-          See every record behind these figures
+          See the orders and records behind these figures
         </Link>
       </p>
     </section>

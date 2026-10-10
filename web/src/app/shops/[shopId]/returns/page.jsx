@@ -4,15 +4,29 @@
  * It lists the returns with an item still to check, from listReturns with
  * `awaiting_check=true`, and gives each waiting item the check form. The sheet shows one
  * return; a seller with several sees each in turn on one page, so none is hidden behind
- * another. Checked items are not listed, because a check is one way.
+ * another.
+ *
+ * Since 10 October 2026 this is the brief's Returns (A36 step 6, section 14): the title and
+ * subtitle, the three states (Awaiting inspection, Resellable, Unsellable and written off),
+ * and the returns already checked, read only, with what each did to stock and figures. A
+ * check stays one way. The brief's optional note is not offered, because the service has
+ * nowhere to keep one.
  */
 
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 import { ReturnCheckForm } from "@/components/ReturnCheckForm";
+import { chipClass } from "@/lib/terms";
 
-export const metadata = { title: "Check returns" };
+export const metadata = { title: "Returns" };
+
+/** The brief's states for a checked item, with the chip tone. @type {Record<string, [string, string, string]>} */
+const STATE = {
+  resellable: ["Resellable", "good", "Back in available stock."],
+  unsellable: ["Unsellable, written off", "bad", "Written off and reflected in your figures."],
+  not_applicable: ["Nothing came back", "quiet", "Stock did not change."],
+};
 
 /**
  * What a check just recorded, by the status the form put in the address. Each sentence is
@@ -30,9 +44,14 @@ const RECORDED = {
 export default async function ReturnsPage({ params, searchParams }) {
   const { shopId } = await params;
   const { checked } = await searchParams;
-  const result = await fetchShop(shopId, "/returns", { awaiting_check: "true" });
+  const [result, done] = await Promise.all([
+    fetchShop(shopId, "/returns", { awaiting_check: "true" }),
+    fetchShop(shopId, "/returns", { awaiting_check: "false", limit: "20" }),
+  ]);
   const problem = apiProblem(result, { what: "your returns" });
   if (problem) return problem;
+  /** @type {import("@/lib/api-types").components["schemas"]["ReturnSummary"][]} */
+  const checkedReturns = done.ok ? (done.data?.returns ?? []) : [];
 
   /** @type {import("@/lib/api-types").components["schemas"]["ReturnSummary"][]} */
   const returns = result.data.returns ?? [];
@@ -40,14 +59,16 @@ export default async function ReturnsPage({ params, searchParams }) {
   return (
     <section data-testid="returns-screen">
       <header className="page-head">
-        <h1>Check returns</h1>
-        <p>Say whether each returned item can be sold again. Each item can be checked only once, and the check cannot be changed.</p>
+        <h1>Returns</h1>
+        <p>Review each return once so your stock and product figures stay accurate.</p>
       </header>
 
       {checked && RECORDED[checked] && (
         <div className="note note--info" role="status" data-testid="return-recorded"><p>{RECORDED[checked]}</p></div>
       )}
 
+      <h2>Awaiting inspection</h2>
+      <p className="muted">Say whether each returned item can be sold again. Each item is checked once, and the check cannot be changed.</p>
       {returns.length === 0 ? (
         <div className="card">
           <p className="muted">There are no returns waiting for a check.</p>
@@ -81,6 +102,37 @@ export default async function ReturnsPage({ params, searchParams }) {
             ));
           })}
         </div>
+      )}
+
+      {checkedReturns.length > 0 && (
+        <>
+          <h2>Checked</h2>
+          <div className="stack">
+            {checkedReturns.flatMap((r) => (r.items ?? []).map((item) => {
+              const [word, tone, effect] = STATE[item.seller_check_status] ?? ["Checked", "quiet", ""];
+              return (
+                <div className="card" key={item.id} data-testid="return-checked">
+                  <ul className="rows">
+                    <li>
+                      <span>
+                        {[item.product_title, item.variant_label].filter(Boolean).join(", ") || "A product TikTok did not name"}
+                        {`, ${item.quantity} ${item.quantity === 1 ? "unit" : "units"}`}
+                      </span>
+                      <span className={chipClass(tone)}>{word}</span>
+                    </li>
+                    <li><span>Order</span><strong>{r.tiktok_order_id}</strong></li>
+                    <li><span>Refund to the customer</span><Figure amount={r.refund} reason="Not refunded yet" /></li>
+                    {item.checked_at && <li><span>Checked</span><strong>{formatDate(item.checked_at)}</strong></li>}
+                    {r.return_cost && r.return_cost.amount_minor !== 0 && (
+                      <li><span>Return cost in your figures</span><Figure amount={r.return_cost} /></li>
+                    )}
+                  </ul>
+                  {effect && <p className="card__why">{effect}</p>}
+                </div>
+              );
+            }))}
+          </div>
+        </>
       )}
     </section>
   );
