@@ -21,10 +21,29 @@ decisions: the company is written Inspirecraft Global Ltd, as registered, and th
 "Maisonette 3". Headlines are sentences, "what you keep" became gross profit, and "Under a
 minute" and "Stock and loss update themselves" are gone, because neither was measured or true.
 
-Still open: the footer carries no privacy notice or terms, because neither page exists (A14).
+Still open: the footer carries no privacy notice, terms or cookie notice, because none of the three pages exists (A14). The brief asks for all three.
 
 The logo is the official artwork from `brand/` (A7): `site/brand/` holds byte-for-byte copies of
 `mse-logo-horizontal-notagline.svg`, `mse-mark-colour.svg` and `mse-favicon.svg`, replacing the
 hand-drawn bag the supplied page carried. The top bar shows it at 48 px, as the app does.
 
-The page is one static file with its other images inline. It needs no build.
+On 10 October 2026 the page was rewritten to the owner's brief of that day, with his approval:
+the brief's headings and copy, its section order (hero, problem, product costs, money,
+products, exports, returns, VAT and tax, stock, security), a How it works section, and a
+Pricing section the navigation links to. Every screenshot is the real app, taken against the
+demo shop's made-up data on a local copy, and lives in `shots/` as WebP rather than inline.
+Where the brief's copy promised more than the app does, the copy was narrowed:
+
+- "gross profit and margin" reads "gross profit", because no screen shows a margin;
+- "notifies you when you reach it" (VAT) reads "shows how much headroom remains", because no
+  VAT threshold notice exists;
+- "Every export matches the figures" reads that a month summary has the same totals, which
+  is the only export the app makes that promise for;
+- scheduled exports are said to be on the Pro plan, as `plans.py` lists them;
+- cash basis is "by the month TikTok settled it", because the ledger holds the month;
+- the tax line adds that Scottish Income Tax rates are not yet included.
+
+The read-only claims stand as before, though A24 records that the minimal TikTok scopes have
+never been checked against them.
+
+The page needs no build.
