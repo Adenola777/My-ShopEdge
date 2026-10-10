@@ -200,4 +200,39 @@ What has run:
 - No account in it held a live Stripe subscription, so the Stripe half of suspension has not
   run.
 
-Batches 3 and 4 are not started.
+**Batch 3, the admin site, was built on 10 October 2026** in `admin/`, a Next.js app on the same
+`@stackframe/stack` 2.8.108 as the seller app. It has eight pages:
+
+- an overview of the figures;
+- accounts, with the email search and the actions;
+- an account export's status;
+- shops, with Sync now;
+- sync runs;
+- webhooks;
+- notice emails, with Try again on a failed one;
+- the audit log.
+
+What has run:
+
+- It lints, typechecks, passes `npm audit --omit=dev --audit-level=high` and builds, and CI
+  runs the same in its own job.
+- It was driven in Chromium against the real service on a local PostgreSQL 16. A scratch
+  copy of the site stood in for Stack, and the service's `auth.verify` was replaced by a
+  stand-in, so `require_admin` ran as written after verification.
+- Signed out, it asks for sign-in. A verified address not on the list, and an unverified one,
+  are each told the sign-in cannot open the admin pages.
+- The admin saw the figures, found an account by email, suspended and reactivated it (both
+  emails reached the stand-in for Resend), built an export and opened its status, and
+  started a sync. The audit log listed each action under `admin:<email>`.
+- At 390 px wide the page does not scroll sideways.
+
+**Unverified:** a real Stack sign-in on the admin site. It needs the site's address on Neon
+Auth's trusted domains, which is batch 4.
+
+**Batch 4, going live, is in progress.**
+
+- On 10 October 2026 the owner named `adenola.adegbesan@gmail.com` as the admin for now.
+  This session set `ADMIN_EMAILS` to that address on `My-ShopEdge-1` through Render's API, on
+  his instruction, and redeployed `ad73a6f`.
+- The Vercel project, its address, `ALLOWED_ORIGINS` and Neon Auth's trusted domains are not
+  done.
