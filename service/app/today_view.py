@@ -58,7 +58,7 @@ from .dates import business_today, now_utc
 from .db import tenant
 from .entitlements import features_for, refuse
 from .money import Money, money
-from .money_view import TIKTOK_FEES, calculate
+from .money_view import TIKTOK_FEES, Coverage, calculate
 from .order_usage import OrderUsage, read_order_usage
 from .shops import require_shop
 
@@ -139,6 +139,10 @@ class Month(BaseModel):
     kept: Money | None = None
     kept_reason: str | None = None
     gross_margin_after_returns: float | None = None
+    # A36: with some costs missing, the month's gross profit so far and its cost coverage,
+    # exactly as Money serves them for the same month.
+    gross_profit_so_far: Money | None = None
+    coverage: Coverage | None = None
 
 
 class Awaiting(BaseModel):
@@ -410,6 +414,8 @@ def get_today(
             kept=month.kept,
             kept_reason=month.kept_reason,
             gross_margin_after_returns=month.totals.gross_margin_after_returns,
+            gross_profit_so_far=month.totals.gross_profit_so_far,
+            coverage=month.coverage,
         ),
         shop_money=shop_money,
         needs_you=items,

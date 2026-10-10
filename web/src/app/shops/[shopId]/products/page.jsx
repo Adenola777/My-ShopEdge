@@ -31,7 +31,7 @@ import { fetchProducts, formatDate } from "@/lib/api";
 import { Figure } from "@/components/Figure";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
-import { BEFORE_OVERHEADS, formatMargin } from "@/lib/terms";
+import { BEFORE_OVERHEADS, coverageSentence, formatMargin } from "@/lib/terms";
 import { NOT_ON_PLAN } from "@/lib/upgrade";
 
 export const metadata = { title: "Products" };
@@ -65,6 +65,7 @@ export default async function ProductsPage({ params, searchParams }) {
   /** @typedef {import("@/lib/api-types").components["schemas"]["ProductRanking"]} Ranking */
   /** @type {{ products: ProductRow[], total?: any, measure?: string, others?: { count: number, amount: any }, unattributed?: Ranking["unattributed"], shop_total?: any }} */
   const { products = [], total, measure = "kept", others, unattributed, shop_total } = result.data;
+  const coverage = result.data.coverage ?? null;
   /** @type {{ from?: string, to?: string } | undefined} */
   const period = result.data.period;
   const dates = period?.from && period?.to ? `, ${formatDate(period.from)} to ${formatDate(period.to)}` : "";
@@ -99,10 +100,18 @@ export default async function ProductsPage({ params, searchParams }) {
 
       {/* Added 30 September 2026: the owner found no way from Products to upload a cost
           file. Costs are what turn sales into gross profit, so the way in sits on this page. */}
-      <div className="card card--action">
+      <div className="card card--action" data-testid="products-coverage">
         <div>
-          <h2>Product costs</h2>
-          <p className="card__why">Gross profit needs what each product costs you. Upload an Excel or CSV file, or type costs in one by one.</p>
+          <h2>{coverage ? "Cost coverage" : "Product costs"}</h2>
+          <p className="card__why">
+            {/* A36: the brief's cost coverage card, from the service's coverage by sales value. */}
+            {!coverage
+              ? "Gross profit needs what each product costs you. Upload an Excel or CSV file, or type costs in one by one."
+              : coverageSentence(coverage) ?? "Every product sold in this period has a cost."}
+          </p>
+          {coverage && coverage.products_missing > 0 && (
+            <p><Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
+          )}
         </div>
         <div className="card--action__buttons">
           <Link className="btn btn--primary" href={`/shops/${shopId}/setup/costs/upload`}>Upload a cost file</Link>

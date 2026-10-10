@@ -34,6 +34,7 @@ import { api, fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 import {
+  coverageSentence,
   AWAITING, BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, HERO_LABEL, SEVERITY_TONE, chipClass,
   keptReason,
   formatMargin,
@@ -166,12 +167,19 @@ export default async function TodayPage({ params }) {
           <div className="card">
             {/* Before every product sold has a cost, the card shows net proceeds and says so,
                 rather than a profit heading over "Not known" (owner's brief, 10 October 2026). */}
-            <p className="stat__value"><Figure amount={t.month.kept ?? t.month.net_proceeds} /></p>
-            <p className="stat__label">{t.month.kept ? "Gross profit after returns this month" : "Net proceeds this month"}</p>
+            {/* A36: with some costs missing, the brief's "Gross profit so far" and its coverage. */}
+            <p className="stat__value"><Figure amount={t.month.kept ?? t.month.gross_profit_so_far ?? t.month.net_proceeds} /></p>
+            <p className="stat__label">
+              {t.month.kept ? "Gross profit after returns this month"
+                : t.month.gross_profit_so_far ? "Gross profit so far this month" : "Net proceeds this month"}
+            </p>
+            {!t.month.kept && t.month.gross_profit_so_far && coverageSentence(t.month.coverage) && (
+              <p className="rows__sub" data-testid="month-coverage">{coverageSentence(t.month.coverage)}</p>
+            )}
             {formatMargin(t.month.gross_margin_after_returns) && (
               <p className="rows__sub" data-testid="month-margin">Gross margin after returns {formatMargin(t.month.gross_margin_after_returns)}</p>
             )}
-            {!t.month.kept && t.month.kept_reason && (
+            {!t.month.kept && !t.month.gross_profit_so_far && t.month.kept_reason && (
               <p className="rows__sub">{keptReason(t.month.kept_reason)}</p>
             )}
           </div>

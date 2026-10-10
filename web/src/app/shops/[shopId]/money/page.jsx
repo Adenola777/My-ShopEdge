@@ -33,7 +33,7 @@ import { fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
 import { Figure } from "@/components/Figure";
-import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, formatMargin, keptReason } from "@/lib/terms";
+import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, coverageSentence, formatMargin, keptReason } from "@/lib/terms";
 
 /** Lines whose label states their direction, shown without the ledger's sign. */
 const UNSIGNED = new Set(["settlement", "reserve_withheld"]);
@@ -160,10 +160,20 @@ export default async function MoneyPage({ params, searchParams }) {
         ))}
       </div>
 
+      {m.totals?.gross_profit_so_far && (
+        <div className="card" data-testid="money-so-far">
+          <ul className="rows">
+            <li className="rows__total"><span>Gross profit so far</span><Figure amount={m.totals.gross_profit_so_far} /></li>
+          </ul>
+          {coverageSentence(m.coverage) && <p className="card__why">{coverageSentence(m.coverage)}</p>}
+          <p><Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
+        </div>
+      )}
+
       <ExpectedPayouts result={expected} shopId={shopId} />
 
       <p className="footnote">
-        {m.kept ? BEFORE_OVERHEADS : keptReason(m.kept_reason)}
+        {m.kept || m.totals?.gross_profit_so_far ? BEFORE_OVERHEADS : keptReason(m.kept_reason)}
       </p>
       <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/money/export`} data-testid="money-export">Export this for your accountant</Link></p>
     </section>

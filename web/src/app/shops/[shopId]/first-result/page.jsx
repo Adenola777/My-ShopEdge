@@ -4,9 +4,9 @@
  * the import page when the import has finished. After it, Overview is the first screen.
  *
  * Every figure is the service's (`getMoney`, the same calculator Money uses), for the last 30
- * London days. The lines and subtotals are shown as served, in the service's order, so this
- * page changes with the service when A36 step 3 moves refunds above net sales; nothing is
- * added up here. Gross profit appears only when the service has one, which needs product costs.
+ * London days. The lines and subtotals are shown as served, in the service's order (since A36
+ * step 3, refunds sit in Sales, above net sales); nothing is added up here. Gross profit
+ * appears only when the service has one, which needs product costs.
  */
 
 import Link from "next/link";
@@ -19,7 +19,7 @@ import { BEFORE_OVERHEADS, formatMargin } from "@/lib/terms";
 export const metadata = { title: "Your first reconciliation" };
 
 /** The chain up to net proceeds. Costs, return costs and the payout are not part of it. */
-const FIRST_SECTIONS = new Set(["revenue", "tiktok_fees", "refunds"]);
+const FIRST_SECTIONS = new Set(["revenue", "tiktok_fees"]);
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function FirstResultPage({ params }) {
