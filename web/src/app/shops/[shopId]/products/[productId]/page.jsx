@@ -25,7 +25,7 @@ import { apiProblem } from "@/components/ApiProblem";
 import { CostForm } from "@/components/CostForm";
 import { Figure } from "@/components/Figure";
 import { LineLabel } from "@/components/LineLabel";
-import { BEFORE_OVERHEADS, STOCK_STATE, chipClass } from "@/lib/terms";
+import { BEFORE_OVERHEADS, STOCK_STATE, chipClass, formatMargin } from "@/lib/terms";
 
 export const metadata = { title: "Product" };
 
@@ -115,6 +115,9 @@ export default async function ProductDetailPage({ params, searchParams }) {
         <div className="card hero">
           <p className="hero__label">Gross profit after returns, all {p.units} {p.units === 1 ? "unit" : "units"}</p>
           <p className="hero__value"><Figure amount={p.kept} reason={p.kept_reason} /></p>
+          {formatMargin(p.gross_margin_after_returns) && (
+            <p className="hero__line" data-testid="product-margin">Gross margin after returns {formatMargin(p.gross_margin_after_returns)} of net sales.</p>
+          )}
           <p className="hero__line">{p.kept ? BEFORE_OVERHEADS : p.kept_reason}</p>
         </div>
 

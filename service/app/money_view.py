@@ -61,7 +61,7 @@ from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
 from .money import Money, money
-from .money_lines import LABELS, TIKTOK_FEES, VERBATIM, CalculatorLine, _line  # noqa: F401
+from .money_lines import LABELS, TIKTOK_FEES, VERBATIM, CalculatorLine, _line, gross_margin  # noqa: F401
 from .products import NET_PROCEEDS_TYPES, RETURN_LOSS_TYPES, SQL as PRODUCTS_SQL
 from .shops import require_shop
 
@@ -116,6 +116,7 @@ class Totals(BaseModel):
     cost_of_goods_sold: Money | None = None
     gross_profit: Money | None = None
     gross_profit_after_returns: Money | None = None
+    gross_margin_after_returns: float | None = None
 
 
 class MoneyView(BaseModel):
@@ -282,6 +283,9 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
         confidence = "estimated"
     else:
         confidence = "confirmed"
+
+    totals.gross_margin_after_returns = gross_margin(
+        gross_profit_after if kept_reason is None else None, net_sales)
 
     view = MoneyView(
         as_of=datetime.now(timezone.utc),

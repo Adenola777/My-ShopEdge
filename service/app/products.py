@@ -42,7 +42,7 @@ from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
 from .money import Money, money, per_unit
-from .money_lines import SHARED, line_label
+from .money_lines import SHARED, gross_margin, line_label
 from .settlements import MAX_LIMIT, decode_cursor, encode_cursor
 from .shops import require_shop
 from .stock import StockPosition
@@ -86,6 +86,7 @@ class ProductRow(BaseModel):
     kept_reason: str | None = None
     returns_units: int = 0
     cost_known: bool = False
+    gross_margin_after_returns: float | None = None
 
 
 class Others(BaseModel):
@@ -165,6 +166,7 @@ led as (
          coalesce(sum(amount_minor) filter (where entry_type = any(%(np)s)), 0) as net_proceeds_minor,
          coalesce(sum(amount_minor) filter (where entry_type = any(%(rl)s)), 0) as return_entries_minor,
          coalesce(sum(amount_minor) filter (where category = 'gross_sales'), 0) as gross_sales_minor,
+         coalesce(sum(amount_minor) filter (where category = 'seller_discount'), 0) as seller_discount_minor,
          coalesce(max(currency), 'GBP') as currency
     from scoped group by product_id
 ),
@@ -251,7 +253,7 @@ rets as (
 select p.id as product_id, p.tiktok_product_id, p.title,
        coalesce(u.units_sold, 0) as units_sold,
        coalesce(rr.returns_units, 0) as returns_units,
-       led.gross_sales_minor, led.net_proceeds_minor, led.currency,
+       led.gross_sales_minor, led.seller_discount_minor, led.net_proceeds_minor, led.currency,
        -- Return Loss is positive money lost. Both entry types are negative in the ledger.
        -led.return_entries_minor as return_loss_minor,
        rt.cost_retained_minor,
@@ -357,6 +359,10 @@ def list_products(
             ),
             returns_units=int(r["returns_units"]),
             cost_known=r["kept_minor"] is not None,
+            gross_margin_after_returns=gross_margin(
+                int(r["kept_minor"]) if r["kept_minor"] is not None else None,
+                int(r["gross_sales_minor"]) + int(r.get("seller_discount_minor") or 0),
+            ),
         )
         for r in page
     ]

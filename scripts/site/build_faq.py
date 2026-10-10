@@ -9,7 +9,7 @@ cannot drift apart, which the brief requires.
 What was changed from the brief, and why. Every claim about MyShopEdge was checked against
 the service on 10 October 2026, and an answer says what the product does rather than what it
 "should" do. In particular: cost coverage is shown by units sold, not by sales value; the
-product shows gross profit and no gross margin yet; payouts carry TikTok's payment status
+product measures gross margin after returns, as the owner ruled on 10 October 2026; payouts carry TikTok's payment status
 rather than the five reconciliation labels the brief lists; and ending a plan does not move
 an account to a read-only state. TikTok's settlement periods, its 9% commission and its bank
 timings are left out, because no TikTok page could be opened from the build session to check
@@ -73,7 +73,7 @@ Paid out                          £40.75</pre>
 − product costs
 = gross profit</pre>
 <p>Gross margin is gross profit divided by net sales, multiplied by 100. Revenue is not profit: product cost, returns, unsellable stock, packaging, advertising, staff, storage, software and other overheads all affect what your business keeps.</p>
-<p>MyShopEdge works in two stages. It shows net proceeds before any product costs are added, and it shows gross profit once costs are added. A missing cost is never treated as zero.</p>""",
+<p>MyShopEdge works in two stages. It shows net proceeds before any product costs are added, and it shows gross profit and gross margin once costs are added. MyShopEdge measures both after returns, so return shipping and written-off stock are counted. A missing cost is never treated as zero.</p>""",
      f'<p>Start with net proceeds today and <a href="{START}">add product costs</a> whenever you are ready.</p>'),
     ("is-revenue-profit", "Is TikTok Shop revenue the same as profit?",
      """<p>No. Gross sales show what customers paid before deductions. Your payout shows what remains after TikTok Shop has applied fees, refunds and adjustments. Neither figure tells you your product profit, because neither includes what your products cost.</p>
@@ -108,7 +108,7 @@ Paid out                          £40.75</pre>
 <pre class="calc">Net proceeds − product costs = gross profit
 Gross profit ÷ net sales × 100 = gross margin</pre>
 <p>Gross margin lets you compare products with different prices. A product can sell more than another and still earn less of each pound once its cost, fees and returns are counted.</p>
-<p>MyShopEdge shows gross profit, by period and by product, once costs are added. It does not show gross margin yet.</p>""",
+<p>Once costs are added, MyShopEdge shows gross profit after returns and gross margin after returns, for the period and for each product. Margin is left blank wherever a cost is missing, rather than worked out from an incomplete profit.</p>""",
      f'<p>See gross profit for your own products: <a href="{START}">add product costs</a>.</p>'),
     ("do-i-need-product-costs", "Do I need to upload product costs to use MyShopEdge?",
      """<p>No. Without costs, MyShopEdge shows your sales, fees, refunds, statements, payouts and net proceeds. Add costs when you want gross profit, profit by product, and the effect of returns and write-offs on profit. You can add costs at any time, by Excel or CSV file or by typing them in.</p>""", None),
@@ -122,7 +122,7 @@ Gross profit ÷ net sales × 100 = gross margin</pre>
      """<p>A row can fail to match when the SKU is missing or differs from TikTok Shop's, when the product has variants the file does not name, when the file holds duplicate rows, or when the cost is blank or not a number.</p>
 <p>MyShopEdge keeps those rows visible as unmatched or duplicate, with the reason, rather than guessing or treating the cost as zero. Fix the file and upload it again, or type the cost in.</p>""", None),
     ("profit-by-product", "Can I see TikTok Shop profit by product?",
-     """<p>Yes, once the products' costs are added. For each product MyShopEdge shows units sold, net proceeds, returns, and gross profit after returns, and it says when a product's cost is missing.</p>
+     """<p>Yes, once the products' costs are added. For each product MyShopEdge shows units sold, net proceeds, returns, gross profit after returns and gross margin after returns, and it says when a product's cost is missing.</p>
 <p>Products are ranked by gross profit after returns. Where costs are missing, you still see net proceeds and the product's cost status.</p>""", None),
     ("reconcile-payouts", "How do I reconcile TikTok Shop payouts?",
      """<p>Compare the payment received with the settlement statements behind it, and the statements with the transactions behind them.</p>
@@ -164,7 +164,7 @@ Cash basis:        October</pre>
      """<p>No. MyShopEdge helps you understand and reconcile your TikTok Shop activity before you hand figures to a bookkeeper or accountant, and it builds summaries, ledgers and transaction files for them. It does not replace professional bookkeeping, statutory accounts, VAT or tax returns, tax or legal advice, or an accountant's review of your records.</p>""", None),
     ("vs-seller-center", "What does MyShopEdge do that TikTok Shop Seller Center does not?",
      """<p>Seller Center is the source of your shop's records. MyShopEdge organises those records into a seller's financial view. It lets you:</p>
-<ul><li>see sales, every named deduction and net proceeds in one calculation;</li><li>explain a payout through its statements and transactions;</li><li>add your own product costs and see gross profit by product;</li><li>see where costs are missing;</li><li>record the effect of returns and write-offs;</li><li>export sales basis or cash basis files, and schedule them on the Pro plan;</li><li>follow your progress towards the VAT threshold.</li></ul>""",
+<ul><li>see sales, every named deduction and net proceeds in one calculation;</li><li>explain a payout through its statements and transactions;</li><li>add your own product costs and see gross profit and margin by product;</li><li>see where costs are missing;</li><li>record the effect of returns and write-offs;</li><li>export sales basis or cash basis files, and schedule them on the Pro plan;</li><li>follow your progress towards the VAT threshold.</li></ul>""",
      f'<p><a class="btn" href="{START}">Start your free 30-day trial</a></p>'),
     ("can-myshopedge-change-shop", "Can MyShopEdge change my TikTok Shop?",
      """<p>No. MyShopEdge only reads. It cannot place orders, issue refunds, change listings or prices, move money, change payouts or message customers. You can disconnect your shop under Settings, Shop connection, at any time.</p>""", None),

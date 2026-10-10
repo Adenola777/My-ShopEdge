@@ -168,6 +168,9 @@ def _month_summary(conn, shop_id: UUID, start: date, end: date, basis: str) -> l
         ["Totals", "Net proceeds", "", _pounds(t.net_proceeds.amount_minor)],
         ["Totals", "Gross profit after returns", "", _pounds(view.kept.amount_minor) if view.kept else
          KEPT_REASONS.get(view.kept_reason or "", "Not known.")],
+        ["Totals", "Gross margin after returns", "",
+         f"{Decimal(str(t.gross_margin_after_returns)) * 100:.2f}%" if t.gross_margin_after_returns is not None
+         else KEPT_REASONS.get(view.kept_reason or "", "Not known.")],
         ["Totals", "Confidence", "", CONFIDENCE_WORDS.get(view.confidence, view.confidence)],
     ]
     return rows

@@ -75,7 +75,7 @@ Revised again on 10 October 2026 from the owner's "Final Landing Page Review":
 - Step 1, step 2, the Products text, the VAT and tax text and the pricing heading and introduction use the review's wording.
 - On the owner's ruling the pricing introduction ends "VAT is not currently charged."
 - The footer carries the company identity block: company number, address, ICO registration number and the support, privacy and legal addresses.
-- Not applied, because the product does not do it: "gross profit and margin". MyShopEdge computes gross profit and no margin, so every sentence that says margin keeps "gross profit" alone until margin is built.
+- "Gross profit and margin" was held back at first because MyShopEdge computed no margin. Margin was built the same day (gross profit after returns over net sales, A8.5), and the copy now says it.
 - Not applied: a Cookie settings control, which the owner ruled against this morning.
 
 Added later on 10 October 2026, on the owner's instruction:

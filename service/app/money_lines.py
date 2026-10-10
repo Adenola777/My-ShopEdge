@@ -10,6 +10,7 @@ so existing imports from money_view keep working.
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_EVEN, Decimal
 from typing import Any
 
 from pydantic import BaseModel
@@ -72,6 +73,21 @@ def tiktok_name(raw: str) -> str:
     name = raw[:-len("_amount")] if raw.lower().endswith("_amount") else raw
     words = " ".join(name.replace("_", " ").split()).lower()
     return words[:1].upper() + words[1:] if words else raw
+
+
+def gross_margin(profit_minor: int | None, net_sales_minor: int) -> float | None:
+    """Gross margin after returns as a fraction of net sales, to four places: 0.4752 is 47.52%.
+
+    The owner's rulings of 10 October 2026: margin is gross profit after returns divided by
+    net sales (the FAQ's definition), and it is unknown wherever that profit is unknown, so a
+    missing cost never yields a margin. With no net sales there is nothing to divide by, and
+    the margin is unknown too. The division is done in Decimal from whole pence (A13 rule 3);
+    only the finished ratio becomes a float, because the contract types it as a number.
+    """
+    if profit_minor is None or net_sales_minor <= 0:
+        return None
+    ratio = (Decimal(profit_minor) / Decimal(net_sales_minor)).quantize(Decimal("0.0001"), ROUND_HALF_EVEN)
+    return float(ratio)
 
 
 def line_label(category: str, raw: str | None) -> str:
