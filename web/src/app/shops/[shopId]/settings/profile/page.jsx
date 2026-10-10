@@ -110,6 +110,14 @@ export default async function ProfilePage({ params }) {
           {sub?.status === "past_due" ? (
             <p><Link className="btn btn--primary btn--block" href="/billing/payment-failed">See what happened</Link></p>
           ) : null}
+          {sub && ["trialing", "active", "past_due"].includes(sub.status) ? (
+            <p>
+              <Link className="btn btn--quiet btn--block" data-testid="plan-change"
+                href={`/billing/change?${new URLSearchParams({ back: `${base}/settings/profile` }).toString()}`}>
+                Change plan
+              </Link>
+            </p>
+          ) : null}
           {sub && ["trialing", "active", "past_due"].includes(sub.status) ? <PlanControls sub={sub} /> : null}
         </div>
 

@@ -29,6 +29,7 @@
  */
 
 import Link from "next/link";
+import { changePlanHref } from "@/lib/upgrade";
 import { api, fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
@@ -47,6 +48,10 @@ const SEVERITY_WORD = { critical: "Act now", warning: "Check", info: "Note" };
 function orders(n) {
   return `${n.toLocaleString("en-GB")} ${n === 1 ? "order" : "orders"}`;
 }
+
+/** What the next plan adds besides orders, in the pricing document's words (10 October 2026). */
+/** @type {Record<string, string>} */
+const NEXT_BENEFIT = { growth: "product-profit tools", pro: "scheduled exports" };
 
 /**
  * A16.3's card, or nothing below 80 per cent.
@@ -76,6 +81,15 @@ function OrderUsageCard({ usage, shopId }) {
           ? `The ${larger.name} plan covers up to ${orders(larger.order_limit)} a month.`
           : `The ${plan} plan is the largest MyShopEdge offers.`}
       </p>
+      {larger ? (
+        <p data-testid="order-usage-next">
+          Choose {larger.name} when you are ready for more order capacity
+          and {NEXT_BENEFIT[larger.slug] ?? "more of MyShopEdge"}.{" "}
+          <Link href={changePlanHref(larger.slug, `/shops/${shopId}/today`)} data-testid="order-usage-choose">
+            Choose {larger.name}
+          </Link>
+        </p>
+      ) : null}
       <p className="card__foot">
         <Link href={`/shops/${shopId}/settings/profile`} data-testid="order-usage-plan">See your plan</Link>
       </p>

@@ -12,6 +12,7 @@
  */
 
 import { redirect } from "next/navigation";
+import { UpgradePrompt } from "./UpgradePrompt";
 
 /**
  * The fallback note for a page that shows no figures, such as Disconnect or Profile and plan,
@@ -21,13 +22,14 @@ export const NOTHING_CHANGED = "Nothing has changed. Please try again in a momen
 
 /**
  * @param {import("@/lib/api").ApiResult} result
- * @param {{ what: string, notFound?: string, note?: string }} copy
+ * @param {{ what: string, notFound?: string, note?: string, back?: string }} copy
  *   `what` names what failed to load, such as "your stock". `notFound` replaces the 404
  *   wording where the missing thing is a record rather than the shop. `note` replaces the
- *   fallback's line about wrong numbers on a page that shows none.
+ *   fallback's line about wrong numbers on a page that shows none. `back` is where an upgrade
+ *   prompt's "Not now" goes when there is no page to go back to.
  * @returns {React.ReactElement | null}  Null when the result is usable.
  */
-export function apiProblem(result, { what, notFound, note }) {
+export function apiProblem(result, { what, notFound, note, back }) {
   if (result.unreachable) {
     return (
       <Problem
@@ -85,6 +87,14 @@ export function apiProblem(result, { what, notFound, note }) {
         title="This account is suspended."
         note="Nothing in it has been deleted. Please contact MyShopEdge to find out why and what happens next."
       />
+    );
+  }
+  // The plan lacks the feature (entitlements.py, 10 October 2026). The seller is shown what the
+  // plan that has it costs and does, with a way to choose it and a way not to.
+  if (result.status === 403 && code === "plan_upgrade_required") {
+    return (
+      <UpgradePrompt feature={String(result.data?.feature ?? "")}
+        plan={String(result.data?.required_plan ?? "growth")} back={back} />
     );
   }
   if (result.status === 403) {

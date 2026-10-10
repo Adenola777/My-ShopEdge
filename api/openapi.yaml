@@ -861,6 +861,7 @@ paths:
   /shops/{shopId}/cost-uploads:
     get:
       operationId: listCostUploads
+      x-plan-feature: costs
       summary: Cost files the seller has uploaded
       tags:
       - Costs
@@ -898,6 +899,7 @@ paths:
 
         '
       operationId: createCostUpload
+      x-plan-feature: costs
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -963,6 +965,7 @@ paths:
 
         '
       operationId: getCostUpload
+      x-plan-feature: costs
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/UploadId'
@@ -997,6 +1000,7 @@ paths:
 
         '
       operationId: putCostUploadMapping
+      x-plan-feature: costs
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/UploadId'
@@ -1032,6 +1036,7 @@ paths:
 
         '
       operationId: putSkuCost
+      x-plan-feature: costs
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/SkuId'
@@ -1081,6 +1086,7 @@ paths:
         as getCostCoverage counts them, over the 30 London days ending today, and the cost is
         the one in force today. A variant with no cost has `cost` null.
       operationId: listSkuCosts
+      x-plan-feature: costs
       parameters:
       - $ref: '#/components/parameters/ShopId'
       responses:
@@ -1158,6 +1164,7 @@ paths:
 
         '
       operationId: getCostCoverage
+      x-plan-feature: costs
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/PeriodFrom'
@@ -1394,6 +1401,7 @@ paths:
         link lives fifteen minutes and a list can sit open longer than that: getExport gives
         a fresh link.
       operationId: listExports
+      x-plan-feature: export_history
       parameters:
       - $ref: '#/components/parameters/ShopId'
       responses:
@@ -1426,6 +1434,7 @@ paths:
 
         '
       operationId: createExport
+      x-plan-feature: exports
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -1480,6 +1489,7 @@ paths:
       - Exports
       summary: Export status and signed download URL
       operationId: getExport
+      x-plan-feature: exports
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - name: exportId
@@ -1510,6 +1520,7 @@ paths:
         Traces MON-8 (A5.7). Added on 9 October 2026. Every schedule of the shop, paused ones
         included, oldest first.
       operationId: listExportSchedules
+      x-plan-feature: scheduled_exports
       parameters:
       - $ref: '#/components/parameters/ShopId'
       responses:
@@ -1547,6 +1558,7 @@ paths:
         refused on the cash basis with 422, because the ledger records the cash basis by
         settlement month and not by settlement day.
       operationId: createExportSchedule
+      x-plan-feature: scheduled_exports
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -1581,6 +1593,7 @@ paths:
         rules as createExportSchedule apply to the result. A schedule of another account
         answers 404, the same as one that does not exist.
       operationId: updateExportSchedule
+      x-plan-feature: scheduled_exports
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/ScheduleId'
@@ -1641,6 +1654,7 @@ paths:
         more. Files it has already built stay among the shop's exports until their seven days
         pass. A schedule of another account answers 404.
       operationId: deleteExportSchedule
+      x-plan-feature: scheduled_exports
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/ScheduleId'
@@ -1870,6 +1884,7 @@ paths:
       summary: One product, with breakdown, stock and returns
       description: Traces DSH-5. Includes the one-unit breakdown.
       operationId: getProduct
+      x-plan-feature: drilldown
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - name: productId
@@ -1976,6 +1991,7 @@ paths:
 
         '
       operationId: getRecords
+      x-plan-feature: drilldown
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - $ref: '#/components/parameters/BasisQuery'
@@ -2542,6 +2558,53 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/ForbiddenShop'
+  /shops/{shopId}/payout-review:
+    get:
+      operationId: getPayoutReview
+      x-plan-feature: priority_review
+      summary: Statements that need review, largest difference first
+      description: |
+        Pro's priority reconciliation review (the pricing ruling of 10 October 2026). A
+        statement needs review when the orders behind it do not add up to it, which is a
+        non-zero `unexplained` on getSettlement. The largest difference, by size, comes
+        first, then the latest statement. At most 100 are listed, and
+        `total_needing_review` counts them all.
+      tags:
+      - Settlements
+      parameters:
+      - $ref: '#/components/parameters/ShopId'
+      responses:
+        '200':
+          description: The statements needing review
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                - total_needing_review
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - settlement
+                      - orders_settled
+                      - unexplained
+                      properties:
+                        settlement:
+                          $ref: '#/components/schemas/Settlement'
+                        orders_settled:
+                          type: integer
+                        unexplained:
+                          $ref: '#/components/schemas/Money'
+                  total_needing_review:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenShop'
   /shops/{shopId}/settlements/{settlementId}:
     get:
       operationId: getSettlement
@@ -2694,6 +2757,7 @@ paths:
   /shops/{shopId}/cost-uploads/{uploadId}/match:
     post:
       operationId: matchCostUpload
+      x-plan-feature: costs
       summary: Match the rows of an upload to SKUs
       description: 'Matching never creates a SKU. SKUs exist because TikTok returned them.
 
@@ -2730,6 +2794,7 @@ paths:
   /shops/{shopId}/cost-uploads/{uploadId}/apply:
     post:
       operationId: applyCostUpload
+      x-plan-feature: costs
       summary: Apply the matched rows
       description: 'Applies only the rows the seller confirmed. Unmatched and duplicate rows
 
@@ -2888,12 +2953,18 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
     patch:
       operationId: updateSubscription
-      summary: Stop the plan renewing, or turn renewal back on
+      summary: Change the plan, or stop or restore renewal
       description: |
         Sets whether the subscription ends at the close of the trial or period under way.
         Stopping renewal during a trial means the first payment is never taken. Nothing is
         refunded. Added 8 October 2026, when the billing screens told sellers they could
         cancel in Settings and Settings had no way to.
+
+        Since 10 October 2026 `plan` moves the running subscription to another plan. The
+        price comes from the service's own configuration, never from the request. Stripe's
+        default proration applies: during a trial nothing is charged, and on a paid period
+        the difference for the days left is added to the next invoice. The plan, and so the
+        features, change when Stripe confirms the new price. At least one field is needed.
 
         Refused with 409 when the account has no live subscription, and with 403
         `account_closing` while a deletion is pending, because the deletion already
@@ -2906,11 +2977,16 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-              - cancel_at_period_end
+              minProperties: 1
               properties:
                 cancel_at_period_end:
                   type: boolean
+                plan:
+                  type: string
+                  enum:
+                  - starter
+                  - growth
+                  - pro
       responses:
         '200':
           description: The subscription as it now stands
@@ -3657,7 +3733,11 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     ForbiddenShop:
-      description: The shop exists but does not belong to this account.
+      description: The shop exists but does not belong to this account, or, with code
+        `plan_upgrade_required`, the account's plan does not include the operation. An
+        operation with `x-plan-feature` names the feature its plan must include. Since 10
+        October 2026 a plan limits only while it is live (trialing, active or past_due); an
+        account with no live plan holds every feature.
       content:
         application/problem+json:
           schema:
@@ -4058,6 +4138,15 @@ components:
           type: [string, 'null']
         cancel_at_period_end:
           type: boolean
+        features:
+          type: array
+          description: What the plan includes, by feature name (costs, profit, drilldown,
+            exports, basis, scheduled_exports, export_history, priority_review). Starter holds
+            none, Growth the first five and Pro all eight. With no live plan the list holds
+            all eight. The service checks the plan on every request, so this list is for
+            display and grants nothing. Added 10 October 2026.
+          items:
+            type: string
     TrialStart:
       type: object
       required:
@@ -4139,6 +4228,18 @@ components:
           - shop_region_unsupported
           - upstream_unavailable
           - internal_error
+          - plan_upgrade_required
+        required_plan:
+          type: string
+          enum:
+          - growth
+          - pro
+          description: With `plan_upgrade_required`, the smallest plan that includes the
+            operation. Added 10 October 2026.
+        feature:
+          type: string
+          description: With `plan_upgrade_required`, the feature the operation needs, as
+            listed in `Subscription.features` and in each operation's `x-plan-feature`.
     Confidence:
       type: string
       description: 'How far a figure can be trusted. `confirmed` means every input is settled.
@@ -4936,6 +5037,7 @@ components:
           enum:
           - incomplete_costs
           - no_sales
+          - not_on_plan
           - null
         cost_coverage:
           type: number

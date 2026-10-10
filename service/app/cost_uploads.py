@@ -46,6 +46,7 @@ from pydantic import BaseModel, Field
 
 from . import storage
 from .auth import Account, require_account
+from .entitlements import require as require_feature
 from .cost_files import CSV_TYPE, XLSX_TYPE, FileUnreadable, Variant, match, parse, suggest_mapping
 from .dates import business_today
 from .db import tenant
@@ -213,7 +214,7 @@ def _decode_cursor(cursor: str) -> tuple[str, str]:
         raise Problem(400, "invalid_cursor", "That list could not be loaded. Refresh the page.") from exc
 
 
-@router.get("/shops/{shopId}/cost-uploads", response_model=CostUploadList)
+@router.get("/shops/{shopId}/cost-uploads", dependencies=[Depends(require_feature("costs"))], response_model=CostUploadList)
 def list_cost_uploads(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],
@@ -252,7 +253,7 @@ def list_cost_uploads(
     )
 
 
-@router.post("/shops/{shopId}/cost-uploads", status_code=201, response_model=CreateUploadOut)
+@router.post("/shops/{shopId}/cost-uploads", dependencies=[Depends(require_feature("costs"))], status_code=201, response_model=CreateUploadOut)
 def create_cost_upload(
     body: CreateUploadIn,
     account: Annotated[Account, Depends(require_account)],
@@ -283,7 +284,7 @@ def create_cost_upload(
     return out
 
 
-@router.get("/shops/{shopId}/cost-uploads/{uploadId}", response_model=CostUpload)
+@router.get("/shops/{shopId}/cost-uploads/{uploadId}", dependencies=[Depends(require_feature("costs"))], response_model=CostUpload)
 def get_cost_upload(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],
@@ -300,7 +301,7 @@ def get_cost_upload(
     return _out(row, parsed, error)
 
 
-@router.put("/shops/{shopId}/cost-uploads/{uploadId}/mapping", response_model=CostUpload)
+@router.put("/shops/{shopId}/cost-uploads/{uploadId}/mapping", dependencies=[Depends(require_feature("costs"))], response_model=CostUpload)
 def put_cost_upload_mapping(
     body: ColumnMapping,
     account: Annotated[Account, Depends(require_account)],
@@ -354,7 +355,7 @@ def _result(upload_id: UUID, stored: list[dict[str, Any]]) -> CostMatchResult:
     )
 
 
-@router.post("/shops/{shopId}/cost-uploads/{uploadId}/match", response_model=CostMatchResult)
+@router.post("/shops/{shopId}/cost-uploads/{uploadId}/match", dependencies=[Depends(require_feature("costs"))], response_model=CostMatchResult)
 def match_cost_upload(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],
@@ -408,7 +409,7 @@ def match_cost_upload(
     return result
 
 
-@router.post("/shops/{shopId}/cost-uploads/{uploadId}/apply", response_model=CostMatchResult)
+@router.post("/shops/{shopId}/cost-uploads/{uploadId}/apply", dependencies=[Depends(require_feature("costs"))], response_model=CostMatchResult)
 def apply_cost_upload(
     body: ApplyIn,
     account: Annotated[Account, Depends(require_account)],

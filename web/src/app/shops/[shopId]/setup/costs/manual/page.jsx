@@ -24,7 +24,7 @@ export default async function ManualCostsPage({ params }) {
     fetchShop(shopId, "/costs"),
     fetchShop(shopId, "/costs/coverage", { from: start.toISOString().slice(0, 10), to: today }),
   ]);
-  const problem = apiProblem(costs, { what: "your products" });
+  const problem = apiProblem(costs, { what: "your products", back: `/shops/${shopId}/products` });
   if (problem) return problem;
   /** @type {any[]} */
   const skus = costs.data.skus ?? [];

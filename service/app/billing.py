@@ -96,6 +96,9 @@ class SubscriptionOut(BaseModel):
     current_period_end: str | None = None
     card_last4: str | None = None
     cancel_at_period_end: bool = False
+    # What the plan unlocks, from `entitlements.py`. The browser shows or prompts from this
+    # list, and every route checks the plan again itself, so the list grants nothing.
+    features: list[str] = []
 
 
 @router.get("/billing/plans", response_model=PlansOut, summary="The plans on sale")
@@ -322,7 +325,8 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
     """
     row = db.get_subscription_row(account.id)
     if row is None:
-        return SubscriptionOut(status="none")
+        from .entitlements import ALL
+        return SubscriptionOut(status="none", features=sorted(ALL))
 
     if row["status"] == "incomplete":
         refreshed = _refresh_from_stripe(account.id, row.get("stripe_customer_id"))
@@ -333,8 +337,11 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
 
 
 def _subscription_out(row: dict) -> SubscriptionOut:
+    from .entitlements import features_for_row  # entitlements imports LIVE from here
+
     status = row["status"]
     return SubscriptionOut(
+        features=sorted(features_for_row(row)),
         status="none" if status == "incomplete" else status,
         plan=row["plan_slug"],
         trial_ends_at=_iso_dt(row["trial_end"]),
@@ -353,7 +360,9 @@ def _subscription_out(row: dict) -> SubscriptionOut:
 
 
 class RenewalRequest(BaseModel):
-    cancel_at_period_end: bool
+    """Either or both. A request carrying neither changes nothing and is refused."""
+    cancel_at_period_end: bool | None = None
+    plan: Literal["starter", "growth", "pro"] | None = None
 
 
 class CardSetupOut(BaseModel):
@@ -384,14 +393,25 @@ def update_subscription(
     body: RenewalRequest,
     account: Annotated[Account, Depends(require_account)],
 ) -> SubscriptionOut:
+    if body.cancel_at_period_end is None and body.plan is None:
+        raise Problem(422, "validation_failed", "Choose a plan, or whether the plan renews.")
     row = _live_row(account.id)
-    params: dict = {"cancel_at_period_end": body.cancel_at_period_end}
-    if not body.cancel_at_period_end:
-        # A seller turning renewal back on owns the choice from now, so a flag a deletion
-        # left is cleared. Stripe removes a metadata key that is set to an empty string.
-        params["metadata"] = {DELETION_FLAG: ""}
+    params: dict = {}
+    if body.cancel_at_period_end is not None:
+        params["cancel_at_period_end"] = body.cancel_at_period_end
+        if not body.cancel_at_period_end:
+            # A seller turning renewal back on owns the choice from now, so a flag a deletion
+            # left is cleared. Stripe removes a metadata key that is set to an empty string.
+            params["metadata"] = {DELETION_FLAG: ""}
+    client = _stripe()
+    if body.plan is not None and body.plan != row["plan_slug"]:
+        change = _plan_change(client, account.id, row, body.plan)
+        params["metadata"] = {**params.get("metadata", {}), **change.pop("metadata")}
+        params.update(change)
+    if not params:
+        return _subscription_out(row)
     try:
-        sub = _stripe().subscriptions.update(row["stripe_subscription_id"], params=params)
+        sub = client.subscriptions.update(row["stripe_subscription_id"], params=params)
     except stripe.StripeError as exc:
         _log_stripe_error(account.id, "update_subscription", exc)
         raise Problem(502, "stripe_error",
@@ -399,6 +419,37 @@ def update_subscription(
                       "Try again in a few minutes.") from exc
     _apply_stripe_subscription(sub)
     return _subscription_out(db.get_subscription_row(account.id))
+
+
+def _plan_change(client: stripe.StripeClient, account_id, row: dict, slug: str) -> dict:
+    """The Stripe parameters that move a running subscription to another plan.
+
+    Added 10 October 2026 with the pricing tiers, because a seller shown an upgrade prompt had
+    no way to act on it. The price comes from the environment, as in `start_trial`, never from
+    the request. The subscription's one item has its price replaced, and `metadata.plan` is
+    rewritten so that it never disagrees with the price. Stripe's default proration applies:
+    on a paid period the difference for the days left is added to the next invoice, and during
+    a trial nothing is charged. That is Stripe's documented default, not something this
+    project has observed. **Unverified against Stripe**: only the live account is reachable,
+    so this has run against the stand-in client in the smoke test only.
+    """
+    price_id = os.environ.get(PLANS[slug].price_env_var)
+    if not price_id:
+        raise Problem(503, "plan_unavailable",
+                      "That plan cannot be chosen at the moment, so your plan was not changed.")
+    try:
+        current = _plain(client.subscriptions.retrieve(row["stripe_subscription_id"]))
+    except stripe.StripeError as exc:
+        _log_stripe_error(account_id, "retrieve_for_plan_change", exc)
+        raise Problem(502, "stripe_error",
+                      "We could not reach our payment provider, so your plan was not changed. "
+                      "Try again in a few minutes.") from exc
+    item = _first_item(current)
+    if item is None or not item.get("id"):
+        raise Problem(409, "no_live_subscription",
+                      "This account has no plan running, so nothing was changed.")
+    return {"items": [{"id": item["id"], "price": price_id}],
+            "metadata": {"plan": slug}}
 
 
 @router.post("/billing/card", response_model=CardSetupOut,
@@ -529,8 +580,9 @@ def _find_or_create_customer(client: stripe.StripeClient, account: Account, key:
 # The database enum is trialing, active, past_due, canceled, incomplete. Stripe carries
 # more, so unpaid is read as past_due because the seller must act, and incomplete_expired
 # and paused are read as canceled because the subscription is not going to bill again
-# without a fresh start. The plan slug is taken from the subscription metadata this service
-# set when it created the subscription, and the price identifier is the fallback.
+# without a fresh start. The plan slug is taken from the price identifier, and the metadata
+# this service set when it created the subscription is the fallback (10 October 2026; before
+# then it was the other way round).
 _STATUS_MAP = {
     "trialing": "trialing",
     "active": "active",
@@ -548,16 +600,16 @@ def _map_status(stripe_status: str | None) -> str:
 
 
 def _slug_for_subscription(sub) -> str | None:
-    meta = sub.get("metadata") or {}
-    slug = meta.get("plan")
-    if slug in PLANS:
-        return slug
+    """The plan a Stripe subscription is on. The price identifier decides, as the pricing
+    ruling of 10 October 2026 requires, and `metadata.plan` is read only when the price
+    matches none of the three, as when a variable is not set."""
     price_id = _first_price_id(sub)
     if price_id:
         for candidate, plan in PLANS.items():
             if os.environ.get(plan.price_env_var) == price_id:
                 return candidate
-    return None
+    slug = (sub.get("metadata") or {}).get("plan")
+    return slug if slug in PLANS else None
 
 
 def _first_item(sub):

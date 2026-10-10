@@ -56,6 +56,7 @@ from pydantic import BaseModel
 from .auth import Account, require_account
 from .dates import business_today, now_utc
 from .db import tenant
+from .entitlements import features_for, refuse
 from .money import Money, money
 from .money_view import TIKTOK_FEES, calculate
 from .order_usage import OrderUsage, read_order_usage
@@ -230,9 +231,15 @@ def _needs_row(conn, shop_id: UUID, month_start: date, today: date) -> dict[str,
 
 
 def needs_you_items(needs: dict[str, Any], shop_id: UUID, now: datetime,
-                    currency: str) -> tuple[bool, list[NeedsYouItem]]:
-    """Needs you as Today shows it and as getNeedsYou serves it, from one place."""
+                    currency: str, costs: bool = True) -> tuple[bool, list[NeedsYouItem]]:
+    """Needs you as Today shows it and as getNeedsYou serves it, from one place.
+
+    `costs` is False on a plan without product costs (Starter, `entitlements.py`). The
+    missing costs item is then left out, because the seller cannot act on it in the app.
+    """
     stale, items = _needs_you(needs, now, currency)
+    if not costs:
+        items = [i for i in items if i.type != "missing_costs"]
     for item in items:
         item.href = needs_href(item.type, shop_id, business_today(now))
     return stale, items
@@ -334,13 +341,17 @@ def get_today(
     shop_id: Annotated[UUID, Depends(require_shop)],
     basis: Annotated[str, Query(pattern="^(sales|cash)$")] = "sales",
 ) -> TodayView:
+    plan = features_for(account.id)
+    if basis == "cash" and "basis" not in plan:
+        raise refuse("basis")
+    profit = "profit" in plan
     now = now_utc()
     today = business_today(now)
     month_start = today.replace(day=1)
 
     with tenant(account.id) as conn:
-        day = calculate(conn, shop_id, today, today, basis)
-        month = calculate(conn, shop_id, month_start, today, basis)
+        day = calculate(conn, shop_id, today, today, basis, profit=profit)
+        month = calculate(conn, shop_id, month_start, today, basis, profit=profit)
 
         cur = conn.execute(SHOP_MONEY_SQL, {"shop": str(shop_id),
                                             "np": list(NET_PROCEEDS_CATEGORIES)})
@@ -353,7 +364,7 @@ def get_today(
     currency = month.totals.net_proceeds.currency
 
     # The hero. A8's labels, and the figure the label names.
-    complete = day.cost_coverage == 1.0
+    complete = profit and day.cost_coverage == 1.0
     gpar = day.totals.gross_profit_after_returns
     hero = Hero(
         label="gross_profit_after_returns" if complete else "net_proceeds",
@@ -385,7 +396,7 @@ def get_today(
         ],
     )
 
-    stale, items = needs_you_items(needs, shop_id, now, currency)
+    stale, items = needs_you_items(needs, shop_id, now, currency, "costs" in plan)
 
     return TodayView(
         as_of=now,
@@ -427,5 +438,6 @@ def get_needs_you(
         currency = conn.execute(
             "select trim(currency) from shops where id = %s", (str(shop_id),)
         ).fetchone()[0]
-    _, items = needs_you_items(needs, shop_id, now, currency)
+    _, items = needs_you_items(needs, shop_id, now, currency,
+                               "costs" in features_for(account.id))
     return NeedsYouView(as_of=now, items=items)

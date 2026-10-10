@@ -46,6 +46,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from pydantic import BaseModel, Field
 
 from .auth import Account, require_account
+from .entitlements import require as require_feature
 from .dates import business_today
 from .db import tenant
 from .money import Money, money
@@ -102,7 +103,7 @@ def _check_amounts(body: CostIn, currency: str) -> None:
             )
 
 
-@router.put("/shops/{shopId}/skus/{skuId}/cost", response_model=ProductCost)
+@router.put("/shops/{shopId}/skus/{skuId}/cost", dependencies=[Depends(require_feature("costs"))], response_model=ProductCost)
 def put_sku_cost(
     body: CostIn,
     account: Annotated[Account, Depends(require_account)],
@@ -181,7 +182,7 @@ select c.sku_id, p.title as product_title, c.units, coalesce(c.units_costed, 0) 
 """
 
 
-@router.get("/shops/{shopId}/costs/coverage", response_model=CostCoverage)
+@router.get("/shops/{shopId}/costs/coverage", dependencies=[Depends(require_feature("costs"))], response_model=CostCoverage)
 def get_cost_coverage(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],
@@ -272,7 +273,7 @@ select k.id, k.seller_sku, k.tiktok_sku_id, p.title, k.variant_label,
 """
 
 
-@router.get("/shops/{shopId}/costs", response_model=SkuCostList, summary="Every variant with its cost")
+@router.get("/shops/{shopId}/costs", dependencies=[Depends(require_feature("costs"))], response_model=SkuCostList, summary="Every variant with its cost")
 def list_sku_costs(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],

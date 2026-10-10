@@ -115,7 +115,10 @@ export default async function SettingsPage({ params }) {
           <ul className="rows">
             <li>
               <span><Link href={`${base}/setup/costs`}>Product costs</Link></span>
-              {coverage ? <strong>{costWords(coverage)}</strong> : unavailable}
+              {coverage ? <strong>{costWords(coverage)}</strong>
+                : coverageRes.status === 403 && coverageRes.data?.code === "plan_upgrade_required"
+                  ? <span className="muted">Comes with the Growth plan</span>
+                  : unavailable}
             </li>
             <li>
               <span><Link href={`${base}/setup/tax`}>Tax profile</Link></span>

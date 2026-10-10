@@ -41,6 +41,8 @@ from . import stock
 from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
+from .entitlements import features_for, refuse
+from .entitlements import require as require_feature
 from .money import Money, money, per_unit
 from .money_lines import SHARED, gross_margin, line_label
 from .settlements import MAX_LIMIT, decode_cursor, encode_cursor
@@ -48,6 +50,9 @@ from .shops import require_shop
 from .stock import StockPosition
 
 router = APIRouter(tags=["Products"])
+
+# The pricing ruling's own sentence, shown wherever Starter would otherwise show profit.
+NOT_ON_PLAN = "Add product costs with Growth to see gross profit and margin by product."
 
 # Net Proceeds is sales, refunds and platform deductions. It deliberately excludes
 # return_cost and write_off, which A4 carries separately through Return Loss, and excludes
@@ -280,6 +285,14 @@ def list_products(
     limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = 20,
     cursor: Annotated[str | None, Query()] = None,
 ) -> ProductRanking:
+    plan = features_for(account.id)
+    if basis == "cash" and "basis" not in plan:
+        raise refuse("basis")
+    profit = "profit" in plan
+    if not profit and measure == "kept":
+        # Starter ranks by net proceeds (the pricing ruling of 10 October 2026), and the
+        # response's `measure` says so.
+        measure = "net_proceeds"
     today = business_today()
     start = period_from or today.replace(day=1)
     end = period_to or today
@@ -300,12 +313,22 @@ def list_products(
         rows = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
         cur = conn.execute(
             UNATTRIBUTED_SQL.format(date_column=date_column),
-            {**args, "categories": _measure_categories(measure)},
+            {**args, "categories": _measure_categories(
+                measure if profit or measure == "gross_sales" else "net_proceeds")},
         )
         cols = [d.name for d in cur.description]
         loose = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
 
     currency = rows[0]["currency"] if rows else (loose[0]["currency"] if loose else "GBP")
+    if not profit:
+        # No cost-derived figure leaves the service on a plan without profit, so a cost a
+        # seller entered on an earlier plan is not shown as profit by another route.
+        for r in rows:
+            r["kept_minor"] = None
+            r["cost_retained_minor"] = None
+    # A count is not money, so a units ranking totals the money it is about: gross profit
+    # after returns, or net proceeds on a plan without profit.
+    count_money = "kept_minor" if profit else "net_proceeds_minor"
 
     # Ranking happens here rather than in SQL because `kept` can be null, and a null sorts
     # unpredictably across databases. A product with an unknown cost ranks last on `kept`
@@ -325,7 +348,7 @@ def list_products(
     if column in ("units_sold", "returns_units"):
         # A count is not money. The contract still requires a Money total, so it carries
         # the kept figure, which is the money a units ranking is ultimately about.
-        total_minor = sum(r["kept_minor"] or 0 for r in rows)
+        total_minor = sum(r[count_money] or 0 for r in rows)
 
     offset = 0
     if cursor:
@@ -348,6 +371,7 @@ def list_products(
             kept=money(int(r["kept_minor"]), currency) if r["kept_minor"] is not None else None,
             kept_reason=(
                 None if r["kept_minor"] is not None
+                else NOT_ON_PLAN if not profit
                 else (
                     "One variant had no cost price on the day some of its units sold, so "
                     "gross profit after returns for this period is not known."
@@ -368,7 +392,7 @@ def list_products(
     ]
 
     shown_minor = sum(
-        (r["kept_minor"] or 0) if column in ("units_sold", "returns_units") else (r[column] or 0)
+        (r[count_money] or 0) if column in ("units_sold", "returns_units") else (r[column] or 0)
         for r in page
     )
     unshown = [r for r in rows if r not in page]
@@ -379,7 +403,7 @@ def list_products(
     loose_minor = sum(int(r["amount_minor"]) for r in loose)
     # Every total except gross sales and net proceeds is built from `kept`, which is null for
     # a product with no cost price. The shop's figure is then not known, so none is given.
-    kept_based = column not in ("gross_sales_minor", "net_proceeds_minor")
+    kept_based = profit and column not in ("gross_sales_minor", "net_proceeds_minor")
     shop_known = not (kept_based and any(r["kept_minor"] is None for r in rows))
 
     return ProductRanking(
@@ -514,7 +538,8 @@ LABELS = {
 }
 
 
-@router.get("/shops/{shopId}/products/{productId}", response_model=ProductDetail)
+@router.get("/shops/{shopId}/products/{productId}", response_model=ProductDetail,
+            dependencies=[Depends(require_feature("drilldown"))])
 def get_product(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],

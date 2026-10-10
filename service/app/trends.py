@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
+from .entitlements import features_for, refuse
 from .money import Money
 from .money_view import SETTLED_BY_TIKTOK, calculate
 from .products import NET_PROCEEDS_TYPES, RETURN_LOSS_TYPES
@@ -80,6 +81,11 @@ def get_trends(
     basis: Annotated[Literal["sales", "cash"], Query()] = "sales",
     measure: Annotated[Measure, Query()] = "net_proceeds",
 ) -> Trends:
+    plan = features_for(account.id)
+    if basis == "cash" and "basis" not in plan:
+        raise refuse("basis")
+    if measure == "kept" and "profit" not in plan:
+        raise refuse("profit")
     today = business_today()
     points: list[TrendPoint] = []
     with tenant(account.id) as conn:

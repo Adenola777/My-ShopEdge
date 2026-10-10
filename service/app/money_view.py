@@ -60,6 +60,7 @@ from pydantic import BaseModel
 from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
+from .entitlements import features_for, refuse
 from .money import Money, money
 from .money_lines import LABELS, TIKTOK_FEES, VERBATIM, CalculatorLine, _line, gross_margin  # noqa: F401
 from .products import NET_PROCEEDS_TYPES, RETURN_LOSS_TYPES, SQL as PRODUCTS_SQL
@@ -155,11 +156,14 @@ def get_money(
     granularity: Annotated[str, Query(pattern="^(day|week|month)$")] = "month",
     if_none_match: Annotated[str | None, Header()] = None,
 ):
+    plan = features_for(account.id)
+    if basis == "cash" and "basis" not in plan:
+        raise refuse("basis")
     today = business_today()
     start = period_from or today.replace(day=1)
     end = period_to or today
     with tenant(account.id) as conn:
-        view = calculate(conn, shop_id, start, end, basis, granularity)
+        view = calculate(conn, shop_id, start, end, basis, granularity, "profit" in plan)
 
     etag = _etag(view)
     if if_none_match is not None and if_none_match == etag:
@@ -169,11 +173,18 @@ def get_money(
 
 
 def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
-              granularity: str = "month") -> MoneyView:
+              granularity: str = "month", profit: bool = True) -> MoneyView:
     """The calculator for one period, on a connection the caller has already scoped.
 
     Shared with the Today screen, so the month figure on Today and the Money screen for
     the same month are the same arithmetic on the same rows and cannot disagree.
+
+    `profit` is False for a plan without the profit feature (`entitlements.py`, Starter).
+    The chain then stops at Net proceeds: no cost of goods, no stock written off, no gross
+    profit or margin, and `kept_reason` is `not_on_plan`. The seller's postage and return
+    postage are real amounts that need no product cost, so they keep their lines under the
+    section totals. Confidence then follows settlement alone, because costs are not part of
+    any figure shown.
     """
     # The same columns the product endpoints use, so the two screens cannot disagree.
     date_column = "le.basis_day" if basis == "sales" else "le.settlement_month"
@@ -207,6 +218,11 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
     cogs_minor = (
         -sum(int(p["cost_retained_minor"] or 0) for p in sold) if costs_complete else None
     )
+    if not profit:
+        # Treated as costs missing, so every section after Net proceeds shows its own total
+        # and no running figure that would be a profit.
+        costs_complete = False
+        cogs_minor = None
 
     sections: list[CalculatorSection] = []
     running = 0
@@ -214,6 +230,7 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
         lines = [
             _line(r, currency) for r in rows
             if r["category"] in categories and int(r["amount_minor"]) != 0
+            and (profit or r["category"] != "stock_written_off")
         ]
         # Every platform adjustment and unrecognised fee stays on its own line, in the
         # order the categories are listed, never merged into its neighbour.
@@ -271,13 +288,15 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
 
     if not sold:
         kept_reason = "no_sales"
+    elif not profit:
+        kept_reason = "not_on_plan"
     elif not costs_complete:
         kept_reason = "incomplete_costs"
     else:
         kept_reason = None
 
     unsettled = sum(int(r["unsettled"]) for r in rows)
-    if not costs_complete:
+    if not costs_complete and profit:
         confidence = "incomplete"
     elif basis == "sales" and unsettled:
         confidence = "estimated"
@@ -333,9 +352,12 @@ def get_month_summary(
     month: Annotated[str, Path(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")],
     basis: Annotated[str, Query(pattern="^(sales|cash)$")] = "sales",
 ):
+    plan = features_for(account.id)
+    if basis == "cash" and "basis" not in plan:
+        raise refuse("basis")
     start, end = _month_bounds(month)
     with tenant(account.id) as conn:
-        return calculate(conn, shop_id, start, end, basis, "month")
+        return calculate(conn, shop_id, start, end, basis, "month", "profit" in plan)
 
 
 # --- getWhereItWent, LED-8 -----------------------------------------------------------------
@@ -365,11 +387,14 @@ def get_where_it_went(
     period_from: Annotated[date | None, Query(alias="from")] = None,
     period_to: Annotated[date | None, Query(alias="to")] = None,
 ) -> WhereItWent:
+    plan = features_for(account.id)
+    if basis == "cash" and "basis" not in plan:
+        raise refuse("basis")
     today = business_today()
     start = period_from or today.replace(day=1)
     end = period_to or today
     with tenant(account.id) as conn:
-        view = calculate(conn, shop_id, start, end, basis, "month")
+        view = calculate(conn, shop_id, start, end, basis, "month", "profit" in plan)
 
     gross_minor = view.totals.gross_sales.amount_minor
     currency = view.totals.gross_sales.currency

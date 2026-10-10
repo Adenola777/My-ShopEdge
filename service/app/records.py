@@ -34,6 +34,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from .auth import Account, require_account
+from .entitlements import require as require_feature
 from .db import tenant
 from .money import Money, money
 from .money_view import LABELS
@@ -79,7 +80,7 @@ COLUMNS = """
 """
 
 
-@router.get("/shops/{shopId}/records", response_model=RecordsPage)
+@router.get("/shops/{shopId}/records", dependencies=[Depends(require_feature("drilldown"))], response_model=RecordsPage)
 def get_records(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],

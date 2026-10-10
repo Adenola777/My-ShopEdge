@@ -65,7 +65,7 @@ These are standing instructions from the owner. They hold until he changes them.
 
 ## The contract is the source of truth
 
-`api/openapi.yaml` holds 87 operations across 75 paths, counted on 10 October 2026, when the fifteen admin operations of A34 were added under `/admin/`. Rule 1 of A13 says the service
+`api/openapi.yaml` holds 88 operations across 76 paths, counted on 10 October 2026, after the fifteen admin operations of A34 were added under `/admin/` and `getPayoutReview` was added for the pricing tiers (A35). Rule 1 of A13 says the service
 implements the contract and never the other way round. A test enforces it:
 
 ```
@@ -96,7 +96,7 @@ The honest summary is that the thinking is done and the building has started.
 
 ## The documents
 
-`A2` to `A30` are the rulings, one file per action. A29 holds the dashboard rules and the
+`A2` to `A35` are the rulings, one file per action. A35 holds the pricing tiers: what each plan includes, enforced by `service/app/entitlements.py`. A29 holds the dashboard rules and the
 rule that Python owns every financial and business rule. **A29.11 sets which document wins:
 the product rulings and the contract govern the master engineering skill, and a provider's
 documentation governs only facts about that provider.** A29.12 states why MyShopEdge exists. They are decisions rather than notes, so

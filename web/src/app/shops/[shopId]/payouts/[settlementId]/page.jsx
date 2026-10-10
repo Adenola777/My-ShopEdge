@@ -13,18 +13,22 @@
  */
 
 import Link from "next/link";
-import { fetchShop, formatDate, formatMoney } from "@/lib/api";
+import { api, fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { LineLabel } from "@/components/LineLabel";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 export const metadata = { title: "Payout" };
 
 /** @param {{ params: Promise<{ shopId: string, settlementId: string }> }} props */
 export default async function PayoutPage({ params }) {
   const { shopId, settlementId } = await params;
-  const result = await fetchShop(shopId, `/settlements/${encodeURIComponent(settlementId)}`);
+  const [result, subRes] = await Promise.all([
+    fetchShop(shopId, `/settlements/${encodeURIComponent(settlementId)}`),
+    api("/billing/subscription", { cache: "no-store" }),
+  ]);
   const problem = apiProblem(result, { what: "this payout", notFound: "That payout is not on your account." });
   if (problem) return problem;
 
@@ -35,6 +39,10 @@ export default async function PayoutPage({ params }) {
   const r = d.reconciliation;
   const inv = d.invoice;
   const unexplained = r.unexplained.amount_minor !== 0;
+  // The pricing ruling of 10 October 2026 offers Pro's review list to a Growth seller who opens
+  // statements that need review. Starter is offered Growth first, so it sees no prompt here.
+  const features = subRes.ok ? (subRes.data?.features ?? []) : [];
+  const offerReview = unexplained && features.includes("exports") && !features.includes("priority_review");
   const feeLines = c.fee_lines ?? [];
   const feeLinesTotal = feeLines.reduce((sum, l) => sum + l.amount.amount_minor, 0);
   const feeLinesShort = feeLines.length > 0 && feeLinesTotal !== c.fees.amount_minor;
@@ -96,6 +104,10 @@ export default async function PayoutPage({ params }) {
               : "The orders behind this statement add up to it exactly."}
           </p>
         </div>
+
+        {offerReview ? (
+          <UpgradePrompt feature="priority_review" plan="pro" back={`/shops/${shopId}/payouts`} compact />
+        ) : null}
 
         <div className="card" data-testid="payout-invoice">
           <h2>TikTok fee invoice</h2>
