@@ -62,16 +62,19 @@ _VALIDATION_WORDS = {
 
 
 class Problem(HTTPException):
-    def __init__(self, status: int, code: str, detail: str) -> None:
+    def __init__(self, status: int, code: str, detail: str, extra: dict | None = None) -> None:
         super().__init__(status_code=status, detail=detail)
         self.code = code
+        # RFC 9457 extension members, such as `required_plan` on plan_upgrade_required.
+        self.extra = extra or {}
 
 
-def problem_response(status: int, code: str, detail: str) -> JSONResponse:
+def problem_response(status: int, code: str, detail: str, extra: dict | None = None) -> JSONResponse:
     return JSONResponse(
         status_code=status,
         media_type="application/problem+json",
         content={
+            **(extra or {}),
             "type": f"{BASE}/{code}",
             "title": TITLES.get(status, "That did not work."),
             "status": status,
@@ -122,7 +125,7 @@ async def validation_handler(_request: Request, exc: RequestValidationError) -> 
 
 async def problem_handler(_request: Request, exc: Exception) -> JSONResponse:
     if isinstance(exc, Problem):
-        return problem_response(exc.status_code, exc.code, str(exc.detail))
+        return problem_response(exc.status_code, exc.code, str(exc.detail), exc.extra)
     if isinstance(exc, HTTPException):
         # Starlette's own "Not Found" and "Method Not Allowed" are framework English, so a
         # seller reads a sentence instead (copy audit, 8 October 2026).

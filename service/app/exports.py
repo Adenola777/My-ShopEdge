@@ -62,6 +62,7 @@ from pydantic import BaseModel
 
 from . import storage
 from .auth import Account, require_account
+from .entitlements import require as require_feature
 from .dates import business_today, now_utc
 from .db import tenant
 from .idempotency import record, replay, request_hash
@@ -341,7 +342,7 @@ class ShopExportList(BaseModel):
     exports: list[ShopExportJob]
 
 
-@router.get("/shops/{shopId}/exports", response_model=ShopExportList, tags=["Exports"],
+@router.get("/shops/{shopId}/exports", dependencies=[Depends(require_feature("export_history"))], response_model=ShopExportList, tags=["Exports"],
             summary="The shop's recent exports")
 def list_exports(
     account: Annotated[Account, Depends(require_account)],
@@ -359,7 +360,7 @@ def list_exports(
     return ShopExportList(exports=jobs)
 
 
-@router.post("/shops/{shopId}/exports", status_code=202, response_model=ShopExportJob,
+@router.post("/shops/{shopId}/exports", dependencies=[Depends(require_feature("exports"))], status_code=202, response_model=ShopExportJob,
              tags=["Exports"], summary="Request an export")
 def create_export(
     body: ExportIn,
@@ -391,7 +392,7 @@ def create_export(
     return JSONResponse(status_code=202, content=out.model_dump(mode="json"))
 
 
-@router.get("/shops/{shopId}/exports/{exportId}", response_model=ShopExportJob,
+@router.get("/shops/{shopId}/exports/{exportId}", dependencies=[Depends(require_feature("exports"))], response_model=ShopExportJob,
             tags=["Exports"], summary="Export status and signed download URL")
 def get_export(
     account: Annotated[Account, Depends(require_account)],

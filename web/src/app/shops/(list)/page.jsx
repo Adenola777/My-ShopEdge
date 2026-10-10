@@ -38,8 +38,10 @@ export default async function ShopsPage({ searchParams }) {
       api("/tax-profile", { cache: "no-store" }),
       api(`/shops/${encodeURIComponent(only.id)}/costs`, { cache: "no-store" }),
     ]);
-    const setupUntouched = tax.ok && costs.ok && !tax.data?.completed
-      && !(costs.data?.skus ?? []).some((/** @type {any} */ s) => s.cost);
+    // A plan without costs (Starter) answers 403, which reads as no costs entered.
+    const noCostPlan = costs.status === 403 && costs.data?.code === "plan_upgrade_required";
+    const setupUntouched = tax.ok && (costs.ok || noCostPlan) && !tax.data?.completed
+      && !(costs.ok ? costs.data?.skus ?? [] : []).some((/** @type {any} */ s) => s.cost);
     redirect(nextStep(only, sub.ok ? sub.data?.status ?? null : null, { setupUntouched }));
   }
 

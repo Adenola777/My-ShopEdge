@@ -89,6 +89,11 @@ def check(name, fn):
 app.dependency_overrides[require_account] = lambda: ACCOUNT
 app.dependency_overrides[require_signed_in] = lambda: ACCOUNT
 app.dependency_overrides[shops.require_shop] = lambda: SHOP
+
+# No subscription row, which entitlements.py reads as every feature (the owner's ruling of 10
+# October 2026). The plan cases near the end set a row of their own and put this back.
+from app import db as _db  # noqa: E402
+_db.get_subscription_row = lambda _a: None
 client = TestClient(app)
 
 
@@ -2017,6 +2022,153 @@ def gross_margin_rule():
     _assert(gross_margin(-2500, 10000) == -0.25, "a loss gives a negative margin")
     _assert(gross_margin(1, 3) == 0.3333 and gross_margin(2, 3) == 0.6667, "four places, half to even")
 check("Gross margin after returns is profit over net sales, and unknown when either is missing", gross_margin_rule)
+
+
+# --- plans and what each unlocks (the pricing ruling of 10 October 2026)
+def _plan_row(slug, status="trialing"):
+    return {"plan_slug": slug, "status": status, "stripe_customer_id": "cus_p",
+            "stripe_subscription_id": "sub_p", "trial_end": None, "current_period_end": None,
+            "cancel_at_period_end": False}
+
+
+def plan_gates():
+    from app import entitlements
+    saved = _db.get_subscription_row
+    try:
+        # Starter: the gated routes answer 403 plan_upgrade_required and name the plan.
+        _db.get_subscription_row = lambda _a: _plan_row("starter")
+        for method, path, plan in (
+            ("get", f"/v1/shops/{SHOP}/records", "growth"),
+            ("get", f"/v1/shops/{SHOP}/costs", "growth"),
+            ("get", f"/v1/shops/{SHOP}/cost-uploads", "growth"),
+            ("put", f"/v1/shops/{SHOP}/skus/{SKU}/cost", "growth"),
+            ("post", f"/v1/shops/{SHOP}/exports", "growth"),
+            ("get", f"/v1/shops/{SHOP}/products/{PRODUCT}", "growth"),
+            ("get", f"/v1/shops/{SHOP}/money?basis=cash", "growth"),
+            ("get", f"/v1/shops/{SHOP}/today?basis=cash", "growth"),
+            ("get", f"/v1/shops/{SHOP}/trends?measure=kept", "growth"),
+            ("get", f"/v1/shops/{SHOP}/exports", "pro"),
+            ("get", f"/v1/shops/{SHOP}/export-schedules", "pro"),
+            ("get", f"/v1/shops/{SHOP}/payout-review", "pro"),
+        ):
+            r = getattr(client, method)(path, json={} if method in ("put", "post") else None) \
+                if method in ("put", "post") else client.get(path)
+            b = r.json()
+            _assert(r.status_code == 403 and b["code"] == "plan_upgrade_required"
+                    and b["required_plan"] == plan, f"{method} {path}: {r.status_code} {r.text[:200]}")
+        # Growth holds costs and exports but not scheduled exports or the review list.
+        _db.get_subscription_row = lambda _a: _plan_row("growth", "active")
+        _assert(entitlements.features_for(ACCOUNT.id) == entitlements.GROWTH)
+        r = client.get(f"/v1/shops/{SHOP}/export-schedules")
+        _assert(r.status_code == 403 and r.json()["required_plan"] == "pro", r.text)
+        # Pro holds everything. No live plan holds everything too, as the owner ruled.
+        _db.get_subscription_row = lambda _a: _plan_row("pro")
+        _assert(entitlements.features_for(ACCOUNT.id) == entitlements.ALL)
+        for row in (None, _plan_row("starter", "canceled"), _plan_row("starter", "incomplete")):
+            _assert(entitlements.features_for_row(row) == entitlements.ALL, row)
+        _assert(entitlements.features_for_row(_plan_row("starter", "past_due")) == frozenset())
+    finally:
+        _db.get_subscription_row = saved
+check("Each plan's routes answer 403 plan_upgrade_required for what the plan lacks", plan_gates)
+
+
+def starter_money_shows_no_profit():
+    saved = _db.get_subscription_row
+    _db.get_subscription_row = lambda _a: _plan_row("starter")
+    try:
+        _money([DESK])
+        b = client.get(f"/v1/shops/{SHOP}/money").json()
+        t = b["totals"]
+        _assert(t["net_proceeds"]["amount_minor"] == 51176, t)
+        _assert(t.get("gross_profit") is None and t.get("gross_profit_after_returns") is None
+                and t.get("cost_of_goods_sold") is None and t.get("gross_margin_after_returns") is None, t)
+        _assert(b["kept"] is None and b["kept_reason"] == "not_on_plan", b)
+        sec = {s["key"]: s for s in b["sections"]}
+        # The seller's return postage is real money and stays, under its section total; the
+        # stock written off is a product cost and goes.
+        _assert([l["category"] for l in sec["return_costs"]["lines"]] == ["return_shipping"], sec["return_costs"])
+        _assert(sec["return_costs"]["subtotal_label"] == "Total return costs", sec["return_costs"])
+        _assert("your_costs" not in sec, "no cost of goods line")
+        _assert(b["confidence"] == "estimated", b["confidence"])
+    finally:
+        _db.get_subscription_row = saved
+check("Starter's Money stops at net proceeds and says why, never showing a profit", starter_money_shows_no_profit)
+
+
+def starter_products_rank_by_net_proceeds():
+    saved = _db.get_subscription_row
+    _db.get_subscription_row = lambda _a: _plan_row("starter")
+    try:
+        loose = Result(["category","tiktok_fee_type","amount_minor","currency"], [])
+        products.tenant = with_conn(products, [
+            ("and le.sku_id is null", loose),
+            ("with scoped as", Result(PRODUCT_COLS, [NOCOST, DESK])),
+        ])
+        b = client.get(f"/v1/shops/{SHOP}/products").json()
+        _assert(b["measure"] == "net_proceeds", b["measure"])
+        _assert([p["title"] for p in b["products"]] == ["Computer Desk 120cm", "No cost yet"], b["products"])
+        for p in b["products"]:
+            _assert(p["kept"] is None and p["gross_margin_after_returns"] is None
+                    and p["kept_reason"] == products.NOT_ON_PLAN, p)
+        _assert(b["total"]["amount_minor"] == 24300, b["total"])
+        b = client.get(f"/v1/shops/{SHOP}/products?measure=units").json()
+        _assert(b["total"]["amount_minor"] == 24300 and b["shop_total"]["amount_minor"] == 24300, b)
+    finally:
+        _db.get_subscription_row = saved
+check("Starter's products rank by net proceeds and carry the Growth sentence, not a profit", starter_products_rank_by_net_proceeds)
+
+
+def plan_change():
+    from types import SimpleNamespace as NS
+    import stripe as _stripe_mod
+
+    calls = []
+
+    def real_sub(price="price_starter_t", **over):
+        data = {"object": "subscription", "id": "sub_p", "customer": "cus_p", "status": "trialing",
+                "trial_end": 1792000000, "cancel_at_period_end": False, "metadata": {"plan": "starter"},
+                "items": {"object": "list", "data": [{"object": "subscription_item", "id": "si_1",
+                          "price": {"object": "price", "id": price}}]}}
+        data.update(over)
+        return _stripe_mod.Subscription.construct_from(data, "sk_test_x")
+
+    class Subs:
+        def retrieve(self, sid): calls.append(("retrieve", sid)); return real_sub()
+        def update(self, sid, params):
+            calls.append(("update", sid, params))
+            return real_sub(price=params["items"][0]["price"], metadata=params["metadata"])
+
+    state = {"row": _plan_row("starter")}
+    def apply(**kw):
+        state["row"] = dict(state["row"], plan_slug=kw["plan_slug"])
+
+    os.environ.update(STRIPE_PRICE_STARTER="price_starter_t", STRIPE_PRICE_GROWTH="price_growth_t",
+                      STRIPE_PRICE_PRO="price_pro_t")
+    saved = (billing._stripe, _db.get_subscription_row, billing.db.apply_subscription_event)
+    billing._stripe = lambda: NS(subscriptions=Subs())
+    _db.get_subscription_row = lambda _a: state["row"]
+    billing.db.apply_subscription_event = apply
+    try:
+        b = client.get("/v1/billing/subscription").json()
+        _assert(b["features"] == [], b)
+        r = client.patch("/v1/billing/subscription", json={"plan": "growth"})
+        _assert(r.status_code == 200 and r.json()["plan"] == "growth", r.text)
+        _assert(sorted(r.json()["features"]) == sorted(["basis", "costs", "drilldown", "exports", "profit"]), r.json())
+        up = calls[-1]
+        _assert(up[0] == "update" and up[2]["items"] == [{"id": "si_1", "price": "price_growth_t"}]
+                and up[2]["metadata"] == {"plan": "growth"} and "cancel_at_period_end" not in up[2], up)
+        # The price decides the plan, even against metadata that says otherwise.
+        _assert(billing._slug_for_subscription(
+            billing._plain(real_sub(price="price_pro_t", metadata={"plan": "starter"}))) == "pro")
+        # The same plan changes nothing at Stripe; neither field is refused.
+        n = len(calls)
+        r = client.patch("/v1/billing/subscription", json={"plan": "growth"})
+        _assert(r.status_code == 200 and len(calls) == n, calls[n:])
+        r = client.patch("/v1/billing/subscription", json={})
+        _assert(r.status_code == 422, r.text)
+    finally:
+        billing._stripe, _db.get_subscription_row, billing.db.apply_subscription_event = saved
+check("updateSubscription moves a running plan by its price, and the plan then decides the features", plan_change)
 
 print()
 if failures:

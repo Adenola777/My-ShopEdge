@@ -7,6 +7,8 @@
  * "Return Loss" on any screen, so none of them appears here.
  */
 
+import { NOT_ON_PLAN } from "./upgrade";
+
 /** The statement CLR-5 requires wherever gross profit after returns is shown. */
 export const BEFORE_OVERHEADS = "This is before your own running costs and your tax.";
 
@@ -123,8 +125,9 @@ export function chipClass(tone) {
 
 /**
  * Why gross profit after returns is not shown. The contract serves a code on Money and
- * Today, `incomplete_costs` or `no_sales`, and the product ranking serves a sentence, so a
- * value that is not a known code is shown as it came.
+ * Today, `incomplete_costs`, `no_sales` or, on Starter since 10 October 2026, `not_on_plan`,
+ * and the product ranking serves a sentence, so a value that is not a known code is shown as
+ * it came.
  *
  * @param {string | null | undefined} reason
  */
@@ -134,6 +137,7 @@ export function keptReason(reason) {
     {
       incomplete_costs: "Not every product has a cost price yet, so profit cannot be worked out.",
       no_sales: "Nothing sold in this period.",
+      not_on_plan: NOT_ON_PLAN,
     }[reason] ?? reason
   );
 }

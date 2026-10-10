@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 from .auth import Account, require_account
 from .dates import business_today, now_utc
 from .db import tenant
+from .entitlements import features_for, refuse
 from .money import Money, money
 from .products import NET_PROCEEDS_TYPES, RETURN_LOSS_TYPES
 from .products import SQL as PRODUCTS_SQL
@@ -187,6 +188,9 @@ def get_insights(
     shop_id: Annotated[UUID, Depends(require_shop)],
     basis: Annotated[Literal["sales", "cash"], Query()] = "sales",
 ) -> InsightsOut:
+    plan = features_for(account.id)
+    if basis == "cash" and "basis" not in plan:
+        raise refuse("basis")
     today = business_today()
     start, end = today.replace(day=1), today
     date_column = "le.basis_day" if basis == "sales" else "le.settlement_month"
@@ -199,6 +203,11 @@ def get_insights(
         cur = conn.execute(EXTRA_SQL.format(date_column=date_column), args)
         cols = [d.name for d in cur.description]
         extra = {x["product_id"]: x for x in (dict(zip(cols, r, strict=True)) for r in cur.fetchall())}
+    if "profit" not in plan:
+        # A plan without profit is told nothing built from a product cost.
+        for r in rows:
+            r["kept_minor"] = None
+            r["cost_retained_minor"] = None
     currency = rows[0]["currency"] if rows else "GBP"
     period = EvidencePeriod(from_=start.isoformat(), to=end.isoformat(), basis=basis)
     return InsightsOut(as_of=now_utc().isoformat(), insights=build(rows, extra, period, currency))

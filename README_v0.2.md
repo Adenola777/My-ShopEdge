@@ -87,6 +87,12 @@ carries every platform, integration and commercial decision taken since.
 13. **The order limit is enforced softly.** A16.3. The count is shown at eighty per cent
     and at a hundred, the larger plan is offered, and nothing stops. No month closes, no
     export is withheld, no figure stops updating.
+14. **The plans differ by what they include**, ruled 10 October 2026 (A35). Starter shows what
+    TikTok Shop left the seller and no profit. Growth adds product costs, gross profit and
+    margin, the orders behind each figure, exports and the cash basis. Pro adds scheduled
+    exports, the list of recent export files and the statements needing review. The service
+    enforces it from the plan Stripe reports, and an account with no live plan keeps
+    everything. A seller can change plan in the app; that call is unverified against Stripe.
 
 ## Open items, by owner
 
@@ -185,7 +191,7 @@ The specification is nearly complete. The application is not.
 | Schema applied | Through 0024 on all three branches, 25 migrations each, fingerprints identical (24 September). 0024 closed the Neon Data API exposure that CLAUDE.md describes |
 | Backend | 55 of 56 contract paths and 60 of 61 operations on 29 September. See CLAUDE.md |
 | Authentication | Verified by a real sign-in on 24 September. Issuer and audience were read from that token and set on Render, and the first production account was created from it |
-| Billing | Screens built. The three products and prices were created in the live Stripe account on 23 September. See CLAUDE.md for the identifiers |
+| Billing | Screens built. The three products and prices were created in the live Stripe account on 23 September. See CLAUDE.md for the identifiers. Since 10 October each plan's features are enforced by the service (A35), and a running plan can be changed from the app |
 | TikTok integration | Authorisation is built (`app/connections.py`) and has never made a live call. Ingestion still reads local JSON files |
 | Front end | All 36 screens built on 29 September. S17 Start, Stack's sign-in pages, S1 Connect TikTok Shop and the TikTok return page were added on 24 September. Sign-in works on the live site. No shop is connected yet. See `SCREENS.md` |
 | Deployment | The front end is live on Vercel production. The Python service runs on Render as `My-ShopEdge-1` in Frankfurt, deploying `main` of this repository, since 24 September |

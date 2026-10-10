@@ -1205,6 +1205,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shops/{shopId}/payout-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Statements that need review, largest difference first
+         * @description Pro's priority reconciliation review (the pricing ruling of 10 October 2026). A
+         *     statement needs review when the orders behind it do not add up to it, which is a
+         *     non-zero `unexplained` on getSettlement. The largest difference, by size, comes
+         *     first, then the latest statement. At most 100 are listed, and
+         *     `total_needing_review` counts them all.
+         */
+        get: operations["getPayoutReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shops/{shopId}/settlements/{settlementId}": {
         parameters: {
             query?: never;
@@ -1367,11 +1391,17 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Stop the plan renewing, or turn renewal back on
+         * Change the plan, or stop or restore renewal
          * @description Sets whether the subscription ends at the close of the trial or period under way.
          *     Stopping renewal during a trial means the first payment is never taken. Nothing is
          *     refunded. Added 8 October 2026, when the billing screens told sellers they could
          *     cancel in Settings and Settings had no way to.
+         *
+         *     Since 10 October 2026 `plan` moves the running subscription to another plan. The
+         *     price comes from the service's own configuration, never from the request. Stripe's
+         *     default proration applies: during a trial nothing is charged, and on a paid period
+         *     the difference for the days left is added to the next invoice. The plan, and so the
+         *     features, change when Stripe confirms the new price. At least one field is needed.
          *
          *     Refused with 409 when the account has no live subscription, and with 403
          *     `account_closing` while a deletion is pending, because the deletion already
@@ -1918,6 +1948,8 @@ export interface components {
             current_period_end?: string | null;
             card_last4?: string | null;
             cancel_at_period_end?: boolean;
+            /** @description What the plan includes, by feature name (costs, profit, drilldown, exports, basis, scheduled_exports, export_history, priority_review). Starter holds none, Growth the first five and Pro all eight. With no live plan the list holds all eight. The service checks the plan on every request, so this list is for display and grants nothing. Added 10 October 2026. */
+            features?: string[];
         };
         TrialStart: {
             /** @enum {string} */
@@ -1954,7 +1986,14 @@ export interface components {
              * @description The contract. Clients branch on this, never on `title` or `status` alone.
              * @enum {string}
              */
-            code: "unauthenticated" | "token_expired" | "forbidden_shop" | "not_found" | "validation_failed" | "conflict" | "idempotency_key_conflict" | "rate_limited" | "shop_needs_reconnect" | "shop_region_unsupported" | "upstream_unavailable" | "internal_error";
+            code: "unauthenticated" | "token_expired" | "forbidden_shop" | "not_found" | "validation_failed" | "conflict" | "idempotency_key_conflict" | "rate_limited" | "shop_needs_reconnect" | "shop_region_unsupported" | "upstream_unavailable" | "internal_error" | "plan_upgrade_required";
+            /**
+             * @description With `plan_upgrade_required`, the smallest plan that includes the operation. Added 10 October 2026.
+             * @enum {string}
+             */
+            required_plan?: "growth" | "pro";
+            /** @description With `plan_upgrade_required`, the feature the operation needs, as listed in `Subscription.features` and in each operation's `x-plan-feature`. */
+            feature?: string;
         };
         /**
          * @description How far a figure can be trusted. `confirmed` means every input is settled.
@@ -2299,7 +2338,7 @@ export interface components {
             /** @description Null when cost coverage is incomplete. Never a zero standing in for unknown. */
             kept?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
             /** @enum {string|null} */
-            kept_reason?: "incomplete_costs" | "no_sales" | null;
+            kept_reason?: "incomplete_costs" | "no_sales" | "not_on_plan" | null;
             cost_coverage?: number;
             confidence: components["schemas"]["Confidence"];
             /**
@@ -3072,7 +3111,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The shop exists but does not belong to this account. */
+        /** @description The shop exists but does not belong to this account, or, with code `plan_upgrade_required`, the account's plan does not include the operation. An operation with `x-plan-feature` names the feature its plan must include. Since 10 October 2026 a plan limits only while it is live (trialing, active or past_due); an account with no live plan holds every feature. */
         ForbiddenShop: {
             headers: {
                 [name: string]: unknown;
@@ -5177,6 +5216,38 @@ export interface operations {
             403: components["responses"]["ForbiddenShop"];
         };
     };
+    getPayoutReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The MyShopEdge shop identifier, not the TikTok shop id. */
+                shopId: components["parameters"]["ShopId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The statements needing review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            settlement: components["schemas"]["Settlement"];
+                            orders_settled: number;
+                            unexplained: components["schemas"]["Money"];
+                        }[];
+                        total_needing_review: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["ForbiddenShop"];
+        };
+    };
     getSettlement: {
         parameters: {
             query?: never;
@@ -5475,7 +5546,9 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    cancel_at_period_end: boolean;
+                    cancel_at_period_end?: boolean;
+                    /** @enum {string} */
+                    plan?: "starter" | "growth" | "pro";
                 };
             };
         };

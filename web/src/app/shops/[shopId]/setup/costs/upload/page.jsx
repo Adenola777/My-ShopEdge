@@ -6,13 +6,21 @@
  */
 
 import Link from "next/link";
+import { api } from "@/lib/api";
 import { UploadFlow } from "@/components/SetupForms";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 export const metadata = { title: "Upload your costs" };
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function UploadPage({ params }) {
   const { shopId } = await params;
+  // Product costs are Growth's (10 October 2026). The service refuses the upload calls too; this
+  // shows the prompt before a file is chosen rather than after.
+  const sub = await api("/billing/subscription", { cache: "no-store" });
+  if (sub.ok && Array.isArray(sub.data?.features) && !sub.data.features.includes("costs")) {
+    return <UpgradePrompt feature="costs" plan="growth" back={`/shops/${shopId}/products`} />;
+  }
   return (
     <section data-testid="upload-screen">
       <header className="page-head">

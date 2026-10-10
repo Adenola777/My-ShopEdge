@@ -5,6 +5,10 @@
  * Each row shows what the statement says, what TikTok held back and what reaches the bank,
  * because those three differ whenever TikTok holds a reserve (A18.3), and whether the
  * invoice has been recorded.
+ *
+ * On Pro, since 10 October 2026, the statements that need review come first, from
+ * getPayoutReview: those whose orders do not add up to them, the largest difference first.
+ * Other plans see the list alone, because getPayoutReview answers them with a 403.
  */
 
 import Link from "next/link";
@@ -21,7 +25,10 @@ const STATUS = { PAID: "Paid", PROCESSING: "Being paid", FAILED: "Payment failed
 export default async function PayoutsPage({ params, searchParams }) {
   const { shopId } = await params;
   const { cursor } = await searchParams;
-  const result = await fetchShop(shopId, "/settlements", { cursor, limit: "50" });
+  const [result, review] = await Promise.all([
+    fetchShop(shopId, "/settlements", { cursor, limit: "50" }),
+    cursor ? Promise.resolve(null) : fetchShop(shopId, "/payout-review"),
+  ]);
   const problem = apiProblem(result, { what: "your payouts" });
   if (problem) return problem;
 
@@ -36,6 +43,8 @@ export default async function PayoutsPage({ params, searchParams }) {
         <h1>Payouts</h1>
         <p>Every statement TikTok has issued, with what reached your bank and its fee invoice.</p>
       </header>
+
+      {review?.ok && review.data ? <NeedsReview data={review.data} shopId={shopId} /> : null}
 
       {rows.length === 0 ? (
         <div className="card"><p className="muted">TikTok has not issued a statement for this shop yet.</p></div>
@@ -63,5 +72,41 @@ export default async function PayoutsPage({ params, searchParams }) {
         <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts?${new URLSearchParams({ cursor: next })}`}>Older payouts</Link></p>
       )}
     </section>
+  );
+}
+
+/**
+ * Pro's review list. Each statement links to its own page, where the difference is explained.
+ *
+ * @param {{ data: { items: { settlement: import("@/lib/api-types").components["schemas"]["Settlement"], orders_settled: number, unexplained: import("@/lib/api-types").components["schemas"]["Money"] }[], total_needing_review: number }, shopId: string }} props
+ */
+function NeedsReview({ data, shopId }) {
+  if (data.total_needing_review === 0) {
+    return (
+      <div className="card" data-testid="payout-review-clear">
+        <h2>Needs review</h2>
+        <p className="muted">Every statement adds up to the orders behind it.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="card" data-testid="payout-review">
+      <h2>Needs review</h2>
+      <p className="card__why">
+        {data.total_needing_review === 1
+          ? "One statement does not add up to the orders behind it."
+          : `${data.total_needing_review} statements do not add up to the orders behind them. The largest difference is first.`}
+      </p>
+      <ul className="rows">
+        {data.items.map((i) => (
+          <li key={i.settlement.id}>
+            <Link className="rowlink rowlink--quiet" href={`/shops/${shopId}/payouts/${i.settlement.id}`}>
+              {formatDate(i.settlement.statement_time)}
+            </Link>
+            <Figure amount={{ ...i.unexplained, amount_minor: Math.abs(i.unexplained.amount_minor) }} unsigned />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -46,8 +46,10 @@ without a row, under the shop's `exports/` prefix.
 Since 10 October 2026 `notice_email` emails the `scheduled_export_ready` notice through Resend,
 once migration 0031 is applied.
 
-**Plans.** A18.6 and the price sheet sell scheduled exports on Pro. No code gates any feature
-by plan and the owner has not ruled which features to gate, so this is not gated.
+**Plans.** Since 10 October 2026 scheduled exports belong to Pro (`entitlements.py`). The four
+routes answer 403 plan_upgrade_required on Starter and Growth, and the runner skips a schedule
+whose account no longer holds the feature, leaving the schedule in place so that it runs again
+if the seller returns to Pro.
 
 **Unverified against R2**, like `storage.py`: the runner has built files against a local
 stand-in for S3 only (`testdata/scheduled_exports_check.py`).
@@ -65,6 +67,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .auth import Account, require_account
+from .entitlements import features_for, require as require_feature
 from .dates import business_today, now_utc
 from .db import tenant, unscoped
 from .exports import Fmt, Kind, build_in
@@ -149,7 +152,7 @@ NOT_FOUND = "That scheduled export was not found."
 
 # --- the four operations ---------------------------------------------------------------------
 
-@router.get("/shops/{shopId}/export-schedules", response_model=ExportScheduleList,
+@router.get("/shops/{shopId}/export-schedules", dependencies=[Depends(require_feature("scheduled_exports"))], response_model=ExportScheduleList,
             tags=["Exports"], summary="The shop's scheduled exports")
 def list_export_schedules(
     account: Annotated[Account, Depends(require_account)],
@@ -161,7 +164,7 @@ def list_export_schedules(
     return ExportScheduleList(schedules=[_schedule(r) for r in rows])
 
 
-@router.post("/shops/{shopId}/export-schedules", status_code=201, response_model=ExportSchedule,
+@router.post("/shops/{shopId}/export-schedules", dependencies=[Depends(require_feature("scheduled_exports"))], status_code=201, response_model=ExportSchedule,
              tags=["Exports"], summary="Schedule an export")
 def create_export_schedule(
     body: ScheduleIn,
@@ -187,7 +190,7 @@ def create_export_schedule(
     return JSONResponse(status_code=201, content=out)
 
 
-@router.patch("/shops/{shopId}/export-schedules/{scheduleId}", response_model=ExportSchedule,
+@router.patch("/shops/{shopId}/export-schedules/{scheduleId}", dependencies=[Depends(require_feature("scheduled_exports"))], response_model=ExportSchedule,
               tags=["Exports"], summary="Pause, resume or change a scheduled export")
 def update_export_schedule(
     body: ScheduleChange,
@@ -227,7 +230,7 @@ def update_export_schedule(
     return _schedule(row)
 
 
-@router.delete("/shops/{shopId}/export-schedules/{scheduleId}", status_code=204,
+@router.delete("/shops/{shopId}/export-schedules/{scheduleId}", dependencies=[Depends(require_feature("scheduled_exports"))], status_code=204,
                tags=["Exports"], summary="Remove a scheduled export")
 def delete_export_schedule(
     account: Annotated[Account, Depends(require_account)],
@@ -336,5 +339,6 @@ def run_due(now: datetime | None = None) -> list[dict[str, Any]]:
     with unscoped() as conn:
         listed = conn.execute(
             "select schedule_id, shop_id, account_id from export_schedules_due()").fetchall()
-    results = (run_schedule(sid, shop, acc, now) for sid, shop, acc in listed)
+    results = (run_schedule(sid, shop, acc, now) for sid, shop, acc in listed
+               if "scheduled_exports" in features_for(acc))
     return [r for r in results if r is not None]

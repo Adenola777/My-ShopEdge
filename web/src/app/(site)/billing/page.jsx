@@ -40,10 +40,11 @@ export default async function BillingPage() {
     return (
       <section className="billing" data-testid="billing-current">
         <h1>{status === "trialing" ? "Your free trial is running." : status === "active" ? "Your plan is active." : status === "past_due" ? "Your last payment did not go through." : "Your plan is being set up."}</h1>
-        <p>{status === "past_due" ? "Your figures stay open to you while it is sorted." : "There is nothing to choose here now."}</p>
+        <p>{status === "past_due" ? "Your figures stay open to you while it is sorted." : "You can move to another plan here."}</p>
         {status === "past_due" && <p><Link href="/billing/payment-failed" data-testid="payment-failed-link">What a failed payment means</Link></p>}
         {status === "past_due" && <p><Link className="btn btn--quiet" href="/billing/card">Use a different card</Link></p>}
-        <Link className="btn btn--primary" href="/shops">Go to your shop</Link>
+        <Link className="btn btn--primary" href="/shops">Go to your shop</Link>{" "}
+        <Link className="btn btn--quiet" href="/billing/change" data-testid="billing-change-plan">Change plan</Link>
       </section>
     );
   }

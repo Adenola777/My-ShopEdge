@@ -19,6 +19,11 @@
  * product, so the products alone do not add up to Money. The service returns those lines
  * as `unattributed` and the sum as `shop_total`, and the screen shows both beneath the
  * products, so the last figure on this screen is the one Money shows for the same period.
+ *
+ * **Starter ranks by net proceeds** (the pricing ruling of 10 October 2026). The service
+ * answers the default ranking with `measure` net_proceeds and no profit on any row, so the
+ * first switch reads Net proceeds, each row shows its net proceeds, and the page carries the
+ * ruling's sentence about adding costs with Growth.
  */
 
 import Link from "next/link";
@@ -27,6 +32,7 @@ import { Figure } from "@/components/Figure";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
 import { BEFORE_OVERHEADS, formatMargin } from "@/lib/terms";
+import { NOT_ON_PLAN } from "@/lib/upgrade";
 
 export const metadata = { title: "Products" };
 
@@ -69,6 +75,8 @@ export default async function ProductsPage({ params, searchParams }) {
     returns: "Units returned",
   };
   const base = `/shops/${shopId}/products`;
+  const starter = products.some((p) => p.kept_reason === NOT_ON_PLAN) || (measure === "net_proceeds" && !query.measure);
+  const SWITCH_SHOWN = starter ? [["kept", "Net proceeds"], ...SWITCH.slice(1)] : SWITCH;
 
   const ranked = products.filter((p) => p.cost_known || measure !== "kept");
   const uncosted = measure === "kept" ? products.filter((p) => !p.cost_known) : [];
@@ -81,9 +89,9 @@ export default async function ProductsPage({ params, searchParams }) {
       </header>
 
       <nav className="switch" aria-label="Rank by">
-        {SWITCH.map(([value, label]) => (
+        {SWITCH_SHOWN.map(([value, label]) => (
           <Link key={value} href={value === "kept" ? base : `${base}?measure=${value}`}
-                aria-current={measure === value ? "true" : undefined}>
+                aria-current={measure === value || (starter && value === "kept" && measure === "net_proceeds") ? "true" : undefined}>
             {label}
           </Link>
         ))}
@@ -117,8 +125,8 @@ export default async function ProductsPage({ params, searchParams }) {
                     {p.title || "Untitled product"}
                   </Link>
                   <div className="rows__sub">
-                    {p.units} sold{p.returns_units ? `, ${p.returns_units} returned` : ""}. Net proceeds{" "}
-                    <Figure amount={p.net_proceeds} />
+                    {p.units} sold{p.returns_units ? `, ${p.returns_units} returned` : ""}
+                    {measure !== "net_proceeds" && <>. Net proceeds{" "}<Figure amount={p.net_proceeds} /></>}
                     {formatMargin(p.gross_margin_after_returns) && <>. Gross margin {formatMargin(p.gross_margin_after_returns)}</>}
                   </div>
                 </span>
@@ -126,6 +134,8 @@ export default async function ProductsPage({ params, searchParams }) {
                   <span className="visually-hidden">{FIGURE_NAME[measure] ?? "Figure"}: </span>
                   {measure === "units" ? <strong className="money">{p.units}</strong>
                     : measure === "returns" ? <strong className="money">{p.returns_units || 0}</strong>
+                    : measure === "net_proceeds" ? <Figure amount={p.net_proceeds} />
+                    : measure === "gross_sales" ? <Figure amount={p.gross_sales} />
                     : <Figure amount={p.kept} reason={p.kept_reason} />}
                 </span>
               </li>
@@ -176,6 +186,7 @@ export default async function ProductsPage({ params, searchParams }) {
         </div>
       )}
 
+      {starter && <p className="footnote" data-testid="products-not-on-plan">{NOT_ON_PLAN}</p>}
       {measure === "kept" && (
         <p className="footnote">
           {BEFORE_OVERHEADS}

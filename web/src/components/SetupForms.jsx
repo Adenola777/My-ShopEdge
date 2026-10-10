@@ -529,8 +529,8 @@ function iso({ date }) {
 /** @type {Record<string, string>} */
 const KINDS = { month_summary: "Month summary", ledger: "Ledger, every entry", transactions: "Transactions, one row per order line" };
 
-/** @param {{ shopId: string, today: string }} props */
-export function ExportForm({ shopId, today }) {
+/** @param {{ shopId: string, today: string, history?: boolean }} props */
+export function ExportForm({ shopId, today, history = true }) {
   const t = new Date(`${today}T12:00:00Z`);
   const monthStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1));
   const lastStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() - 1, 1));
@@ -569,7 +569,8 @@ export function ExportForm({ shopId, today }) {
   }
 
   const shopPath = `/shops/${encodeURIComponent(shopId)}/exports`;
-  const recent = (
+  // Export history is Pro's since 10 October 2026, so on Growth the list is not asked for.
+  const recent = !history ? null : (
     <RecentFiles listPath={shopPath} itemPath={(id) => `${shopPath}/${id}`} version={version}
       describe={(j) => `${KINDS[j.kind] ?? j.kind}, ${formatDate(j.period_start)} to ${formatDate(j.period_end)}, ${j.basis} basis, ${j.format === "xlsx" ? "Excel" : "CSV"}`} />
   );

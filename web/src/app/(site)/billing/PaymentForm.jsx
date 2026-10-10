@@ -159,7 +159,7 @@ export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = fal
                     onChange={() => setSlug(plan.slug)}
                   />
                   <span className="plan__select" aria-hidden="true" />
-                  {plan.highlight ? <span className="plan__flag">Most chosen</span> : null}
+                  {plan.highlight ? <span className="plan__flag">Most popular</span> : null}
                   <span className="plan__name">{plan.name}</span>
                   <span className="plan__strapline">{plan.strapline}</span>
                   <span className="plan__price">

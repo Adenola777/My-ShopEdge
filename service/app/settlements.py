@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 
 from .auth import Account, require_account
 from .db import tenant
+from .entitlements import require as require_feature
 from .money import Money, money
 from .problems import Problem
 from .shops import require_shop
@@ -225,6 +226,55 @@ def list_settlements(
 
     return SettlementPage(
         settlements=[_settlement(r) for r in rows], next_cursor=next_cursor
+    )
+
+
+# --- The payout review list, Pro (the pricing ruling of 10 October 2026) ----------------------
+#
+# "Payout exceptions and reconciliation items prioritised for review". A statement needs review
+# when the orders behind it do not add up to it: `settlement_reconciliation.unexplained_minor`
+# is not zero, the same figure the statement's own page shows as Unexplained. The largest
+# difference comes first, so the seller starts where the most money is unexplained. Nothing
+# else is judged here, so nothing else is listed.
+
+REVIEW_LIMIT = 100
+
+
+class ReviewItem(BaseModel):
+    settlement: Settlement
+    orders_settled: int
+    unexplained: Money
+
+
+class PayoutReview(BaseModel):
+    items: list[ReviewItem]
+    total_needing_review: int
+
+
+@router.get("/shops/{shopId}/payout-review", response_model=PayoutReview,
+            dependencies=[Depends(require_feature("priority_review"))],
+            summary="Statements that need review, largest difference first")
+def get_payout_review(
+    account: Annotated[Account, Depends(require_account)],
+    shop_id: Annotated[UUID, Depends(require_shop)],
+) -> PayoutReview:
+    cols_s = ", ".join(f"s.{c.strip()}" for c in SETTLEMENT_COLUMNS.split(","))
+    with tenant(account.id) as conn:
+        cur = conn.execute(
+            f"select {cols_s}, r.orders_settled, r.unexplained_minor, "
+            "count(*) over () as total_needing_review "
+            "from settlements s join settlement_reconciliation r on r.settlement_id = s.id "
+            "where s.shop_id = %s and r.unexplained_minor <> 0 "
+            "order by abs(r.unexplained_minor) desc, s.statement_time desc, s.id desc limit %s",
+            (str(shop_id), REVIEW_LIMIT),
+        )
+        cols = [d.name for d in cur.description]
+        rows = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+    return PayoutReview(
+        items=[ReviewItem(settlement=_settlement(r), orders_settled=int(r["orders_settled"]),
+                          unexplained=money(int(r["unexplained_minor"]), r["currency"]))
+               for r in rows],
+        total_needing_review=int(rows[0]["total_needing_review"]) if rows else 0,
     )
 
 

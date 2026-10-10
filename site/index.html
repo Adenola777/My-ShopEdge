@@ -292,6 +292,12 @@
   .plan-card ul { margin: 0 0 18px; padding-left: 18px; color: var(--ink); font-size: 0.95rem; line-height: 1.6; flex: 1; }
   .plan-trial { margin: 0; font-size: 0.88rem; color: var(--ink-soft); line-height: 1.5; }
   .pricing-note { margin: 22px 0 0; font-size: 0.95rem; color: var(--ink-soft); max-width: 70ch; }
+  .plan-badge { align-self: flex-start; margin: 0 0 10px; padding: 3px 10px; border-radius: 999px; background: var(--orange-solid); color: var(--white); font-size: 0.8rem; font-weight: 600; }
+  .compare-wrap { margin-top: 28px; overflow-x: auto; background: var(--white); border-radius: 16px; }
+  .compare { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 560px; }
+  .compare caption { text-align: left; padding: 16px 16px 6px; font-weight: 600; }
+  .compare th, .compare td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line, #E7E8EC); vertical-align: top; }
+  .compare thead th { font-size: 0.85rem; color: var(--ink-soft); }
   .final-note { margin: 18px 0 0; color: var(--ink-soft); font-size: 0.98rem; }
   @media (max-width: 860px) { .pricing-grid { grid-template-columns: 1fr; } .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
 
@@ -411,7 +417,7 @@
       <div class="steps-grid">
         <div class="step-card"><span class="step-badge">1</span><h3>Connect your TikTok Shop</h3><p>Approve read-only access on TikTok&rsquo;s own page. MyShopEdge cannot change your shop, place orders or issue refunds. MyShopEdge starts reading up to 24 months of available orders and payouts.</p></div>
         <div class="step-card"><span class="step-badge">2</span><h3>Choose a plan and start your trial</h3><p>Choose the plan you want after your trial, then add a card securely through Stripe. You pay &pound;0 today, and your 30-day free trial starts when checkout is complete.</p></div>
-        <div class="step-card"><span class="step-badge">3</span><h3>See what you keep</h3><p>Your net proceeds are there first. Add product costs whenever you are ready to see gross profit and margin by product.</p></div>
+        <div class="step-card"><span class="step-badge">3</span><h3>See what you keep</h3><p>Your net proceeds are there first. On the Growth and Pro plans, add product costs whenever you are ready to see gross profit and margin by product.</p></div>
       </div>
     </div>
   </section>
@@ -448,6 +454,7 @@
           <div class="feature-tag">Products</div>
           <h3>See which products earn you the most, and which cost you.</h3>
           <p>Rank products by gross profit after returns, see product margin and identify the products that need attention. Where costs are missing, see net proceeds and clear cost-status information instead.</p>
+          <p class="feature-sub">Product costs, gross profit and margin come with the Growth and Pro plans. On Starter, products are ranked by net proceeds.</p>
         </div>
         <div class="feature-visual"><img src="shots/products-ranking.webp" width="720" height="1398" alt="Products ranked by gross profit after returns for the demo shop"></div>
       </div>
@@ -457,7 +464,7 @@
           <div class="feature-tag">Exports</div>
           <h3>Your figures, reconciled and ready to export.</h3>
           <p>Export a monthly summary, a full ledger or one row per order line in Excel or CSV. Choose sales basis to review activity by the day of sale, or cash basis to review it by the month TikTok settled it. A month summary has the same totals as MyShopEdge shows for the same period and basis.</p>
-          <p class="feature-sub">On the Pro plan, schedule weekly or monthly exports and receive an in-app notification when your file is ready.</p>
+          <p class="feature-sub">Exports come with the Growth and Pro plans. On the Pro plan, schedule weekly or monthly exports and receive an in-app notification when your file is ready.</p>
         </div>
         <div class="feature-visual"><img src="shots/exports.webp" width="720" height="1558" alt="The Exports screen, with what to export, period, basis and format"></div>
       </div>
@@ -523,26 +530,55 @@
         <div class="plan-card">
           <h3>Starter</h3>
           <p class="plan-price"><span>&pound;9.99</span> a month</p>
-          <p class="plan-strap">For a shop taking up to 100 orders a month.</p>
-          <ul><li>Sales, fees and payouts, reconciled to every statement</li><li>Refunds and returns, with the stock effect of each</li><li>Product costs, uploaded or typed</li><li>Gross profit after returns</li><li>Stock levels</li><li>VAT threshold tracking and an estimated tax reserve</li></ul>
-          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;9.99 a month unless you stop the plan in Settings.</p>
+          <p class="plan-strap">Understand what TikTok Shop left you. Up to 100 orders a month.</p>
+          <ul><li>Sales, fees, refunds and payouts in one Overview</li><li>The net proceeds breakdown, line by line</li><li>The status of every payout and statement</li><li>Refunds and returns</li><li>Products ranked by net proceeds</li><li>VAT registration threshold tracking</li><li>Standard support</li></ul>
+          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;9.99 a month unless you cancel in Settings.</p>
         </div>
         <div class="plan-card plan-card--highlight">
+          <p class="plan-badge">Most popular</p>
           <h3>Growth</h3>
           <p class="plan-price"><span>&pound;24.99</span> a month</p>
-          <p class="plan-strap">For a shop taking up to 500 orders a month.</p>
-          <ul><li>Everything in Starter</li><li>Gross profit after returns, by product</li><li>Every transaction behind any figure</li><li>Exports on a sales basis or a cash basis</li><li>Priority support</li></ul>
-          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;24.99 a month unless you stop the plan in Settings.</p>
+          <p class="plan-strap">Know which products actually make you money. Up to 500 orders a month.</p>
+          <ul><li>Everything in Starter</li><li>Product costs, uploaded in Excel or CSV or typed in</li><li>Cost matching and cost coverage</li><li>Gross profit and gross margin after returns, by product</li><li>The orders and deductions behind each product and figure</li><li>Month summary, ledger and transactions exports in Excel or CSV</li><li>Sales basis and cash basis</li><li>Standard support</li></ul>
+          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;24.99 a month unless you cancel in Settings.</p>
         </div>
         <div class="plan-card">
           <h3>Pro</h3>
           <p class="plan-price"><span>&pound;49.99</span> a month</p>
-          <p class="plan-strap">For a shop taking up to 2,000 orders a month.</p>
-          <ul><li>Everything in Growth</li><li>Scheduled exports</li><li>Priority support</li></ul>
-          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;49.99 a month unless you stop the plan in Settings.</p>
+          <p class="plan-strap">Keep your financial operations moving without spreadsheets. Up to 2,000 orders a month.</p>
+          <ul><li>Everything in Growth</li><li>Scheduled weekly and monthly exports</li><li>Your recent export files in one list</li><li>Statements that need review, listed first</li><li>Priority support</li></ul>
+          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;49.99 a month unless you cancel in Settings.</p>
         </div>
       </div>
-      <p class="pricing-note">Every plan keeps 24 months of history and connects one TikTok Shop. If you pass your plan&rsquo;s order limit, nothing stops: MyShopEdge tells you and offers the larger plan.</p>
+      <div class="compare-wrap">
+        <table class="compare">
+          <caption>What each plan includes</caption>
+          <thead><tr><th scope="col">Feature</th><th scope="col">Starter &pound;9.99</th><th scope="col">Growth &pound;24.99</th><th scope="col">Pro &pound;49.99</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">TikTok Shops connected</th><td>One</td><td>One</td><td>One</td></tr>
+            <tr><th scope="row">Orders a month</th><td>Up to 100</td><td>Up to 500</td><td>Up to 2,000</td></tr>
+            <tr><th scope="row">Overview of sales, fees, refunds and payouts</th><td>Included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Net proceeds breakdown</th><td>Included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Payout and statement status</th><td>Included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Refunds and returns</th><td>Included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">VAT threshold tracking</th><td>Included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Products ranked by net proceeds</th><td>Included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Upload or type product costs</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Cost coverage and missing costs</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Gross profit and gross margin</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Gross profit after returns by product</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">The orders behind each figure</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Month summary export</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Ledger and transactions exports</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Sales basis and cash basis</th><td>Not included</td><td>Included</td><td>Included</td></tr>
+            <tr><th scope="row">Scheduled exports</th><td>Not included</td><td>Not included</td><td>Included</td></tr>
+            <tr><th scope="row">Recent export files in one list</th><td>Not included</td><td>Not included</td><td>Included</td></tr>
+            <tr><th scope="row">Statements that need review, listed first</th><td>Not included</td><td>Not included</td><td>Included</td></tr>
+            <tr><th scope="row">Support</th><td>Standard</td><td>Standard</td><td>Priority</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="pricing-note">Every plan connects one TikTok Shop. If you pass your order allowance, MyShopEdge keeps working and lets you know which plan fits your volume.</p>
     </div>
   </section>
 

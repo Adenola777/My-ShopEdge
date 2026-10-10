@@ -2,9 +2,15 @@
  * S3 Product costs choice, drawn to wireframe sheet 03 as A15.4 amended it: the three cards
  * are cut and the choices are buttons, with the reassurance kept as a footnote under them.
  * Built 29 September 2026. A14.2 puts it after the plan and before the tax profile.
+ *
+ * Starter has no product costs (entitlements.py, 10 October 2026). A Starter seller who
+ * reaches this step while setting up goes on to the tax profile, because the pricing ruling
+ * says no upgrade prompt interrupts setting up.
  */
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { api } from "@/lib/api";
 
 export const metadata = { title: "Your product costs" };
 
@@ -12,6 +18,10 @@ export const metadata = { title: "Your product costs" };
 export default async function CostsChoicePage({ params }) {
   const { shopId } = await params;
   const base = `/shops/${shopId}/setup`;
+  const sub = await api("/billing/subscription", { cache: "no-store" });
+  if (sub.ok && Array.isArray(sub.data?.features) && !sub.data.features.includes("costs")) {
+    redirect(`${base}/tax`);
+  }
   return (
     <section data-testid="costs-choice">
       <header className="page-head">

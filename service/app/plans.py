@@ -4,6 +4,10 @@ A plan's price is never sent by a browser. The browser sends a slug, the service
 slug up here, and it uses the Stripe price identifier held in an environment variable. A
 request carrying a price identifier is ignored.
 
+What each plan may use is enforced in ``entitlements.py``, from the plan Stripe reports. The
+``features`` below are the words a seller reads, rewritten on 10 October 2026 from the owner's
+"MyShopEdge Final Pricing Packaging and Code Command", and they describe that enforcement.
+
 Two lists exist on purpose. ``features`` holds what the product does today and is the only
 list the sign-up screen renders. ``PENDING_SCOPE`` holds rows from the commercial price
 sheet that the MVP does not yet have, recorded so they are not forgotten and not
@@ -40,7 +44,7 @@ PLANS: dict[str, Plan] = {
     "starter": Plan(
         slug="starter",
         name="Starter",
-        strapline="Starter covers a shop taking up to 100 orders a month.",
+        strapline="Understand what TikTok Shop left you.",
         price_minor=999,
         currency="GBP",
         order_limit=100,
@@ -50,18 +54,19 @@ PLANS: dict[str, Plan] = {
         features=[
             "Up to 100 orders a month",
             "One TikTok Shop connection",
-            "Sales, fees and payouts, reconciled to every statement",
-            "Refunds and returns, with the stock effect of each",
-            "Product costs, uploaded or typed",
-            "Gross profit after returns, calculated line by line",
-            "Stock levels and what runs out first",
-            "VAT registration threshold tracking, and guidance on what to set aside for tax",
+            "Sales, fees, refunds and payouts in one Overview",
+            "The net proceeds breakdown, line by line",
+            "The status of every payout and statement",
+            "Refunds and returns",
+            "Products ranked by net proceeds",
+            "VAT registration threshold tracking",
+            "Standard support",
         ],
     ),
     "growth": Plan(
         slug="growth",
         name="Growth",
-        strapline="Growth covers a shop taking up to 500 orders a month.",
+        strapline="Know which products actually make you money.",
         price_minor=2499,
         currency="GBP",
         order_limit=500,
@@ -71,16 +76,19 @@ PLANS: dict[str, Plan] = {
         features=[
             "Everything in Starter",
             "Up to 500 orders a month",
-            "Gross profit after returns, by product",
-            "Every transaction behind any figure",
-            "Exports on a sales basis or a cash basis",
-            "Priority support",
+            "Product costs, uploaded in Excel or CSV or typed in",
+            "Cost matching and cost coverage",
+            "Gross profit and gross margin after returns, by product",
+            "The orders and deductions behind each product and figure",
+            "Month summary, ledger and transactions exports in Excel or CSV",
+            "Sales basis and cash basis",
+            "Standard support",
         ],
     ),
     "pro": Plan(
         slug="pro",
         name="Pro",
-        strapline="Pro covers a shop taking up to 2,000 orders a month.",
+        strapline="Keep your financial operations moving without spreadsheets.",
         price_minor=4999,
         currency="GBP",
         order_limit=2000,
@@ -90,7 +98,9 @@ PLANS: dict[str, Plan] = {
         features=[
             "Everything in Growth",
             "Up to 2,000 orders a month",
-            "Scheduled exports",
+            "Scheduled weekly and monthly exports",
+            "Your recent export files in one list",
+            "Statements that need review, listed first",
             "Priority support",
         ],
     ),
@@ -124,6 +134,4 @@ PENDING_SCOPE = OUT_OF_MVP
 IN_SCOPE_NOT_BUILT = [
     "The email A16.3 sends at 100 per cent of the order limit. Nothing in the service can send "
     "email and no provider has been chosen, so an in-app notice is written in its place.",
-    "Moving to the larger plan from the app. Today names the larger plan, but no screen or "
-    "operation changes a running plan, so the seller cannot act on the offer in the app.",
 ]

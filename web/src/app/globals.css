@@ -762,3 +762,13 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
   .card--action { flex-direction: row; align-items: center; justify-content: space-between; }
   .card--action__buttons .btn { flex: none; }
 }
+
+/* Change plan and the upgrade prompt (10 October 2026). The prompt is a card in the page, never
+   a modal, so it never stands between a seller and the page they were on. */
+.plan-cards { display: grid; gap: var(--space-3); margin: var(--space-4) 0; }
+@media (min-width: 760px) { .plan-cards { grid-template-columns: repeat(3, 1fr); } }
+.plan-card ul { padding-left: 1.1rem; margin: 0 0 var(--space-3); }
+.plan-card--chosen { border: 2px solid var(--orange-600); background: var(--orange-50); }
+.upgrade { max-width: var(--measure); }
+.upgrade__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
+.card.upgrade .upgrade__actions { justify-content: flex-start; }

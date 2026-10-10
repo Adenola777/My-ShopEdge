@@ -26,10 +26,13 @@ export default async function SetupPage({ params }) {
     api("/tax-profile", { cache: "no-store" }),
     api("/billing/subscription", { cache: "no-store" }),
   ]);
-  const problem = apiProblem(costs, { what: "your set-up" });
+  // Starter has no product costs (entitlements.py, 10 October 2026), so its checklist has no
+  // costs step, and it is not shown an upgrade prompt in the middle of setting up.
+  const costsOnPlan = !(costs.status === 403 && costs.data?.code === "plan_upgrade_required");
+  const problem = costsOnPlan ? apiProblem(costs, { what: "your set-up" }) : null;
   if (problem) return problem;
 
-  const skus = costs.data.skus ?? [];
+  const skus = costsOnPlan ? costs.data.skus ?? [] : [];
   const costed = skus.filter((/** @type {any} */ s) => s.cost).length;
   /** @type {any[]} */
   const domains = sync.ok ? sync.data?.domains ?? [] : [];
@@ -51,8 +54,8 @@ export default async function SetupPage({ params }) {
     { label: "Read your shop's history", action: "See your shop's progress", done: synced, known: sync.ok, note: syncNote, href: `/shops/${shopId}/sync` },
     { label: "Choose a plan", action: "Choose a plan", done: Boolean(sub.ok && sub.data?.status && sub.data.status !== "none"), known: sub.ok,
       note: sub.ok ? undefined : "Not known right now", href: "/billing" },
-    { label: "Add product costs", action: "Add product costs", done: costed > 0, known: true,
-      note: `${costed} of ${products} ${costed === 1 ? "has" : "have"} a cost`, href: `/shops/${shopId}/setup/costs` },
+    ...(costsOnPlan ? [{ label: "Add product costs", action: "Add product costs", done: costed > 0, known: true,
+      note: `${costed} of ${products} ${costed === 1 ? "has" : "have"} a cost`, href: `/shops/${shopId}/setup/costs` }] : []),
     { label: "Tell us about your business", action: "Tell us about your business", done: Boolean(tax.ok && tax.data?.completed), known: tax.ok,
       note: tax.ok ? undefined : "Not known right now", href: `/shops/${shopId}/setup/tax` },
   ];
