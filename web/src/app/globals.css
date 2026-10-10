@@ -216,7 +216,7 @@ a:hover { color: var(--orange-700); }
 }
 .shopframe .content { padding-bottom: calc(var(--tabbar) + var(--space-6)); }
 
-/* The tabs: five areas across the bottom of a phone, a rail down the left of a larger
+/* The tabs: five across the bottom of a phone, a rail down the left of a larger
    screen (WFW 7). Each area's pages open under it in the rail, and sit in a row at the top
    of the page on a phone (.subnav). */
 .tabs {
@@ -262,9 +262,10 @@ a:hover { color: var(--orange-700); }
   border-radius: 0 0 3px 3px;
   background: var(--brand-gradient);
 }
-/* On a phone Settings is the gear in the top bar, and an area's pages are the row above
-   the page. */
-.tabs__area--settings, .tabs__pages { display: none; }
+/* On a phone the bottom tabs are Overview, Reconcile, Products, Exports and More (A36.1
+   item 4). Returns, Stock, VAT and tax and Settings are on the More page, and an area's
+   pages are the row above the page. */
+.tabs__area--rail, .tabs__pages { display: none; }
 
 /* The pages of an area, on a phone: a row of chips that wraps onto a second line when it
    does not fit. Until 10 October 2026 the row scrolled sideways, which hid the last page off
@@ -342,9 +343,27 @@ a:hover { color: var(--orange-700); }
   }
   .tabs__pages a:hover { color: var(--orange-600); }
   .tabs__pages a[aria-current="page"] { color: var(--orange-600); font-weight: 650; background: var(--white); }
+  /* The sidebar lists all eight areas, so More is not needed there. */
+  .tabs__area--rail { display: flex; }
+  .tabs__area--more { display: none; }
   /* Settings sits apart at the foot of the rail. */
-  .tabs__area--settings { display: flex; margin-top: auto; padding-top: var(--space-3); border-top: 1px solid var(--ink-200); }
+  .tabs__area--settings { margin-top: auto; padding-top: var(--space-3); border-top: 1px solid var(--ink-200); }
 }
+
+/* The More page: one link to a row, each a full-width target. */
+.card.morelist { list-style: none; padding: 0; }
+.morelist li { border-bottom: 1px solid var(--ink-100); }
+.morelist li:last-child { border-bottom: 0; }
+.morelist a {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  color: var(--navy-900);
+  font-weight: 600;
+  text-decoration: none;
+}
+.morelist a:hover { color: var(--orange-600); }
 
 .footer {
   border-top: 1px solid var(--ink-200);
