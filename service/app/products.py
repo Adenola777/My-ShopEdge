@@ -42,6 +42,7 @@ from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
 from .money import Money, money, per_unit
+from .money_lines import tiktok_name
 from .settlements import MAX_LIMIT, decode_cursor, encode_cursor
 from .shops import require_shop
 from .stock import StockPosition
@@ -596,7 +597,7 @@ def get_product(
         rows = [l for l in lines if l["category"] in categories]
         section_lines = [
             CalculatorLine(
-                label=(l["tiktok_fee_type"] or LABELS[l["category"]])
+                label=(tiktok_name(l["tiktok_fee_type"]) if l["tiktok_fee_type"] else LABELS[l["category"]])
                       if l["category"] == "unmapped_fee"
                       else LABELS.get(l["category"], l["category"]),
                 amount=money(int(l["amount_minor"]), currency),

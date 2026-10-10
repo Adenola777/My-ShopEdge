@@ -52,6 +52,21 @@ LABELS = {
 VERBATIM = ("unmapped_fee", "platform_adjustment")
 
 
+def tiktok_name(raw: str) -> str:
+    """TikTok's own name for a fee or an adjustment, written as words.
+
+    TikTok sends `live_specials_fee_amount` or `PLATFORM_PENALTY`, which a seller never sees
+    in that form. On the owner's instruction of 10 October 2026 the label keeps TikTok's
+    words and drops only the code formatting: the `_amount` ending and the underscores go,
+    and the first letter alone is a capital. So "Live specials fee" and "Platform penalty".
+    Nothing is translated or invented, and `tiktok_fee_type` still carries the string
+    exactly as TikTok sent it.
+    """
+    name = raw[:-len("_amount")] if raw.lower().endswith("_amount") else raw
+    words = " ".join(name.replace("_", " ").split()).lower()
+    return words[:1].upper() + words[1:] if words else raw
+
+
 class CalculatorLine(BaseModel):
     label: str
     amount: Money
@@ -75,7 +90,7 @@ def _line(row: dict[str, Any], currency: str) -> CalculatorLine:
     raw = row["tiktok_fee_type"]
     label = LABELS.get(category, category)
     if category in VERBATIM and raw:
-        label = raw
+        label = tiktok_name(raw)
     return CalculatorLine(
         label=label,
         amount=money(int(row["amount_minor"]), currency),
