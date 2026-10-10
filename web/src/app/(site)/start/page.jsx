@@ -2,7 +2,7 @@
  * S17 Start. The first thing a seller sees, in our name and our words, before the provider.
  *
  * A14 section 14.3: the logo, the tagline, one sentence saying what happens next, and two
- * actions, "Create an account" and "Sign in", which both hand off to the identity provider.
+ * actions, "Create account and connect my shop" (named "Create an account" until 10 October 2026) and "Sign in", which both hand off to the identity provider.
  * No password field appears here, because we never receive one. The logo and the tagline
  * are the masthead the root layout already draws.
  *
@@ -44,13 +44,16 @@ export default async function StartPage() {
           A7.6 allows it from 180 px wide; it is drawn at 240. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="start__logo" src="/brand/mse-logo-horizontal.svg" alt="MyShopEdge, Know Your Numbers" width={240} height={89} />
-      <h1>See what your TikTok Shop actually earned.</h1>
+      {/* The heading, body and first button follow the landing page, so a seller who clicks
+          "Start your free 30-day trial" lands on the same words (owner's brief, 10 October 2026). */}
+      <h1>Start seeing what you actually keep.</h1>
       <p className="muted">
-        You create an account or sign in with Google, GitHub or Microsoft. After that you
-        connect your TikTok Shop, and MyShopEdge reads your orders, returns and statements.
+        Create your MyShopEdge account, then connect your TikTok Shop to bring sales, fees,
+        refunds and payouts into one clear picture. You sign in with Google, GitHub or
+        Microsoft. Your 30-day free trial starts when you choose a plan after connecting.
       </p>
       <div className="stack" style={{ maxWidth: 360, margin: "0 auto" }}>
-        <a className="btn btn--primary btn--block" href="/handler/sign-up">Create an account</a>
+        <a className="btn btn--primary btn--block" href="/handler/sign-up">Create account and connect my shop</a>
         <a className="btn btn--quiet btn--block" href="/handler/sign-in">Sign in</a>
       </div>
     </section>

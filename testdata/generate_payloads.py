@@ -18,7 +18,17 @@ from decimal import ROUND_HALF_UP, Decimal
 # With MSE_TESTDATA_YEAR=1 the same orders are generated plus YEAR_ORDERS below, and the
 # payloads go to payloads_year/. Without it the output is byte for byte what it was.
 YEAR = os.environ.get("MSE_TESTDATA_YEAR") == "1"
-OUT = os.path.join(os.path.dirname(__file__), "payloads_year" if YEAR else "payloads")
+# Showcase mode, added 10 October 2026 for the landing page screenshots. The owner judged the
+# year dataset too thin to show a working shop (46 orders in a year), so with
+# MSE_TESTDATA_SHOWCASE=1 the August 2026 test orders are replaced by about two hundred
+# ordinary ones, settled in twice-weekly statements with no unexplained adjustment, no
+# reserve and no fee MyShopEdge does not recognise. The year's history is kept. Every figure
+# is made up. It is for screenshots only and no check reads it; payloads go to
+# payloads_showcase/. Without the variable the output is byte for byte what it was.
+SHOWCASE = os.environ.get("MSE_TESTDATA_SHOWCASE") == "1"
+YEAR = YEAR or SHOWCASE
+OUT = os.path.join(os.path.dirname(__file__),
+                   "payloads_showcase" if SHOWCASE else "payloads_year" if YEAR else "payloads")
 os.makedirs(OUT, exist_ok=True)
 
 SHOP_ID = "7495000000000000001"
@@ -90,6 +100,38 @@ ORDERS = [
     # Carries a fee MyShopEdge has no category for.
     ("A20", "2026-08-20T12:00:00", [(SKUS[5][0], 1)], {"mystery_fee": 199}),
 ]
+
+def _showcase_orders():
+    """About ten orders a day from 1 to 23 August 2026, chosen by a hash so a rerun is identical."""
+    out = []
+    for day in range(1, 24):
+        per_day = 7 + int(hashlib.sha1(f"day{day}".encode()).hexdigest()[:2], 16) % 7
+        for n in range(per_day):
+            ref = f"S08{day:02d}{n:02d}"
+            h = int(hashlib.sha1(ref.encode()).hexdigest()[:12], 16)
+            # The hair brush and the flask sell most, the desk least.
+            sku = [0, 0, 1, 2, 5, 5, 5, 6, 7, 8, 8, 9, 3][h % 13]
+            units = 2 if h % 9 == 0 else 1
+            r = (h >> 8) % 100
+            flags = {}
+            if r < 14:   flags["affiliate"] = True
+            elif r < 20: flags["affiliate_ads"] = True
+            elif r < 28: flags["promo"] = True
+            elif r < 36: flags["seller_discount"] = 200 + (h % 4) * 100
+            elif r < 42: flags["fbt"] = True
+            elif r < 44: flags["refund_only"] = True
+            elif r < 48: flags["return_resellable"] = True
+            elif r < 49: flags["return_damaged"] = True
+            elif r < 50: flags["cancelled"] = True
+            if day >= 21 and not flags.get("cancelled"):
+                flags["unsettled"] = "waiting_delivery" if day == 23 else "delivered_awaiting_settlement"
+            hour = 8 + (h >> 20) % 13
+            out.append((ref, f"2026-08-{day:02d}T{hour:02d}:{(h >> 24) % 60:02d}:00",
+                        [(SKUS[sku][0], units)], flags))
+    return out
+
+if SHOWCASE:
+    ORDERS = _showcase_orders()
 
 def order_id(ref):
     return "5767" + hashlib.sha1(ref.encode()).hexdigest()[:14].upper()
@@ -211,6 +253,16 @@ SETTLED = [o for o in orders if not o["_flags"].get("unsettled") and not o["_ref
 GROUPS = [("202608A-0001", "2026-08-21T00:00:00", SETTLED[0:7],  "PAID"),
           ("202608A-0002", "2026-08-22T00:00:00", SETTLED[7:14], "PROCESSING"),
           ("202608A-0003", "2026-08-23T00:00:00", SETTLED[14:],  "PAID")]
+if SHOWCASE:
+    # Twice a week, each statement covering the orders placed before its date. Ids end in a
+    # letter, so the adjustment and the reserve below, keyed on 0003 and 0002, never apply.
+    GROUPS, cuts = [], [4, 8, 11, 15, 18, 21]
+    for i, cut in enumerate(cuts):
+        lo = cuts[i - 1] if i else 1
+        grp = [o for o in SETTLED
+               if lo <= datetime.fromtimestamp(o["create_time"], tz=timezone.utc).day < cut]
+        GROUPS.append((f"202608S-{i + 1:02d}S", f"2026-08-{cut:02d}T00:00:00", grp,
+                       "PROCESSING" if cut == 21 else "PAID"))
 
 if YEAR:
     # One statement a month for the year orders, stamped on the 5th of the next month. The
@@ -312,7 +364,8 @@ for o in orders:
 
 # -------------------------------------------------------------- inventory
 inventory = [{"sku_id": s[0], "product_id": s[1], "seller_sku": s[3],
-              "quantity": 0 if s[0] == SKUS[9][0] else 25 - i * 2,
+              "quantity": (0 if s[0] == SKUS[9][0] else 25 - i * 2) if not SHOWCASE
+                          else [96, 41, 18, 6, 9, 140, 52, 37, 64, 3][i],
               "warehouse_id": "7352000000000000001"} for i, s in enumerate(SKUS)]
 
 # ------------------------------------------------------------------ write
