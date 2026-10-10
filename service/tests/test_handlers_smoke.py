@@ -211,7 +211,7 @@ def products_ranking():
     _assert(b["products"][0]["title"] == "Computer Desk 120cm")
     # Money that belongs to no product is its own line, named as the money screen names it.
     _assert(b["unattributed"]["amount"]["amount_minor"] == -500, b.get("unattributed"))
-    _assert(b["unattributed"]["lines"][0]["label"] == "PLATFORM_PENALTY", b["unattributed"])
+    _assert(b["unattributed"]["lines"][0]["label"] == "Platform penalty", b["unattributed"])
     # A product with no cost means the shop's profit is not known, so no shop total.
     _assert(b["shop_total"] is None, "no shop total while a cost is missing")
 check("GET products returns null kept with a reason, and ranks unknowns last", products_ranking)
@@ -292,9 +292,10 @@ def money_chain():
     _assert(sec["revenue"]["subtotal_label"] == "Net sales")
     fees = sec["tiktok_fees"]
     labels = [l["label"] for l in fees["lines"]]
-    # The adjustment sits inside TikTok fees under TikTok's own name, as ruled.
-    _assert("LOGISTICS_REIMBURSEMENT" in labels, f"adjustment inside fees: {labels}")
-    _assert("SOME_NEW_FEE" in labels, "an unrecognised fee keeps TikTok's name")
+    # The adjustment sits inside TikTok fees under TikTok's own name, as ruled, written as
+    # words since 10 October 2026.
+    _assert("Logistics reimbursement" in labels, f"adjustment inside fees: {labels}")
+    _assert("Some new fee" in labels, "an unrecognised fee keeps TikTok's name")
     _assert(fees["subtotal"]["amount_minor"] == 78576)
     _assert(sec["refunds"]["subtotal"]["amount_minor"] == 51176)
     _assert(sec["refunds"]["subtotal_label"] == "Net proceeds")
@@ -1907,7 +1908,7 @@ def settlement_fee_lines():
     _assert([l["category"] for l in lines] == ["platform_commission", "transaction_fee",
                                                "return_handling_fee", "unmapped_fee"], lines)
     _assert([l["label"] for l in lines] == ["Platform commission", "Transaction fee",
-                                            "Return handling fee", "live_specials_fee_amount"], lines)
+                                            "Return handling fee", "Live specials fee"], lines)
     _assert(lines[-1]["tiktok_fee_type"] == "live_specials_fee_amount"
             and all(l["tiktok_fee_type"] is None for l in lines[:-1]), lines)
     _assert(sum(l["amount"]["amount_minor"] for l in lines) == c["fees"]["amount_minor"] == -1363, c)
