@@ -7,13 +7,20 @@ The plan is `subscriptions.plan_slug`, which only `billing._apply_stripe_subscri
 from the Stripe subscription's price identifier, on a verified webhook or on a read back from
 Stripe. A browser never sends a plan here, and nothing in this module reads one from a request.
 
-WHO IS LIMITED
+ACCESS BY ACCOUNT STATE (A36, the owner's ruling of 10 October 2026)
 
-Only a live plan limits anything: a status in `billing.LIVE` (trialing, active, past_due) and a
-slug in `plans.PLANS`. An account with no subscription row, or one whose plan is incomplete or
-cancelled, keeps every feature. The owner chose that on 10 October 2026 ("Everything, as
-today"), so that nobody who signed up before the tiers existed loses a screen, and so that a
-seller between plans is not shut out of their own figures.
+The owner first chose that an account with no live plan keeps everything (A35.1). Later the
+same day he ruled that the accounts without a plan are test accounts and that the brief's
+billing access rule applies from now on. `access_for_row` gives one of three answers:
+
+  * `full`: a status in `billing.LIVE` (trialing, active, past_due) with a known plan. The
+    plan's features below apply.
+  * `none`: no subscription row, or one still `incomplete`. The seller may watch the import,
+    choose a plan and disconnect, and nothing else (`shop_access`). The service answers
+    403 `trial_required`.
+  * `read_only`: `canceled`, which covers an ended trial or plan. The figures stay readable
+    with the features of the plan the account last held, less exports, and nothing can be
+    changed. The service answers 403 `plan_ended` to a write or an export.
 
 WHAT EACH PLAN HOLDS
 
@@ -59,13 +66,54 @@ FEATURES: dict[str, tuple[str, str]] = {
 ALL = frozenset(FEATURES)
 GROWTH = frozenset(f for f, (plan, _) in FEATURES.items() if plan == "growth")
 BY_PLAN: dict[str, frozenset[str]] = {"starter": frozenset(), "growth": GROWTH, "pro": ALL}
+# What an ended plan can no longer do, because each makes something new.
+EXPORTING = frozenset({"exports", "scheduled_exports", "export_history"})
+
+
+def access_for_row(row: dict | None) -> str:
+    """`full`, `none` or `read_only`, as the module's docstring sets out."""
+    status = (row or {}).get("status")
+    if status in LIVE and row.get("plan_slug") in PLANS:
+        return "full"
+    if status == "canceled":
+        return "read_only"
+    return "none"
 
 
 def features_for_row(row: dict | None) -> frozenset[str]:
-    """The features a subscription row grants. No live plan grants every feature."""
-    if row is None or row.get("status") not in LIVE or row.get("plan_slug") not in PLANS:
-        return ALL
-    return BY_PLAN[row["plan_slug"]]
+    """The features a subscription row grants."""
+    access = access_for_row(row)
+    if access == "full":
+        return BY_PLAN[row["plan_slug"]]
+    if access == "read_only":
+        return BY_PLAN.get(row.get("plan_slug") or "", frozenset()) - EXPORTING
+    return frozenset()
+
+
+# The shop routes a seller with no trial may use: the import's progress, disconnecting, and
+# the alert settings the Settings page reads. Matched on the method and the end of the path.
+ONBOARDING_ROUTES = (("GET", "/sync"), ("DELETE", "/connection"),
+                     ("GET", "/alert-settings"), ("PUT", "/alert-settings"))
+# Paths an ended plan may not read either, because each builds or lists files.
+EXPORT_PATHS = ("/exports", "/export-schedules", "/cost-uploads")
+
+
+def shop_access(row: dict | None, method: str, path: str) -> None:
+    """Raises the right 403 when the account's state does not allow this shop request."""
+    access = access_for_row(row)
+    if access == "full":
+        return
+    tail = path.rstrip("/")
+    if any(method == m and tail.endswith(end) for m, end in ONBOARDING_ROUTES):
+        return
+    if access == "none":
+        raise Problem(403, "trial_required",
+                      "Start your 30-day free trial to see your shop's figures. Your shop "
+                      "stays connected, and nothing has been charged.")
+    if method != "GET" or any(p in tail for p in EXPORT_PATHS):
+        raise Problem(403, "plan_ended",
+                      "Your plan has ended, so your figures can be read but nothing can be "
+                      "changed or exported. Choose a plan to carry on.")
 
 
 def features_for(account_id) -> frozenset[str]:

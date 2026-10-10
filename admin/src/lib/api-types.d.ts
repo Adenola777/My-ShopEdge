@@ -1948,7 +1948,7 @@ export interface components {
             current_period_end?: string | null;
             card_last4?: string | null;
             cancel_at_period_end?: boolean;
-            /** @description What the plan includes, by feature name (costs, profit, drilldown, exports, basis, scheduled_exports, export_history, priority_review). Starter holds none, Growth the first five and Pro all eight. With no live plan the list holds all eight. The service checks the plan on every request, so this list is for display and grants nothing. Added 10 October 2026. */
+            /** @description What the plan includes, by feature name (costs, profit, drilldown, exports, basis, scheduled_exports, export_history, priority_review). Starter holds none, Growth the first five and Pro all eight. With no trial started the list is empty, and with an ended plan it holds the last plan's features less the three export features (A36). The service checks the plan on every request, so this list is for display and grants nothing. Added 10 October 2026. */
             features?: string[];
         };
         TrialStart: {
@@ -1986,7 +1986,7 @@ export interface components {
              * @description The contract. Clients branch on this, never on `title` or `status` alone.
              * @enum {string}
              */
-            code: "unauthenticated" | "token_expired" | "forbidden_shop" | "not_found" | "validation_failed" | "conflict" | "idempotency_key_conflict" | "rate_limited" | "shop_needs_reconnect" | "shop_region_unsupported" | "upstream_unavailable" | "internal_error" | "plan_upgrade_required";
+            code: "unauthenticated" | "token_expired" | "forbidden_shop" | "not_found" | "validation_failed" | "conflict" | "idempotency_key_conflict" | "rate_limited" | "shop_needs_reconnect" | "shop_region_unsupported" | "upstream_unavailable" | "internal_error" | "plan_upgrade_required" | "trial_required" | "plan_ended";
             /**
              * @description With `plan_upgrade_required`, the smallest plan that includes the operation. Added 10 October 2026.
              * @enum {string}
@@ -3111,7 +3111,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The shop exists but does not belong to this account, or, with code `plan_upgrade_required`, the account's plan does not include the operation. An operation with `x-plan-feature` names the feature its plan must include. Since 10 October 2026 a plan limits only while it is live (trialing, active or past_due); an account with no live plan holds every feature. */
+        /** @description The shop exists but does not belong to this account, or, with code `plan_upgrade_required`, the account's plan does not include the operation. An operation with `x-plan-feature` names the feature its plan must include. Since A36 (10 October 2026) the account's state comes first. With no trial started the code is `trial_required` and only the import's progress, disconnecting and the alert settings answer. With an ended plan (canceled) the code is `plan_ended` for any write or export, and reading carries on. */
         ForbiddenShop: {
             headers: {
                 [name: string]: unknown;

@@ -11,6 +11,7 @@
  */
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { api, fetchShop } from "@/lib/api";
 import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { ExportForm, ScheduledExports } from "@/components/SetupForms";
@@ -32,6 +33,18 @@ export default async function ExportPage({ params }) {
   // When the subscription cannot be read, the form is offered and the service decides.
   const features = subRes.ok ? (subRes.data?.features ?? []) : null;
   const has = (/** @type {string} */ f) => features === null || features.includes(f);
+  // With no trial started the seller is taken to the plan page, as every figure page does (A36).
+  if (subRes.ok && subRes.data?.status === "none") redirect("/billing");
+  // An ended plan reads but makes no new files (A36), whatever plan it was.
+  if (subRes.ok && subRes.data?.status === "canceled") {
+    return (
+      <section className="state" data-testid="plan-ended">
+        <h1>Your plan has ended.</h1>
+        <p>Your figures can still be read, but no new file can be built. Choose a plan to export again.</p>
+        <p><a className="btn btn--primary" href="/billing">Choose a plan</a></p>
+      </section>
+    );
+  }
   if (!has("exports")) {
     return <UpgradePrompt feature="exports" plan="growth" back={`/shops/${shopId}/money`} />;
   }

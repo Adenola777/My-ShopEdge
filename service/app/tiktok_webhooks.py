@@ -182,6 +182,10 @@ def process_event(dedupe_key: str, account_id: str, shop_id: str, event_type: st
             return
 
         if kind == "sync":
+            from .tiktok_sync import may_sync
+            if not may_sync(account_id, shop_id, now):
+                mark(dedupe_key, "skipped", "account state does not allow reading (A36)")
+                return
             with db.tenant(account_id) as conn:
                 refresh_connection(conn, shop_id, now, transport)
             with db.tenant(account_id) as conn:

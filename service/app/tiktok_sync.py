@@ -80,7 +80,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
@@ -758,6 +758,26 @@ def window(conn, shop_id: str, now: datetime) -> tuple[datetime, datetime, str]:
     return last - timedelta(days=OVERLAP_DAYS), now, "incremental"
 
 
+# A shop whose account never starts a trial is read for thirty days from its connection, then
+# no more (A36, the owner's ruling of 10 October 2026). An ended plan is not read again.
+UNACTIVATED_READ_DAYS = 30
+
+
+def may_sync(account_id, shop_id, now: datetime) -> bool:
+    """Whether the account's state allows reading this shop from TikTok (A36)."""
+    from .db import get_subscription_row, tenant
+    from .entitlements import access_for_row
+
+    access = access_for_row(get_subscription_row(account_id))
+    if access == "full":
+        return True
+    if access == "read_only":
+        return False
+    with tenant(account_id) as conn:
+        row = conn.execute("select created_at from shops where id = %s", (str(shop_id),)).fetchone()
+    return row is not None and now - row[0] <= timedelta(days=UNACTIVATED_READ_DAYS)
+
+
 def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]:
     """Refresh and sync every shop `shops_due_for_sync()` lists (0027). One shop at a time,
     each in its own `tenant()` transaction, so one shop's failure touches no other."""
@@ -769,6 +789,8 @@ def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]
     with unscoped() as conn:
         due = conn.execute("select shop_id, account_id from shops_due_for_sync()").fetchall()
     return [run_one(shop_id, account_id, transport, now, refresh_connection, client_for, tenant)
+            if may_sync(account_id, shop_id, now)
+            else {"shop_id": str(shop_id), "skipped": "account state does not allow reading (A36)"}
             for shop_id, account_id in due]
 
 

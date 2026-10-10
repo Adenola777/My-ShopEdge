@@ -15,8 +15,9 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, Path
+from fastapi import Depends, Path, Request
 
+from . import db
 from .auth import Account, require_account
 from .db import tenant
 from .problems import Problem
@@ -25,7 +26,13 @@ from .problems import Problem
 def require_shop(
     shopId: Annotated[UUID, Path()],
     account: Annotated[Account, Depends(require_account)],
+    request: Request,
 ) -> UUID:
+    # The account's state comes first (A36): with no trial, only the onboarding routes answer,
+    # and with an ended plan only reading does. Imported here because entitlements imports
+    # billing, which is heavier than this module needs at import time.
+    from .entitlements import shop_access
+    shop_access(db.get_subscription_row(account.id), request.method, request.url.path)
     with tenant(account.id) as conn:
         row = conn.execute(
             "select id from shops where id = %s and connection_status <> 'deleted'",
