@@ -1,23 +1,21 @@
 /**
- * S6 Today, drawn to wireframe sheet 04 (redrawn 24 September after the design audit).
+ * Overview, the first screen after setting up and after every sign-in. Rebuilt on 10 October
+ * 2026 to the owner's brief, section 11 (A36 step 5), from what was S6 Today.
  *
- * The wireframe, top to bottom: the title with the shop's name under it; the hero; this
- * month's two figures side by side; Shop Money; the VAT line; Needs you. Each card carries a
- * title and one line on why it matters (WFW 1.1).
+ * Top to bottom: the title and subtitle; the period (today, this month, last month) and the
+ * basis, with the export and the time of the last update; one primary answer for the period;
+ * the full calculation under "Where the money went", every line opening its records; and
+ * "What needs your attention", at most five items, which the service caps.
  *
- * What differs from the sheet, and the ruling that made it differ.
- * - "You keep" is Gross profit after returns and "Left after TikTok" is Net proceeds (A8),
- *   and the sentence "before your own running costs and your tax" goes with the figure.
- * - The VAT line is gone, because VAT is out of scope (A29.8).
- * - Shop Money states return postage on its own line so Paid out reconciles (A29.7). Paid
- *   out is not drawn as a total, because it equals the lines above only when nothing is
- *   awaiting settlement (copy audit 8 October, finding 4).
- * - The hero's second line on the sheet ("From £X of sales across N orders") needs the
- *   day's sales and order count, which TodayView does not carry. Phase 3 of the audit adds
- *   them to the contract first. Until then the line is the before-overheads sentence.
+ * The primary answer follows the cost coverage of the period, as the brief sets out. With
+ * every product costed it is gross profit after returns and the margin, keeping A8's label
+ * and its "before your own running costs and your tax". With some costs missing it is gross
+ * profit so far with the coverage sentence (A36.1 item 6). With none, net proceeds and the
+ * brief's definition. Every figure is served by `getMoney` or `getToday` (A29.1).
  *
- * Every figure is served by `getToday` and rendered as it arrives (A29.1). Freshness is in
- * the top bar; this screen adds a banner only when the figures are not current (WFW 6).
+ * What TikTok has paid and still owes, the Shop Money card until this step, moved to
+ * Reconcile, so the screen carries one answer rather than competing cards. Today's hero,
+ * which counted the day only, gave way to the period switch, whose Today shows the same day.
  *
  * The order count, A16.3, added 9 October 2026. It shows only when `order_usage.state` is
  * `approaching` (80 per cent) or `passed` (100 per cent), and names the larger plan. The
@@ -33,10 +31,10 @@ import { changePlanHref } from "@/lib/upgrade";
 import { api, fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
+import { MoneySections } from "@/components/MoneySections";
 import {
   coverageSentence,
-  AWAITING, BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, HERO_LABEL, SEVERITY_TONE, chipClass,
-  keptReason,
+  BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, SEVERITY_TONE, chipClass,
   formatMargin,
 } from "@/lib/terms";
 
@@ -98,24 +96,73 @@ function OrderUsageCard({ usage, shopId }) {
   );
 }
 
-/** @param {{ params: Promise<{ shopId: string }> }} props */
-export default async function TodayPage({ params }) {
+/**
+ * The first and last day of the month before the one that starts on `from`, as ISO dates.
+ * `from` is the service's own first day of this month, so no date here comes from the
+ * browser's clock (A29.9).
+ *
+ * @param {string} from
+ */
+function monthBefore(from) {
+  const y = Number(from.slice(0, 4));
+  const m = Number(from.slice(5, 7));
+  const start = new Date(Date.UTC(y, m - 2, 1));
+  const end = new Date(Date.UTC(y, m - 1, 0));
+  return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
+}
+
+/** @type {Record<string, string>} */
+const PERIOD_WORD = { today: "Today", month: "This month", last_month: "Last month" };
+
+/**
+ * @param {{
+ *   params: Promise<{ shopId: string }>,
+ *   searchParams: Promise<Record<string, string>>,
+ * }} props
+ */
+export default async function TodayPage({ params, searchParams }) {
   const { shopId } = await params;
-  const [result, shops] = await Promise.all([
+  const query = await searchParams;
+  const basis = query.basis === "cash" ? "cash" : "sales";
+  const periodKey = query.period === "today" || query.period === "last_month" ? query.period : "month";
+
+  const [result, shops, thisMonth] = await Promise.all([
     fetchShop(shopId, "/today"),
     api("/shops", { cache: "no-store" }),
+    fetchShop(shopId, "/money", { basis }),
   ]);
-  const problem = apiProblem(result, { what: "today's figures" });
+  const problem = apiProblem(result, { what: "your overview" })
+    ?? apiProblem(thisMonth, { what: "your money figures" });
   if (problem) return problem;
+
+  // "This month" is the service's default period. Today and last month are worked out from
+  // its dates and asked for again.
+  let money = thisMonth;
+  if (periodKey !== "month") {
+    const p = /** @type {{ from: string, to: string }} */ (thisMonth.data.period);
+    const range = periodKey === "today" ? { from: p.to, to: p.to } : monthBefore(p.from);
+    money = await fetchShop(shopId, "/money", { basis, ...range });
+    const again = apiProblem(money, { what: "your money figures" });
+    if (again) return again;
+  }
 
   /** @type {import("@/lib/api-types").components["schemas"]["TodayView"]} */
   const t = result.data;
+  /** @type {import("@/lib/api-types").components["schemas"]["MoneyView"]} */
+  const m = money.data;
+  const period = /** @type {{ from: string, to: string }} */ (m.period);
   const shop = shops.ok ? (shops.data?.shops ?? []).find((/** @type {any} */ s) => s.id === shopId) : null;
-  const [confidence, confidenceTone] = CONFIDENCE[t.hero.confidence] ?? [t.hero.confidence, "quiet"];
-  const isProfit = t.hero.label === "gross_profit_after_returns";
   const status = t.freshness?.status;
-  const sm = t.shop_money;
-  const awaiting = sm.awaiting_breakdown ?? [];
+  const [confidence, confidenceTone] = CONFIDENCE[m.confidence] ?? [m.confidence, "quiet"];
+  const base = `/shops/${shopId}/today`;
+  /** @param {Record<string, string>} q */
+  const href = (q) => `${base}${Object.keys(q).length ? `?${new URLSearchParams(q)}` : ""}`;
+  /** @type {Record<string, string>} */
+  const withBasis = basis === "cash" ? { basis } : {};
+  /** @type {Record<string, string>} */
+  const withPeriod = periodKey === "month" ? {} : { period: periodKey };
+  const soFar = m.totals?.gross_profit_so_far;
+  const attention = t.needs_you;
 
   return (
     <section>
@@ -128,8 +175,7 @@ export default async function TodayPage({ params }) {
 
       {/* Only `stale` raises the banner. `getting_old` starts six hours after a read, and the
           daily read leaves a shop in that state for most of every day, so a banner then would
-          stop meaning anything (copy audit 8 October, finding 20). The top bar shows the time
-          of the last read in every state. */}
+          stop meaning anything (copy audit 8 October, finding 20). */}
       {status === "stale" && (
         <div className="note note--warn" role="status">
           <p>
@@ -140,100 +186,94 @@ export default async function TodayPage({ params }) {
         </div>
       )}
 
+      {/* The brief's controls: the period, the basis, the export and when the figures were
+          last brought up to date. The daily read cannot be started from here, so no refresh
+          is offered. */}
+      <nav className="switch" aria-label="Period">
+        {["today", "month", "last_month"].map((k) => (
+          <Link key={k} href={href({ ...withBasis, ...(k === "month" ? {} : { period: k }) })}
+                aria-current={periodKey === k ? "true" : undefined}>
+            {PERIOD_WORD[k]}
+          </Link>
+        ))}
+      </nav>
+      <nav className="switch" aria-label="Basis">
+        <Link href={href(withPeriod)} aria-current={basis === "sales" ? "true" : undefined}>Sales basis</Link>
+        <Link href={href({ ...withPeriod, basis: "cash" })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
+      </nav>
+      <p className="rows__sub" data-testid="overview-period">
+        {periodKey === "today" ? `Today, ${formatDate(period.to)}` : `${formatDate(period.from)} to ${formatDate(period.to)}`},{" "}
+        {basis === "sales" ? "counted on the day of each sale" : "counted on the day TikTok settled it"}.
+        {t.freshness?.last_synced_at ? ` Last updated ${formatDate(t.freshness.last_synced_at, { time: true })}.` : ""}{" "}
+        <Link href={`/shops/${shopId}/money/export`} data-testid="overview-export">Export</Link>
+      </p>
+
       <div className="stack">
         <OrderUsageCard usage={t.order_usage} shopId={shopId} />
 
-        <div className="card hero">
-          <p className="hero__label">
-            {HERO_LABEL[t.hero.label] ?? t.hero.label} today{" "}
-            <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[t.hero.confidence]}>{confidence}</span>
-          </p>
-          <p className="hero__value"><Figure amount={t.hero.value} /></p>
-          {isProfit ? (
-            <p className="hero__line">{BEFORE_OVERHEADS}</p>
+        {/* One primary answer, chosen by how much of the period has a cost (brief, section 11). */}
+        <div className="card hero" data-testid="overview-primary">
+          {m.kept ? (
+            <>
+              <p className="hero__label">
+                Gross profit after returns{" "}
+                <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
+              </p>
+              <p className="hero__value"><Figure amount={m.kept} /></p>
+              {formatMargin(m.totals?.gross_margin_after_returns) && (
+                <p className="hero__line" data-testid="overview-margin">Gross margin after returns {formatMargin(m.totals.gross_margin_after_returns)}</p>
+              )}
+              <p className="hero__line">{BEFORE_OVERHEADS}</p>
+              <p className="hero__line"><Link href={`/shops/${shopId}/products`}>View product performance</Link></p>
+            </>
+          ) : soFar ? (
+            <>
+              <p className="hero__label">
+                Gross profit so far{" "}
+                <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
+              </p>
+              <p className="hero__value"><Figure amount={soFar} /></p>
+              {coverageSentence(m.coverage) && <p className="hero__line" data-testid="overview-coverage">{coverageSentence(m.coverage)}</p>}
+              <p className="hero__line"><Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
+            </>
           ) : (
-            <p className="hero__line">
-              This is net proceeds, because not every product sold today has a cost price yet.{" "}
-              <Link href={`/shops/${shopId}/products`}>Add costs</Link>
-            </p>
+            <>
+              <p className="hero__label">
+                Net proceeds{" "}
+                <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
+              </p>
+              <p className="hero__value"><Figure amount={m.totals?.net_proceeds} /></p>
+              <p className="hero__line">What remains after TikTok Shop deductions, before product costs.</p>
+              {m.kept_reason !== "no_sales" && (
+                <p className="hero__line"><Link href={`/shops/${shopId}/setup/costs`}>Add product costs</Link></p>
+              )}
+            </>
           )}
         </div>
 
-        <div className="pair">
-          <div className="card">
-            <p className="stat__value"><Figure amount={t.month.gross} /></p>
-            <p className="stat__label">Gross sales this month</p>
-          </div>
-          <div className="card">
-            {/* Before every product sold has a cost, the card shows net proceeds and says so,
-                rather than a profit heading over "Not known" (owner's brief, 10 October 2026). */}
-            {/* A36: with some costs missing, the brief's "Gross profit so far" and its coverage. */}
-            <p className="stat__value"><Figure amount={t.month.kept ?? t.month.gross_profit_so_far ?? t.month.net_proceeds} /></p>
-            <p className="stat__label">
-              {t.month.kept ? "Gross profit after returns this month"
-                : t.month.gross_profit_so_far ? "Gross profit so far this month" : "Net proceeds this month"}
+        <h2>Where the money went</h2>
+        {m.sections.length === 0 ? (
+          <div className="card" data-testid="overview-empty">
+            <p className="muted">
+              {basis === "cash"
+                ? "MyShopEdge holds no money that TikTok settled in this period."
+                : "MyShopEdge holds no sales, fees, refunds or payouts for this period."}
             </p>
-            {!t.month.kept && t.month.gross_profit_so_far && coverageSentence(t.month.coverage) && (
-              <p className="rows__sub" data-testid="month-coverage">{coverageSentence(t.month.coverage)}</p>
-            )}
-            {formatMargin(t.month.gross_margin_after_returns) && (
-              <p className="rows__sub" data-testid="month-margin">Gross margin after returns {formatMargin(t.month.gross_margin_after_returns)}</p>
-            )}
-            {!t.month.kept && !t.month.gross_profit_so_far && t.month.kept_reason && (
-              <p className="rows__sub">{keptReason(t.month.kept_reason)}</p>
-            )}
           </div>
-        </div>
+        ) : (
+          <MoneySections m={m} shopId={shopId} basis={basis} />
+        )}
 
-        <div className="card">
-          <h2>Shop Money</h2>
-          <p className="card__why">
-            This card covers every sale MyShopEdge holds for this shop. It shows what TikTok has
-            paid you, and what it still owes you.
-          </p>
-          <ul className="rows">
-            <li><span>Net proceeds, all time</span><Figure amount={sm.generated} /></li>
-            {sm.return_postage && sm.return_postage.amount_minor !== 0 && (
-              <li><span>Return shipping TikTok deducted</span><Figure amount={sm.return_postage} /></li>
-            )}
-            <li><span>Paid out</span><Figure amount={sm.paid_out} /></li>
-            <li>
-              <span>Awaiting settlement</span>
-              <span className="chip chip--warn"><Figure amount={sm.awaiting} /></span>
-            </li>
-          </ul>
-          <p className="rows__sub">
-            Paid out and awaiting settlement together make up net proceeds less the return
-            shipping TikTok deducted.
-          </p>
-          {awaiting.length > 0 && (
-            <details className="disclose">
-              <summary>What is awaiting settlement</summary>
-              <ul className="rows">
-                {awaiting.map((a) => (
-                  <li key={a.status} className="rows__sub">
-                    <span>
-                      {AWAITING[a.status] ?? "Awaiting settlement"}, {a.orders} {a.orders === 1 ? "order" : "orders"}
-                    </span>
-                    <Figure amount={a.amount} />
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-          <p className="card__foot">
-            <Link href={`/shops/${shopId}/money`}>See where every pound went</Link>
-          </p>
-        </div>
-
-        <div className="card">
-          <h2>Needs your attention</h2>
-          <p className="card__why">What is holding your figures back, most urgent first.</p>
-          {t.needs_you.length === 0 ? (
-            <p className="muted">Nothing needs your attention right now.</p>
+        <div className="card" data-testid="overview-attention">
+          <h2>What needs your attention</h2>
+          {attention.length === 0 ? (
+            <>
+              <h3>You are up to date</h3>
+              <p className="muted">There is nothing that needs your attention right now.</p>
+            </>
           ) : (
             <ul className="rows">
-              {t.needs_you.map((n) => (
+              {attention.map((n) => (
                 <li key={n.type}>
                   <span>
                     {n.href

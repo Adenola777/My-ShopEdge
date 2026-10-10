@@ -33,14 +33,16 @@ export const AREAS = [
     slug: "today", label: "Overview", icon: "today", phone: "tab", pages: [
       ["today", "Overview"],
       ["notifications", "Notifications"],
-      ["discrepancies", "Discrepancies"],
     ],
   },
   {
+    // The brief's Reconcile tabs (section 12): Payouts, then statements as Where the money
+    // went, Transactions and Issues. Issues is the discrepancy list, moved from Overview.
     slug: "money", label: "Reconcile", icon: "money", phone: "tab", pages: [
-      ["money", "Where the money went", ["first-result"]],
       ["payouts", "Payouts"],
+      ["money", "Where the money went", ["first-result"]],
       ["records", "Transactions"],
+      ["discrepancies", "Issues"],
     ],
   },
   {

@@ -34,6 +34,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from .auth import Account, require_account
+from .dates import now_utc
 from .db import tenant
 from .entitlements import require as require_feature
 from .money import Money, money
@@ -84,6 +85,10 @@ class Settlement(BaseModel):
     total_reserve: Money
     payable_amount: Money
     tiktok_invoice_number: str | None = None
+    # A36 step 5. Filled on listSettlements and getSettlement; left out where a write answers
+    # with the settlement, because the write does not read the reconciliation.
+    reconcile_status: str | None = None
+    difference: Money | None = None
 
 
 class SettlementPage(BaseModel):
@@ -127,6 +132,8 @@ class SettlementInvoice(BaseModel):
 
 class SettlementDetail(BaseModel):
     settlement: Settlement
+    # When MyShopEdge last read the shop's statements from TikTok without an error.
+    finance_read_at: datetime | None = None
     components: SettlementComponents
     reconciliation: SettlementReconciliation
     invoice: SettlementInvoice | None = None
@@ -146,6 +153,54 @@ STATEMENT_FEES = tuple(
 )
 
 
+# --- The payout status, A36 step 5 (the owner's rulings of 10 October 2026) -----------------
+#
+# Six statuses, from A36.1 item 8 and A36.2 item 2. Each statement carries one payment, so a
+# payout here is a statement and the payment TikTok made against it.
+#
+#   reconciled           TikTok has paid it, and the orders behind it add up to it.
+#   pending_payment      TikTok has issued the statement but not yet paid it.
+#   needs_review         The orders do not add up to it, or TikTok reports the payment failed.
+#   sync_delayed         It is not yet paid, and MyShopEdge's last read of TikTok's finance
+#                        data failed or is more than a day old, so its state may have moved.
+#   awaiting_settlement  Orders TikTok has not yet put on a statement. No statement carries it;
+#                        the Payouts screen shows TikTok's expected payouts under this status.
+#   unmatched            A payout with no statement behind it. MyShopEdge reads payouts only as
+#                        part of statements, so nothing it holds can be unmatched yet. The
+#                        status is in the contract so the screen has a word for it when TikTok's
+#                        list of payments is read.
+#
+# A paid statement is final, so a late read never turns it into sync_delayed. Normal timing is
+# never an error: a statement waiting for payment is pending_payment, not needs_review.
+PAYOUT_STATUSES = ("reconciled", "awaiting_settlement", "pending_payment", "needs_review",
+                   "unmatched", "sync_delayed")
+
+
+def payout_status(payment_status: str | None, unexplained_minor: int, finance_stale: bool) -> str:
+    if payment_status == "FAILED" or unexplained_minor != 0:
+        return "needs_review"
+    if payment_status == "PAID":
+        return "reconciled"
+    return "sync_delayed" if finance_stale else "pending_payment"
+
+
+FINANCE_SQL = """
+select (select status from sync_runs where shop_id = %(shop)s and domain = 'finance'
+         order by coalesce(started_at, created_at) desc, id desc limit 1) as latest,
+       (select max(finished_at) from sync_runs where shop_id = %(shop)s and domain = 'finance'
+           and status = 'completed') as last_success
+"""
+
+
+def finance_read(conn, shop_id: UUID) -> tuple[bool, datetime | None]:
+    """Whether the last read of the shop's statements failed or is over a day old (A29.3),
+    and when the last good read finished."""
+    # Imported here because today_view imports money_view, which imports this module.
+    from .today_view import freshness
+    latest, last_success = conn.execute(FINANCE_SQL, {"shop": str(shop_id)}).fetchone()
+    return latest == "failed" or freshness(last_success, now_utc()).status == "stale", last_success
+
+
 def _settlement(row: dict[str, Any]) -> Settlement:
     cur = row["currency"]
     return Settlement(
@@ -158,6 +213,8 @@ def _settlement(row: dict[str, Any]) -> Settlement:
         paid_at=row["paid_at"],
         payment_status=row["payment_status"],
         statement_amount=money(row["statement_amount_minor"], cur),
+        reconcile_status=row.get("reconcile_status"),
+        difference=money(int(row["unexplained_minor"]), cur) if "unexplained_minor" in row else None,
         total_reserve=money(row["total_reserve_amount_minor"] or 0, cur),
         payable_amount=money(
             row["payable_amount_minor"]
@@ -209,7 +266,10 @@ def list_settlements(
 
     args.append(limit + 1)
     sql = (
-        f"select {SETTLEMENT_COLUMNS} from settlements where {' and '.join(where)} "
+        f"select {SETTLEMENT_COLUMNS}, "
+        "coalesce((select r.unexplained_minor from settlement_reconciliation r "
+        "           where r.settlement_id = settlements.id), 0) as unexplained_minor "
+        f"from settlements where {' and '.join(where)} "
         "order by statement_time desc, id desc limit %s"
     )
 
@@ -217,6 +277,9 @@ def list_settlements(
         cur = conn.execute(sql, args)
         cols = [d.name for d in cur.description]
         rows = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+        stale, _ = finance_read(conn, shop_id)
+    for r in rows:
+        r["reconcile_status"] = payout_status(r["payment_status"], int(r["unexplained_minor"]), stale)
 
     next_cursor = None
     if len(rows) > limit:
@@ -336,6 +399,10 @@ def get_settlement(
         )
         fcols = [d.name for d in cur.description]
         fee_rows = [dict(zip(fcols, r, strict=True)) for r in cur.fetchall()]
+        stale, read_at = finance_read(conn, shop_id)
+
+    s["unexplained_minor"] = int(rec[3]) if rec else 0
+    s["reconcile_status"] = payout_status(s["payment_status"], s["unexplained_minor"], stale)
 
     currency = s["currency"]
     net_sales = s["net_sales_minor"] or 0
@@ -380,6 +447,7 @@ def get_settlement(
 
     return SettlementDetail(
         settlement=_settlement(s),
+        finance_read_at=read_at,
         components=components,
         reconciliation=reconciliation,
         invoice=invoice,

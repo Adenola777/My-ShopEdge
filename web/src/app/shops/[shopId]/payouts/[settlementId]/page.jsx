@@ -10,6 +10,13 @@
  * Since 9 October 2026 each fee is on its own line, named as Money names it (A8.3), with
  * Total TikTok fees directly under the lines. A statement whose ledger holds no fee lines
  * keeps the single Fees line, so no amount drops off the page.
+ *
+ * Since 10 October 2026 this is the brief's Explain this payout (A36 step 5): the payout
+ * received, its status, the linked statement, the difference and a plain sentence on what the
+ * status means, then the statement's parts, the orders it includes and when each figure was
+ * read. The status is the service's (`reconcile_status`); this page only words it. TikTok's
+ * statement does not state refunds on their own, so they sit inside net sales here, as
+ * TikTok counts them, and are not shown as a separate line.
  */
 
 import Link from "next/link";
@@ -19,8 +26,34 @@ import { Figure } from "@/components/Figure";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { LineLabel } from "@/components/LineLabel";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
+import { PAYOUT_STATUS, chipClass } from "@/lib/terms";
 
-export const metadata = { title: "Payout" };
+export const metadata = { title: "Explain this payout" };
+
+/**
+ * What the payout's status means, in a sentence. Normal timing is never described as a fault.
+ *
+ * @param {import("@/lib/api-types").components["schemas"]["Settlement"]} s
+ * @param {import("@/lib/api-types").components["schemas"]["SettlementReconciliation"]} r
+ */
+function explanation(s, r) {
+  const diff = formatMoney({ ...r.unexplained, amount_minor: Math.abs(r.unexplained.amount_minor) });
+  const orders = `${r.orders_settled} ${r.orders_settled === 1 ? "order" : "orders"}`;
+  switch (s.reconcile_status) {
+    case "reconciled":
+      return `TikTok paid this statement${s.paid_at ? ` on ${formatDate(s.paid_at)}` : ""}. The ${orders} behind it add up to it exactly, after TikTok's fees and any reserve it held back.`;
+    case "pending_payment":
+      return "TikTok has issued this statement and has not paid it yet. This is normal timing, and MyShopEdge will show the payment once TikTok reports it.";
+    case "sync_delayed":
+      return "TikTok had not paid this statement when MyShopEdge last read it, and that read failed or is more than a day old, so the payment may have moved on since. The status updates after the next successful read.";
+    case "needs_review":
+      return s.payment_status === "FAILED"
+        ? "TikTok reports that this payment failed. Check the bank account TikTok pays into in your TikTok Seller Center."
+        : `The ${orders} behind this statement differ from it by ${diff}. MyShopEdge shows the difference rather than hiding it, so you can check the statement in your TikTok Seller Center.`;
+    default:
+      return "MyShopEdge could not work out a status for this payout.";
+  }
+}
 
 /** @param {{ params: Promise<{ shopId: string, settlementId: string }> }} props */
 export default async function PayoutPage({ params }) {
@@ -38,6 +71,7 @@ export default async function PayoutPage({ params }) {
   const c = d.components;
   const r = d.reconciliation;
   const inv = d.invoice;
+  const orderList = d.orders ?? [];
   const unexplained = r.unexplained.amount_minor !== 0;
   // The pricing ruling of 10 October 2026 offers Pro's review list to a Growth seller who opens
   // statements that need review. Starter is offered Growth first, so it sees no prompt here.
@@ -51,11 +85,30 @@ export default async function PayoutPage({ params }) {
     <section data-testid="payout-screen">
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/payouts`}>Payouts</Link></p>
-        <h1>Payout of {formatDate(s.statement_time)}</h1>
-        <p>TikTok statement {s.tiktok_statement_id}</p>
+        <h1>Explain this payout</h1>
+        <p>Statement of {formatDate(s.statement_time)}, TikTok statement {s.tiktok_statement_id}</p>
       </header>
 
       <div className="stack">
+        <div className="card" data-testid="payout-explained">
+          <ul className="rows">
+            <li className="rows__total">
+              <span>Payout received</span>
+              {s.payment_status === "PAID" ? <Figure amount={s.payable_amount} /> : <span className="muted">Not paid yet</span>}
+            </li>
+            <li>
+              <span>Status</span>
+              {(() => {
+                const [word, tone] = PAYOUT_STATUS[s.reconcile_status ?? ""] ?? ["Status not known", "quiet"];
+                return <span className={chipClass(tone)} data-testid="payout-status">{word}</span>;
+              })()}
+            </li>
+            <li><span>Linked statement</span><span>{formatDate(s.statement_time)}, <Figure amount={s.statement_amount} /></span></li>
+            <li><span>Difference</span><Figure amount={r.unexplained} /></li>
+          </ul>
+          <p className="card__why" data-testid="payout-explanation">{explanation(s, r)}</p>
+        </div>
+
         <div className="card">
           <h2>What TikTok&apos;s statement says</h2>
           <ul className="rows">
@@ -103,6 +156,41 @@ export default async function PayoutPage({ params }) {
               ? `The orders behind this statement differ from it by ${formatMoney({ ...r.unexplained, amount_minor: Math.abs(r.unexplained.amount_minor) })}. MyShopEdge shows the difference as Unexplained rather than hiding it.`
               : "The orders behind this statement add up to it exactly."}
           </p>
+        </div>
+
+        <div className="card" data-testid="payout-orders">
+          <h2>Included orders</h2>
+          {orderList.length === 0 ? (
+            <p className="card__why">MyShopEdge holds no order lines for this statement.</p>
+          ) : (
+            <details className="disclose">
+              <summary>{orderList.length} {orderList.length === 1 ? "order" : "orders"} on this statement</summary>
+              <ul className="rows">
+                {orderList.map((o) => (
+                  <li key={o.order_id}>
+                    <span>Order {o.tiktok_order_id}</span>
+                    <Figure amount={o.settled} reason="No sale is recorded for this order on this statement." />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+          <p className="card__why">
+            Orders TikTok has not yet put on a statement are shown under Awaiting settlement on{" "}
+            <Link href={`/shops/${shopId}/payouts`}>Reconcile</Link>.
+          </p>
+        </div>
+
+        <div className="card" data-testid="payout-sources">
+          <h2>When these figures were read</h2>
+          <ul className="rows">
+            <li><span>TikTok issued the statement</span><strong>{formatDate(s.statement_time, { time: true })}</strong></li>
+            <li><span>TikTok paid it</span><strong>{s.paid_at ? formatDate(s.paid_at, { time: true }) : "Not yet"}</strong></li>
+            <li>
+              <span>MyShopEdge last read TikTok&apos;s statements</span>
+              <strong>{d.finance_read_at ? formatDate(d.finance_read_at, { time: true }) : "Not yet"}</strong>
+            </li>
+          </ul>
         </div>
 
         {offerReview ? (

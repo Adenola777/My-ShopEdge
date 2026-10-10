@@ -21,7 +21,7 @@ import { apiProblem } from "@/components/ApiProblem";
 import { DISCREPANCY_KIND, RESOLUTION, chipClass } from "@/lib/terms";
 import { ResolveActions } from "@/components/ResolveActions";
 
-export const metadata = { title: "Discrepancies" };
+export const metadata = { title: "Issues" };
 
 /** The record a discrepancy was found on, in words. The raw field name is not shown. */
 /** @type {Record<string, string>} */
@@ -85,7 +85,9 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
   return (
     <section>
       <header className="page-head">
-        <h1>Discrepancies</h1>
+        {/* Reconcile's Issues tab since 10 October 2026 (A36 step 5). Each issue is still a
+            discrepancy: a figure where MyShopEdge and TikTok disagree. */}
+        <h1>Issues</h1>
         <p>
           {open_count === 0
             ? "No discrepancy is open right now."

@@ -85,6 +85,22 @@ export const AWAITING = {
   delivered_awaiting_settlement: "Delivered, awaiting settlement",
 };
 
+/**
+ * The six payout statuses the owner ruled on 10 October 2026 (A36.1 item 8), as the service
+ * serves them in `reconcile_status`. Red is kept for a difference or a failed payment, which
+ * is what Needs review means (A36.2 item 3). Timing is never shown as a fault.
+ *
+ * @type {Record<string, [string, string]>}
+ */
+export const PAYOUT_STATUS = {
+  reconciled: ["Reconciled", "good"],
+  awaiting_settlement: ["Awaiting settlement", "warn"],
+  pending_payment: ["Pending payment", "warn"],
+  needs_review: ["Needs review", "bad"],
+  unmatched: ["Unmatched", "strong"],
+  sync_delayed: ["Sync delayed", "quiet"],
+};
+
 /** @type {Record<string, [string, string]>} */
 export const STOCK_STATE = {
   out: ["Out of stock", "critical"],

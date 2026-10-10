@@ -68,6 +68,9 @@ STALE_AFTER = timedelta(hours=24)
 GETTING_OLD_AFTER = timedelta(hours=6)
 EXPIRING_WITHIN = timedelta(days=14)
 SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2}
+# The brief's Overview shows at most five items, most urgent first (A36 step 5). getNeedsYou
+# still serves every item.
+ATTENTION_LIMIT = 5
 AWAITING_STATUSES = ("waiting_delivery", "waiting_return_refund", "delivered_awaiting_settlement")
 
 # The categories whose sum is net proceeds, as the calculator defines it.
@@ -95,6 +98,11 @@ select
     where shop_id = %(shop)s and seller_check_status = 'pending') as returns_to_check,
   (select count(*) from discrepancies
     where shop_id = %(shop)s and status = 'open') as open_discrepancies,
+  (select count(*) from settlements s
+    where s.shop_id = %(shop)s
+      and (s.payment_status = 'FAILED'
+           or exists (select 1 from settlement_reconciliation r
+                       where r.settlement_id = s.id and r.unexplained_minor <> 0))) as payouts_to_review,
   (select count(*) from stock_positions
     where shop_id = %(shop)s and on_shelf <= 0) as out_of_stock,
   (select count(distinct le.sku_id) from ledger_entries le
@@ -214,6 +222,7 @@ def needs_href(kind: str, shop_id: UUID, today: date) -> str | None:
     month = today.replace(day=1).isoformat()
     return {
         "open_discrepancies": f"{base}/discrepancies?status=open",
+        "payouts_to_review": f"{base}/payouts",
         "unmapped_fees": f"{base}/records?category=unmapped_fee&from={month}&to={today.isoformat()}",
         "missing_costs": f"{base}/products",
         "out_of_stock": f"{base}/stock?state=out",
@@ -314,6 +323,10 @@ def _needs_you(r: dict[str, Any], now: datetime, currency: str) -> tuple[bool, l
             f"Your figures may be out of date. MyShopEdge last brought them up to date "
             f"{_plural(hours, 'hour', 'hours')} ago.")
 
+    # A36 step 5: a payout whose orders do not add up to it, or whose payment failed, is the
+    # brief's "Payout needs review". The same test gives Needs review on Payouts.
+    add("payouts_to_review", int(r["payouts_to_review"]), "warning",
+        _plural(int(r["payouts_to_review"]), "payout needs review", "payouts need review"))
     add("open_discrepancies", int(r["open_discrepancies"]), "warning",
         _plural(int(r["open_discrepancies"]), "figure disagrees with TikTok",
                 "figures disagree with TikTok"))
@@ -418,7 +431,7 @@ def get_today(
             coverage=month.coverage,
         ),
         shop_money=shop_money,
-        needs_you=items,
+        needs_you=items[:ATTENTION_LIMIT],
         order_usage=usage,
     )
 

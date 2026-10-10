@@ -31,12 +31,9 @@
 import Link from "next/link";
 import { fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
-import { LineLabel } from "@/components/LineLabel";
+import { MoneySections, recordsHref as linesHref } from "@/components/MoneySections";
 import { Figure } from "@/components/Figure";
-import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, coverageSentence, formatMargin, keptReason } from "@/lib/terms";
-
-/** Lines whose label states their direction, shown without the ledger's sign. */
-const UNSIGNED = new Set(["settlement", "reserve_withheld"]);
+import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, coverageSentence, keptReason } from "@/lib/terms";
 
 export const metadata = { title: "Where the money went" };
 
@@ -66,13 +63,7 @@ export default async function MoneyPage({ params, searchParams }) {
   const base = `/shops/${shopId}/money`;
 
   /** @param {{ category?: string | null }} line */
-  const recordsHref = (line) =>
-    `/shops/${shopId}/records?${new URLSearchParams({
-      basis,
-      from: period.from,
-      to: period.to,
-      ...(line.category ? { category: line.category } : {}),
-    })}`;
+  const recordsHref = (line) => linesHref(shopId, basis, period, line);
 
   /** The heading and TikTok's name for a line that carries one verbatim. */
   /** @param {any} l */
@@ -103,9 +94,6 @@ export default async function MoneyPage({ params, searchParams }) {
       <p className="rows__sub">
         {basis === "sales" ? "Sales basis counts money on the day of the sale." : "Cash basis counts money in the month TikTok settled it."}
       </p>
-      <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts`} data-testid="money-payouts">
-        Payouts and fee invoices
-      </Link></p>
 
       {(m.unmapped_fee_count ?? 0) > 0 && (
         <div className="note note--warn" role="status">
@@ -132,33 +120,7 @@ export default async function MoneyPage({ params, searchParams }) {
         </section>
       )}
 
-      <div className="stack">
-        {m.sections.map((s) => (
-          <div className="card" key={s.key}>
-            <h2>{s.label}</h2>
-            <ul className="rows">
-              {s.lines.map((l, i) => (
-                <li key={`${l.category}-${l.tiktok_fee_type ?? i}`}>
-                  <Link className="rowlink rowlink--quiet" href={recordsHref(l)}><LineLabel line={l} /></Link>
-                  <Figure amount={l.amount} unsigned={UNSIGNED.has(l.category ?? "")} />
-                </li>
-              ))}
-              {s.key !== "payout" && (
-                <li className="rows__total">
-                  <span>{s.subtotal_label ?? "Subtotal"}</span>
-                  <Figure amount={s.subtotal} reason={s.key === "return_costs" ? keptReason(m.kept_reason) : null} />
-                </li>
-              )}
-              {s.key === "return_costs" && formatMargin(m.totals?.gross_margin_after_returns) && (
-                <li data-testid="money-margin">
-                  <span>Gross margin after returns, as a share of net sales</span>
-                  <strong className="money">{formatMargin(m.totals.gross_margin_after_returns)}</strong>
-                </li>
-              )}
-            </ul>
-          </div>
-        ))}
-      </div>
+      <MoneySections m={m} shopId={shopId} basis={basis} />
 
       {m.totals?.gross_profit_so_far && (
         <div className="card" data-testid="money-so-far">
