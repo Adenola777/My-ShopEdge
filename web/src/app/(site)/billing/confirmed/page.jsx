@@ -23,7 +23,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
-import { api } from "@/lib/api";
+import { api, fetchPlans, formatMoney } from "@/lib/api";
+import { importSteps } from "@/lib/onboarding";
 
 export const metadata = { title: "Card confirmed" };
 
@@ -40,24 +41,34 @@ export default async function ConfirmedPage({ searchParams }) {
   const status = ok && data ? data.status : null;
 
   if (status === "trialing" || status === "active") {
+    // The brief's "Checkout success" page, approved under A36 (step 2): the trial end, the plan
+    // and its renewal price, then straight on to the figures, or to the import while it runs.
     const firstPayment = data.trial_ends_at
       ? new Date(data.trial_ends_at).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "long",
+          timeZone: "Europe/London", day: "numeric", month: "long", year: "numeric",
         })
       : null;
+    const [payload, shopsRes] = await Promise.all([fetchPlans(), api("/shops", { cache: "no-store" })]);
+    const plan = payload?.plans.find((p) => p.slug === data.plan) ?? null;
+    /** @type {{ id: string } | undefined} */
+    const shop = shopsRes.ok ? (shopsRes.data?.shops ?? [])[0] : undefined;
+    const sync = shop ? await api(`/shops/${encodeURIComponent(shop.id)}/sync`, { cache: "no-store" }) : null;
+    const ready = sync?.ok && importSteps(sync.data?.domains ?? []).every(([, state]) => state === "done");
+    const next = !shop ? "/shops" : ready ? `/shops/${shop.id}/first-result` : `/shops/${shop.id}/sync`;
     return (
-      <section className="confirmed">
-        <h1>Your card is confirmed and your trial has started.</h1>
-        {firstPayment ? (
+      <section className="confirmed" data-testid="trial-active">
+        <h1>{status === "trialing" ? "Your 30-day trial is active." : "Your plan is active."}</h1>
+        {status === "trialing" && firstPayment ? (
           <p>
-            We take nothing until {firstPayment}. We will email you seven days before that.
+            You will not be charged until {firstPayment}.
+            {plan ? ` Your selected ${plan.name} plan will renew at ${formatMoney(plan.price)} per month unless you cancel before then.` : ""}
           </p>
         ) : (
-          <p>We will email you seven days before the first payment.</p>
+          plan && <p>Your {plan.name} plan renews at {formatMoney(plan.price)} per month unless you cancel in Settings.</p>
         )}
-        <Link className="btn btn--primary" href="/">
-          Go to your shop
+        <p className="card__why">We will email you seven days before the first payment.</p>
+        <Link className="btn btn--primary" href={next} data-testid="trial-active-next">
+          {ready ? "See my shop figures" : "Prepare my shop figures"}
         </Link>
       </section>
     );

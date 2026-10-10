@@ -64,11 +64,41 @@ Trial state is written only by the service: from Stripe's webhook, or from Strip
 answer when the service asks it (on starting the trial, and on reading back an incomplete
 row). The browser never sets it.
 
-## A36.4 Still to build, each step with the owner's approval
+## A36.4 Built in step 2, 10 October 2026
 
-2. The journey: no extra click after TikTok, the brief's trial active page, the abandoned card
-   step ("No changes were made…"), the first reconciliation screen, the cost choice and the
-   gross profit reveal.
+- **After TikTok approves.** The callback page sends a connected shop straight to its import,
+  with no extra click. The import page names the shop and says it is connected.
+- **The import page.** It follows the brief's section 5: "We are putting your figures
+  together.", the four steps worked out from the sync status, and "We will show your first
+  results as soon as they are ready." There is no percentage. With no trial, its button is
+  "Choose your plan".
+- **The trial active page.** The brief's "Your 30-day trial is active.", with the trial end,
+  the plan and its renewal price. Its button is "See my shop figures" once the import has
+  finished, or "Prepare my shop figures" while it runs. A trial started without a bank
+  redirect now goes to the same page.
+- **An unfinished card step.** The plan page says "No changes were made. Your TikTok Shop is
+  connected, and you can start your 30-day trial whenever you are ready."
+- **The first reconciliation.**
+  - `/shops/{id}/first-result`, for the last 30 London days, with the brief's heading,
+    definition and reassurance.
+  - "Explore my figures" and "Add product costs".
+  - Lines and subtotals come from `getMoney` as served, so refunds move above net sales when
+    step 3 changes the service.
+- **The cost choice.** The brief's wording, with Skip leading to Overview. Starter sees the
+  Growth prompt here.
+- **The gross profit reveal.**
+  - `/shops/{id}/profit-reveal` shows gross profit, margin and cost coverage, and the products
+    still missing a cost.
+  - Manual entry offers "Save costs and see gross profit" and "Save and continue later".
+  - A finished upload links to the reveal.
+  - The brief's "share of sales value" wording waits for step 3.
+- **Onboarding order.** A seller with a plan goes to Overview. Costs and tax no longer come
+  first (A36.1 item 3).
+
+**Unverified**: the trial active page has run against the local copy only, where the demo
+shop has no import records, so "See my shop figures" has not been seen on screen.
+
+## A36.5 Still to build, each step with the owner's approval
 3. The definitions: the net sales order, gross profit so far, and cost coverage on every
    screen that shows profit.
 4. The navigation in A36.1 item 4.

@@ -111,7 +111,8 @@ export function ManualCosts({ shopId, rows, currency }) {
     setValues((/** @type {any} */ all) => ({ ...all, [id]: { cost: "", packing: "", postage: "", zero: false, ...all[id], [field]: v } }));
   }
 
-  async function save() {
+  /** @param {"reveal" | "later" | null} [then] Where to go once what was typed has saved (A36 step 2). */
+  async function save(then = null) {
     setBusy(true);
     setMessage(null);
     /** @type {Record<string, string>} */
@@ -145,6 +146,12 @@ export function ManualCosts({ shopId, rows, currency }) {
     }
     setErrors(errs);
     setBusy(false);
+    // Partial entry is allowed: once everything typed has saved, the seller moves on. "Later"
+    // with nothing typed simply goes to Overview.
+    if (saved === tried && (saved > 0 || then === "later") && then) {
+      router.push(`/shops/${shopId}/${then === "reveal" ? "profit-reveal" : "today"}`);
+      return;
+    }
     setMessage(saved ? `${saved} ${saved === 1 ? "cost" : "costs"} saved.`
       : tried === 0 ? "Nothing was saved, because no product cost was entered."
       : "Nothing was saved. Each product below says why.");
@@ -188,8 +195,8 @@ export function ManualCosts({ shopId, rows, currency }) {
         );
       })}
       {message && <p className="note" role="status" data-testid="costs-message">{message}</p>}
-      <p><button className="btn btn--primary btn--block" onClick={save} disabled={busy} data-testid="save-costs">{busy ? "Saving" : "Save costs"}</button></p>
-      <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/setup/tax`}>Do this later</Link></p>
+      <p><button className="btn btn--primary btn--block" onClick={() => save("reveal")} disabled={busy} data-testid="save-costs">{busy ? "Saving" : "Save costs and see gross profit"}</button></p>
+      <p><button className="btn btn--quiet btn--block" onClick={() => save("later")} disabled={busy} data-testid="save-later">Save and continue later</button></p>
     </div>
   );
 }
@@ -280,7 +287,7 @@ export function UploadFlow({ shopId }) {
     return (
       <div className="stack" data-testid="upload-done">
         <p className="note" role="status">{done}</p>
-        <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/setup/tax`}>Continue to your business details</Link></p>
+        <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/profit-reveal`} data-testid="upload-see-profit">See gross profit</Link></p>
       </div>
     );
   }

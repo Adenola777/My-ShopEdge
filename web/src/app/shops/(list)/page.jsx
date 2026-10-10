@@ -32,17 +32,9 @@ export default async function ShopsPage({ searchParams }) {
   const shops = result.data.shops ?? [];
   const only = shops.length === 1 && !all ? shops[0] : undefined;
   if (only) {
-    // Resume at the right step of A14.2 rather than always at Today (lib/onboarding.js).
-    const [sub, tax, costs] = await Promise.all([
-      api("/billing/subscription", { cache: "no-store" }),
-      api("/tax-profile", { cache: "no-store" }),
-      api(`/shops/${encodeURIComponent(only.id)}/costs`, { cache: "no-store" }),
-    ]);
-    // A plan without costs (Starter) answers 403, which reads as no costs entered.
-    const noCostPlan = costs.status === 403 && costs.data?.code === "plan_upgrade_required";
-    const setupUntouched = tax.ok && (costs.ok || noCostPlan) && !tax.data?.completed
-      && !(costs.ok ? costs.data?.skus ?? [] : []).some((/** @type {any} */ s) => s.cost);
-    redirect(nextStep(only, sub.ok ? sub.data?.status ?? null : null, { setupUntouched }));
+    // Resume at the right step of the onboarding order (lib/onboarding.js, A36).
+    const sub = await api("/billing/subscription", { cache: "no-store" });
+    redirect(nextStep(only, sub.ok ? sub.data?.status ?? null : null));
   }
 
   if (shops.length === 0) {
