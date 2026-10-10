@@ -60,5 +60,10 @@ Revised later on 10 October 2026 after the owner's review of the page:
 - How it works follows the problem, so "See how it works" no longer jumps past every feature.
 - Product costs shows the cost question and the typing screen, so the Products screen is not
   shown twice.
+- Four screenshots were retaken after the owner reported them cut at the side:
+  `hero-money`, `exports`, `tax` and `costs-manual`. On a 390 px phone the row of page tabs on
+  Reconcile and VAT and tax ran past the right edge, and the cost box showed "For examp". On
+  the owner's ruling the app now wraps that row onto a second line, and the cost box's hint
+  reads "3.40", so the images show the app as a seller sees it.
 
 The page needs no build.

@@ -266,18 +266,19 @@ a:hover { color: var(--orange-700); }
    the page. */
 .tabs__area--settings, .tabs__pages { display: none; }
 
-/* The pages of an area, on a phone: a row of chips that scrolls sideways if it must. */
+/* The pages of an area, on a phone: a row of chips that wraps onto a second line when it
+   does not fit. Until 10 October 2026 the row scrolled sideways, which hid the last page off
+   the edge of a 390 px screen on Reconcile and VAT and tax; the owner ruled that every page
+   should be visible. */
 .subnav { margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-4)) var(--space-4); }
 .subnav ul {
   list-style: none;
   margin: 0;
   padding: var(--space-1) var(--space-4);
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.subnav ul::-webkit-scrollbar { display: none; }
 .subnav li { flex: none; }
 .subnav a {
   display: inline-flex;
