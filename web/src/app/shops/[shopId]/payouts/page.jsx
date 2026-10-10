@@ -32,7 +32,7 @@ export default async function PayoutsPage({ params, searchParams }) {
   return (
     <section data-testid="payouts-screen">
       <header className="page-head">
-        <p className="crumb"><Link href={`/shops/${shopId}/money`}>Money</Link></p>
+        <p className="crumb"><Link href={`/shops/${shopId}/money`}>Where the money went</Link></p>
         <h1>Payouts</h1>
         <p>Every statement TikTok has issued, with what reached your bank and its fee invoice.</p>
       </header>

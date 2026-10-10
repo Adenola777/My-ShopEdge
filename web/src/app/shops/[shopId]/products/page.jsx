@@ -178,7 +178,7 @@ export default async function ProductsPage({ params, searchParams }) {
       {measure === "kept" && (
         <p className="footnote">
           {BEFORE_OVERHEADS}
-          {unattributed ? " The total for the shop is the figure Money shows for the same period." : ""}
+          {unattributed ? " The total for the shop is the figure Where the money went shows for the same period." : ""}
         </p>
       )}
     </section>

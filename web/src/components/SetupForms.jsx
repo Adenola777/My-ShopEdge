@@ -593,7 +593,7 @@ export function ExportForm({ shopId, today }) {
         <label htmlFor="period">Period</label>
         <select id="period" value={period} onChange={(e) => setPeriod(e.target.value)} data-testid="period">
           {Object.entries(periods).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}
-          <option value="custom">Choose dates</option>
+          <option value="custom">Custom dates</option>
         </select>
       </div>
       {period === "custom" && (
@@ -618,10 +618,10 @@ export function ExportForm({ shopId, today }) {
       </div>
       <p className="note">
         The file covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis.
-        {kind === "month_summary" && " Its totals equal the Money screen for the same period and basis."}
+        {kind === "month_summary" && " Its totals match your Overview figures for the same period and basis."}
       </p>
       <FormError failure={error} />
-      <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-export">{busy ? "Starting" : "Build the file"}</button></p>
+      <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-export">{busy ? "Starting" : "Build file"}</button></p>
       {recent}
     </div>
   );

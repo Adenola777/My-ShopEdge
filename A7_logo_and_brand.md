@@ -248,6 +248,11 @@ approval of the recommendation:
   shops, each with one line saying what it is for. On a phone More opens a sheet above the tab
   bar. On a larger screen the same list sits in the rail under the tabs. The top bar names
   Notifications and Settings in words on a larger screen, and the bell is drawn as a bell.
+  **Amended 10 October 2026, on the owner's approval of the names in his brief of that day.**
+  The five tabs keep their places and paths, and three are renamed: Today is Overview, Money is
+  Reconcile and Tax is VAT and tax. Reconcile's pages are Where the money went, Payouts,
+  Transactions and Exports. The brief's mobile bar, with Exports and a More sheet, was not
+  adopted, so the layout of 7 October stands.
 - **Products** carries a Product costs card with Upload a cost file and Type costs in.
 - **The logo** is the same file as before, drawn 44 px high on a phone and 56 px on a larger
   screen, both above the 110 px minimum width of A7.6.

@@ -38,7 +38,7 @@ import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, keptReason
 /** Lines whose label states their direction, shown without the ledger's sign. */
 const UNSIGNED = new Set(["settlement", "reserve_withheld"]);
 
-export const metadata = { title: "Money" };
+export const metadata = { title: "Where the money went" };
 
 /**
  * @param {{
@@ -84,7 +84,7 @@ export default async function MoneyPage({ params, searchParams }) {
   return (
     <section>
       <header className="page-head">
-        <h1>Money</h1>
+        <h1>Where the money went</h1>
         <p>
           This shows where every pound went{" "}
           {day ? `on ${formatDate(day)}` : `from ${formatDate(period.from)} to ${formatDate(period.to)}`}.{" "}
