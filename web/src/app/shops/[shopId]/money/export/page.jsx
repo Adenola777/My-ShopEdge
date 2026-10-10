@@ -10,7 +10,6 @@
  * and a prompt for Pro in place of the scheduled exports.
  */
 
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, fetchShop } from "@/lib/api";
 import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
@@ -52,7 +51,6 @@ export default async function ExportPage({ params }) {
   return (
     <section data-testid="export-screen">
       <header className="page-head">
-        <p className="crumb"><Link href={`/shops/${shopId}/money`}>Where the money went</Link></p>
         <h1>Exports</h1>
         <p>This page builds an Excel or CSV file of your figures. A month summary has the same totals as Where the money went for the same period.</p>
       </header>

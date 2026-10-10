@@ -1,5 +1,6 @@
 /**
- * S15 Settings and data, drawn to wireframe sheet 09. It is reached from the top bar.
+ * S15 Settings and data, drawn to wireframe sheet 09. Since 10 October 2026 it is reached
+ * from the foot of the sidebar, or from More on a phone (A36.1 item 4).
  *
  * Emergent AI wrote a hub of links in `Adenola777/MYSHOPEDGE` (commit 3f1bd43). On 28
  * September 2026 it was redrawn to the sheet's three cards, and every value on it is read

@@ -1,7 +1,7 @@
 /**
  * The frame of every shop screen (WFW 1.1): the top bar with the Updated stamp and the bell,
- * one centred column, and the tabs, at the bottom on a phone and as a left rail on a larger
- * screen (WFW 7). Above each page, on a phone, sits the row of the pages in its area.
+ * one centred column, and the navigation: Overview, Reconcile, Products, Exports and More at
+ * the bottom of a phone, and the eight areas as a sidebar on a larger screen (A36.1 item 4). Above each page, on a phone, sits the row of the pages in its area.
  */
 
 import { AppBar } from "@/components/AppBar";

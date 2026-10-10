@@ -7,7 +7,6 @@
  * another. Checked items are not listed, because a check is one way.
  */
 
-import Link from "next/link";
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
@@ -41,7 +40,6 @@ export default async function ReturnsPage({ params, searchParams }) {
   return (
     <section data-testid="returns-screen">
       <header className="page-head">
-        <p className="crumb"><Link href={`/shops/${shopId}/stock`}>Stock</Link></p>
         <h1>Check returns</h1>
         <p>Say whether each returned item can be sold again. Each item can be checked only once, and the check cannot be changed.</p>
       </header>

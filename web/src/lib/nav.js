@@ -9,44 +9,63 @@
  * An area's first page is its overview, and its path is the area's own.
  *
  * The labels follow the owner's brief of 10 October 2026, approved that day: Today became
- * Overview, Money became Reconcile and Tax became VAT and tax. The slugs and paths did not
- * change, so no address a seller has saved stops working.
+ * Overview, Money became Reconcile and Tax became VAT and tax. The same day the owner
+ * approved the brief's eight areas (A36.1 item 4), so Returns, Stock and Exports became areas
+ * of their own. The page paths did not change, so no address a seller has saved stops
+ * working.
  */
 
 /** @typedef {[string, string, string[]?]} NavPage */
-/** @typedef {{ slug: string, label: string, icon: string, pages: NavPage[] }} NavArea */
+/**
+ * `phone` says where the area sits on a phone: `tab` is one of the four bottom tabs, and
+ * `more` is a line on the More page.
+ * @typedef {{ slug: string, label: string, icon: string, phone: "tab" | "more", pages: NavPage[] }} NavArea
+ */
 
-/** The five areas a seller works in. They are the bottom tabs on a phone. @type {NavArea[]} */
+/**
+ * The seven areas a seller works in, in the brief's order (A36.1 item 4, 10 October 2026).
+ * On a larger screen all seven are the sidebar, with Settings at its foot. On a phone
+ * Overview, Reconcile, Products and Exports are the bottom tabs with More beside them.
+ * @type {NavArea[]}
+ */
 export const AREAS = [
   {
-    slug: "today", label: "Overview", icon: "today", pages: [
+    slug: "today", label: "Overview", icon: "today", phone: "tab", pages: [
       ["today", "Overview"],
       ["notifications", "Notifications"],
       ["discrepancies", "Discrepancies"],
     ],
   },
   {
-    slug: "stock", label: "Stock", icon: "stock", pages: [
-      ["stock", "Stock levels"],
-      ["returns", "Returns"],
+    slug: "money", label: "Reconcile", icon: "money", phone: "tab", pages: [
+      ["money", "Where the money went", ["first-result"]],
+      ["payouts", "Payouts"],
+      ["records", "Transactions"],
     ],
   },
   {
-    slug: "products", label: "Products", icon: "products", pages: [
-      ["products", "All products"],
+    slug: "products", label: "Products", icon: "products", phone: "tab", pages: [
+      ["products", "All products", ["profit-reveal"]],
       ["setup/costs", "Product costs"],
     ],
   },
   {
-    slug: "money", label: "Reconcile", icon: "money", pages: [
-      ["money", "Where the money went"],
-      ["payouts", "Payouts"],
-      ["records", "Transactions"],
+    slug: "returns", label: "Returns", icon: "returns", phone: "more", pages: [
+      ["returns", "Returns"],
+    ],
+  },
+  {
+    slug: "stock", label: "Stock", icon: "stock", phone: "more", pages: [
+      ["stock", "Stock levels"],
+    ],
+  },
+  {
+    slug: "exports", label: "Exports", icon: "exports", phone: "tab", pages: [
       ["money/export", "Exports"],
     ],
   },
   {
-    slug: "tax", label: "VAT and tax", icon: "tax", pages: [
+    slug: "tax", label: "VAT and tax", icon: "tax", phone: "more", pages: [
       ["tax", "VAT and tax overview"],
       ["setup/tax", "Business details"],
       ["other-sales", "Other-channel sales"],
@@ -54,9 +73,9 @@ export const AREAS = [
   },
 ];
 
-/** Settings is reached from the gear in the top bar, and sits apart in the rail. @type {NavArea} */
+/** Settings is the eighth area: the foot of the sidebar, and a line on the More page. @type {NavArea} */
 export const SETTINGS = {
-  slug: "settings", label: "Settings", icon: "settings", pages: [
+  slug: "settings", label: "Settings", icon: "settings", phone: "more", pages: [
     ["settings/profile", "Profile and plan"],
     ["settings", "Shop connection", ["sync", "connection-problem", "setup", "settings/disconnect"]],
     ["settings/alerts", "Alert settings"],
@@ -65,6 +84,9 @@ export const SETTINGS = {
     ["glossary", "Help and glossary"],
   ],
 };
+
+/** The More page on a phone, which is reached from the fifth bottom tab. */
+export const MORE = "more";
 
 export const ALL_AREAS = [...AREAS, SETTINGS];
 

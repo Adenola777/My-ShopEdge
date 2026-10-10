@@ -1,14 +1,12 @@
 "use client";
 
 /**
- * The shop's areas (WFW 1.1): five tabs at the bottom on a phone, a left rail on a larger
- * screen (WFW 7). The wireframes carry the five: Today, Stock, Products, Money and Tax.
- *
- * Since 7 October 2026 every page sits under its area, as `lib/nav.js` maps it. In the
- * rail the area in use opens to list its pages, and Settings sits apart at the foot of the
- * rail with its own pages. On a phone the area's pages are the row at the top of the page
- * (`SectionNav`), and Settings is the gear in the top bar, as sheet 09 draws it. The More
- * sheet of 30 September is gone, because it mixed pages from every area in one list.
+ * The shop's areas, as the owner approved them from the brief on 10 October 2026 (A36.1
+ * item 4). On a larger screen the sidebar lists the eight areas in the brief's order:
+ * Overview, Reconcile, Products, Returns, Stock, Exports, VAT and tax, and Settings at its
+ * foot. The area in use opens to list its pages. On a phone the bottom tabs are Overview,
+ * Reconcile, Products, Exports and More, and the More page holds the rest (`more/page.jsx`).
+ * An area's pages sit in a row at the top of the page on a phone (`SectionNav`).
  *
  * The icons are simple line drawings, so each tab is named by its word and the icon only
  * helps the eye find it.
@@ -16,7 +14,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AREAS, SETTINGS, hrefOf, locate } from "@/lib/nav";
+import { AREAS, MORE, SETTINGS, hrefOf, locate } from "@/lib/nav";
 
 /** @type {Record<string, React.ReactElement>} */
 const ICON = {
@@ -48,6 +46,25 @@ const ICON = {
       <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" />
     </svg>
   ),
+  returns: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </svg>
+  ),
+  exports: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" />
+      <path d="M4 15.5v3A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-3" />
+    </svg>
+  ),
+  more: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="5.5" cy="12" r="1.2" />
+      <circle cx="12" cy="12" r="1.2" />
+      <circle cx="18.5" cy="12" r="1.2" />
+    </svg>
+  ),
   settings: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="3" />
@@ -65,7 +82,7 @@ function Area({ area, base, here, className = "" }) {
   const first = area.pages[0];
   const href = hrefOf(base, first ? first[0] : area.slug);
   return (
-    <div className={`tabs__area${open ? " tabs__area--open" : ""} ${className}`}>
+    <div className={`tabs__area${open ? " tabs__area--open" : ""}${area.phone === "more" ? " tabs__area--rail" : ""} ${className}`}>
       <Link
         className="tabs__tab"
         href={href}
@@ -94,12 +111,20 @@ export function ShopNav({ shopId }) {
   const path = usePathname() ?? "";
   const base = `/shops/${shopId}`;
   const here = locate(path, base);
+  // More is marked while the seller is on it or on any area it holds.
+  const onMore = path === hrefOf(base, MORE) || here.area?.phone === "more";
   return (
     <nav className="tabs" aria-label="Your shop">
       {AREAS.map((area) => (
         <Area key={area.slug} area={area} base={base} here={here} />
       ))}
       <Area area={SETTINGS} base={base} here={here} className="tabs__area--settings" />
+      <div className="tabs__area tabs__area--more">
+        <Link className="tabs__tab" href={hrefOf(base, MORE)} aria-current={onMore ? "page" : undefined} data-testid="tab-more">
+          {ICON.more}
+          <span>More</span>
+        </Link>
+      </div>
     </nav>
   );
 }
