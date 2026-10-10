@@ -1,9 +1,30 @@
 {
+  "cleanUrls": true,
   "redirects": [
-    { "source": "/privacy", "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/privacy.html", "permanent": false },
-    { "source": "/terms", "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/terms.html", "permanent": false },
-    { "source": "/cookies", "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/cookies.html", "permanent": false },
-    { "source": "/legal", "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/privacy.html", "permanent": false },
-    { "source": "/legal/:file*", "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/:file*", "permanent": false }
+    {
+      "source": "/privacy",
+      "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/privacy.html",
+      "permanent": false
+    },
+    {
+      "source": "/terms",
+      "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/terms.html",
+      "permanent": false
+    },
+    {
+      "source": "/cookies",
+      "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/cookies.html",
+      "permanent": false
+    },
+    {
+      "source": "/legal",
+      "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/privacy.html",
+      "permanent": false
+    },
+    {
+      "source": "/legal/:file*",
+      "destination": "https://app.myshopedge.inspirecraftglobal.com/legal/:file*",
+      "permanent": false
+    }
   ]
 }

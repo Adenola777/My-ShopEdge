@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TikTok Shop Payout Explainer: why your payout is lower than your sales</title>
+<meta name="description" content="A free calculator for UK TikTok Shop sellers. Enter your sales, discounts, fees and refunds to see where the money went between a sale and your payout.">
+<link rel="canonical" href="https://myshopedge.inspirecraftglobal.com/tools/tiktok-shop-payout-explainer">
+<link rel="icon" href="/brand/mse-favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/pages.css">
+</head>
+<!--
+  Built on 10 October 2026 on the owner's instruction, from the "Final Landing Page Review",
+  which lists /tools/tiktok-shop-payout-explainer as a free tool. It does arithmetic on what
+  the visitor types and nothing else: it reads no shop, stores nothing and sends nothing.
+  The order of the lines follows A8.5's calculator view.
+-->
+<body>
+<header class="top"><div class="wrap">
+  <a href="/"><img src="/brand/mse-logo-horizontal-notagline.svg" alt="MyShopEdge"></a>
+  <nav aria-label="Main"><a href="/">Home</a><a href="/faq/tiktok-shop-seller-finance">FAQ</a><a href="/#pricing">Pricing</a><a class="cta" href="https://app.myshopedge.inspirecraftglobal.com/start">Get started</a></nav>
+</div></header>
+<main class="wrap">
+  <h1>TikTok Shop Payout Explainer</h1>
+  <p class="lede">Type in the figures from a TikTok Shop statement to see, line by line, why the payout is lower than the sales. Add your product costs to see what the products earned.</p>
+  <p class="meta">Nothing you type leaves your browser, and nothing is saved. Amounts are in pounds.</p>
+
+  <form class="tool" id="explainer" autocomplete="off" onsubmit="return false">
+    <div>
+      <fieldset>
+        <legend>Sales</legend>
+        <div class="field"><label for="gross">Gross sales</label><input id="gross" inputmode="decimal" placeholder="0.00" value="62.00"></div>
+        <div class="field"><label for="discounts">Seller discounts</label><input id="discounts" inputmode="decimal" placeholder="0.00" value="2.00"></div>
+      </fieldset>
+      <fieldset>
+        <legend>TikTok Shop deductions</legend>
+        <div class="field"><label for="platform">Platform commission</label><input id="platform" inputmode="decimal" placeholder="0.00" value="5.40"></div>
+        <div class="field"><label for="affiliate">Affiliate commission</label><input id="affiliate" inputmode="decimal" placeholder="0.00" value="3.10"></div>
+        <div class="field"><label for="shipping">Shipping fee</label><input id="shipping" inputmode="decimal" placeholder="0.00" value="2.75"></div>
+        <div class="field"><label for="other">Other fees and adjustments</label><input id="other" inputmode="decimal" placeholder="0.00"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Refunds</legend>
+        <div class="field"><label for="refunds">Refunds to customers</label><input id="refunds" inputmode="decimal" placeholder="0.00" value="8.00"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Optional</legend>
+        <div class="field"><label for="paid">Payout you received</label><input id="paid" inputmode="decimal" placeholder="0.00"></div>
+        <div class="field"><label for="costs">What the products cost you</label><input id="costs" inputmode="decimal" placeholder="0.00"></div>
+      </fieldset>
+      <p class="note">Enter each deduction as a positive amount, with up to two decimal places. The explainer takes it away. A box outlined in red holds something that is not an amount, and it counts as nothing until corrected.</p>
+    </div>
+
+    <div class="result" aria-live="polite">
+      <div class="row"><span>Gross sales</span><span id="r-gross"></span></div>
+      <div class="row"><span>Seller discounts</span><span id="r-discounts" class="neg"></span></div>
+      <div class="row total"><span>Net sales</span><span id="r-net"></span></div>
+      <div class="row"><span>TikTok Shop deductions</span><span id="r-fees" class="neg"></span></div>
+      <div class="row"><span>Refunds</span><span id="r-refunds" class="neg"></span></div>
+      <div class="row total"><span>Net proceeds</span><span id="r-proceeds"></span></div>
+      <div id="paid-block" hidden>
+        <div class="row"><span>Payout you received</span><span id="r-paid"></span></div>
+        <div class="row total"><span id="r-diff-label">Difference to explain</span><span id="r-diff"></span></div>
+        <p class="note" id="r-diff-note"></p>
+      </div>
+      <div id="cost-block" hidden>
+        <div class="row"><span>Product costs</span><span id="r-costs" class="neg"></span></div>
+        <div class="row total"><span>Gross profit</span><span id="r-profit"></span></div>
+      </div>
+      <p class="note">Net proceeds are what TikTok Shop has left you before your product costs. They are not your profit.</p>
+    </div>
+  </form>
+
+  <h2>What the lines mean</h2>
+  <p>Net sales are gross sales less seller discounts. Net proceeds are net sales less TikTok Shop's deductions and refunds. Gross profit is net proceeds less what the products cost you. The <a href="/faq/tiktok-shop-seller-finance#why-payout-lower-than-sales">seller finance FAQ</a> explains each step, and why a payout can differ from net proceeds for a while: some orders may still be awaiting settlement, a payout can cover more than one statement, and refunds can arrive weeks after the sale.</p>
+
+  <div class="cta-block">
+    <p><strong>Want this worked out from your real statements?</strong> MyShopEdge reads your TikTok Shop with read-only access and shows every named deduction, statement and payout. You pay &pound;0 today, and the trial lasts 30 days.</p>
+    <p><a class="btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start your free 30-day trial</a></p>
+  </div>
+</main>
+<footer class="bottom"><div class="wrap">
+  <span>&copy; 2026 Inspirecraft Global Ltd, company no. 16159924</span>
+  <span><a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a> &middot; <a href="/cookies">Cookies</a></span>
+</div></footer>
+<script>
+(function () {
+  var ids = ["gross", "discounts", "platform", "affiliate", "shipping", "other", "refunds", "paid", "costs"];
+  // Pence as whole numbers, so the arithmetic never rounds a penny the wrong way.
+  function pence(id) {
+    var el = document.getElementById(id);
+    var raw = (el.value || "").replace(/[£,\s]/g, "");
+    var bad = raw !== "" && (!/^\d*(\.\d{0,2})?$/.test(raw) || raw === ".");
+    el.setAttribute("aria-invalid", bad ? "true" : "false");
+    if (bad || raw === "") return null;
+    var parts = raw.split(".");
+    return parseInt(parts[0] || "0", 10) * 100 + parseInt(((parts[1] || "") + "00").slice(0, 2), 10);
+  }
+  function gbp(p, negative) {
+    var s = "£" + (Math.abs(p) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (negative && p !== 0) || p < 0 ? "−" + s : s;
+  }
+  function set(id, v) { document.getElementById(id).textContent = v; }
+  function update() {
+    var v = {}; ids.forEach(function (id) { v[id] = pence(id); });
+    var n = function (x) { return x === null ? 0 : x; };
+    var net = n(v.gross) - n(v.discounts);
+    var fees = n(v.platform) + n(v.affiliate) + n(v.shipping) + n(v.other);
+    var proceeds = net - fees - n(v.refunds);
+    set("r-gross", gbp(n(v.gross)));
+    set("r-discounts", gbp(n(v.discounts), true));
+    set("r-net", gbp(net));
+    set("r-fees", gbp(fees, true));
+    set("r-refunds", gbp(n(v.refunds), true));
+    set("r-proceeds", gbp(proceeds));
+    var paidBlock = document.getElementById("paid-block");
+    paidBlock.hidden = v.paid === null;
+    if (v.paid !== null) {
+      var diff = proceeds - v.paid;
+      set("r-paid", gbp(v.paid));
+      set("r-diff", gbp(Math.abs(diff)));
+      set("r-diff-label", diff === 0 ? "Difference" : diff > 0 ? "Not yet paid to you" : "Paid more than these figures");
+      set("r-diff-note", diff === 0
+        ? "The payout matches these figures."
+        : diff > 0
+          ? "Some orders may still be awaiting settlement, TikTok Shop may be holding a reserve, or the bank payment may still be processing."
+          : "The payout may include earlier statements, a released reserve or an adjustment not entered here.");
+    }
+    var costBlock = document.getElementById("cost-block");
+    costBlock.hidden = v.costs === null;
+    if (v.costs !== null) {
+      set("r-costs", gbp(v.costs, true));
+      set("r-profit", gbp(proceeds - v.costs));
+    }
+  }
+  ids.forEach(function (id) { document.getElementById(id).addEventListener("input", update); });
+  update();
+})();
+</script>
+</body>
+</html>

@@ -137,6 +137,7 @@ class Month(BaseModel):
     net_proceeds: Money
     kept: Money | None = None
     kept_reason: str | None = None
+    gross_margin_after_returns: float | None = None
 
 
 class Awaiting(BaseModel):
@@ -397,6 +398,7 @@ def get_today(
             net_proceeds=month.totals.net_proceeds,
             kept=month.kept,
             kept_reason=month.kept_reason,
+            gross_margin_after_returns=month.totals.gross_margin_after_returns,
         ),
         shop_money=shop_money,
         needs_you=items,

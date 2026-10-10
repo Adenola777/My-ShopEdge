@@ -10,6 +10,17 @@
 /** The statement CLR-5 requires wherever gross profit after returns is shown. */
 export const BEFORE_OVERHEADS = "This is before your own running costs and your tax.";
 
+/**
+ * Gross margin after returns as words, from the service's fraction (0.4752 reads "47.5%").
+ * The service owns the rule (A29) and sends null when the margin is not known, so this only
+ * formats. One decimal place is enough to compare products. Added 10 October 2026.
+ * @param {number | null | undefined} m
+ */
+export function formatMargin(m) {
+  if (m === null || m === undefined) return null;
+  return `${(m * 100).toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
 /** @type {Record<string, string>} */
 export const HERO_LABEL = {
   gross_profit_after_returns: "Gross profit after returns",

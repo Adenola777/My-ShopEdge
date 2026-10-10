@@ -35,6 +35,7 @@ import { Figure } from "@/components/Figure";
 import {
   AWAITING, BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, HERO_LABEL, SEVERITY_TONE, chipClass,
   keptReason,
+  formatMargin,
 } from "@/lib/terms";
 
 export const metadata = { title: "Overview" };
@@ -153,6 +154,9 @@ export default async function TodayPage({ params }) {
                 rather than a profit heading over "Not known" (owner's brief, 10 October 2026). */}
             <p className="stat__value"><Figure amount={t.month.kept ?? t.month.net_proceeds} /></p>
             <p className="stat__label">{t.month.kept ? "Gross profit after returns this month" : "Net proceeds this month"}</p>
+            {formatMargin(t.month.gross_margin_after_returns) && (
+              <p className="rows__sub" data-testid="month-margin">Gross margin after returns {formatMargin(t.month.gross_margin_after_returns)}</p>
+            )}
             {!t.month.kept && t.month.kept_reason && (
               <p className="rows__sub">{keptReason(t.month.kept_reason)}</p>
             )}

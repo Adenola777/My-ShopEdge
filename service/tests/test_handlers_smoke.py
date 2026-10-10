@@ -2009,6 +2009,15 @@ def shared_category_labels():
     _assert(len(set(labels)) == len(labels), labels)
 check("A category TikTok fills from several fields names each line by its field, so none repeats", shared_category_labels)
 
+def gross_margin_rule():
+    from app.money_lines import gross_margin
+    _assert(gross_margin(338795, 713000) == 0.4752, gross_margin(338795, 713000))
+    _assert(gross_margin(None, 713000) is None, "unknown profit gives no margin")
+    _assert(gross_margin(1000, 0) is None and gross_margin(1000, -5) is None, "no net sales gives no margin")
+    _assert(gross_margin(-2500, 10000) == -0.25, "a loss gives a negative margin")
+    _assert(gross_margin(1, 3) == 0.3333 and gross_margin(2, 3) == 0.6667, "four places, half to even")
+check("Gross margin after returns is profit over net sales, and unknown when either is missing", gross_margin_rule)
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")

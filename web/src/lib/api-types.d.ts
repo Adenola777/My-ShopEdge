@@ -2293,6 +2293,8 @@ export interface components {
                 /** @description Null where cost coverage is incomplete. */
                 gross_profit?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
                 gross_profit_after_returns?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                /** @description Gross margin after returns, as a fraction of net sales to four places (0.4752 is 47.52 per cent). Null wherever gross profit after returns is unknown, and when net sales are zero. Ruled by the owner on 10 October 2026. */
+                gross_margin_after_returns?: number | null;
             };
             /** @description Null when cost coverage is incomplete. Never a zero standing in for unknown. */
             kept?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
@@ -2347,6 +2349,8 @@ export interface components {
                 net_proceeds?: components["schemas"]["Money"];
                 kept?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
                 kept_reason?: string | null;
+                /** @description Gross margin after returns, as a fraction of net sales to four places (0.4752 is 47.52 per cent). Null wherever gross profit after returns is unknown, and when net sales are zero. Ruled by the owner on 10 October 2026. */
+                gross_margin_after_returns?: number | null;
             };
             /**
              * @description All time, A29.7. `generated` is net proceeds as A8 defines it. Return
@@ -2495,6 +2499,8 @@ export interface components {
             kept_reason?: string | null;
             returns_units?: number;
             cost_known?: boolean;
+            /** @description Gross margin after returns, as a fraction of net sales to four places (0.4752 is 47.52 per cent). Null wherever gross profit after returns is unknown, and when net sales are zero. Ruled by the owner on 10 October 2026. */
+            gross_margin_after_returns?: number | null;
         };
         ProductDetail: {
             product: components["schemas"]["ProductRow"];

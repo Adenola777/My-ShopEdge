@@ -33,7 +33,7 @@ import { fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
 import { Figure } from "@/components/Figure";
-import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, keptReason } from "@/lib/terms";
+import { BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, chipClass, formatMargin, keptReason } from "@/lib/terms";
 
 /** Lines whose label states their direction, shown without the ledger's sign. */
 const UNSIGNED = new Set(["settlement", "reserve_withheld"]);
@@ -147,6 +147,12 @@ export default async function MoneyPage({ params, searchParams }) {
                 <li className="rows__total">
                   <span>{s.subtotal_label ?? "Subtotal"}</span>
                   <Figure amount={s.subtotal} reason={s.key === "return_costs" ? keptReason(m.kept_reason) : null} />
+                </li>
+              )}
+              {s.key === "return_costs" && formatMargin(m.totals?.gross_margin_after_returns) && (
+                <li data-testid="money-margin">
+                  <span>Gross margin after returns, as a share of net sales</span>
+                  <strong className="money">{formatMargin(m.totals.gross_margin_after_returns)}</strong>
                 </li>
               )}
             </ul>

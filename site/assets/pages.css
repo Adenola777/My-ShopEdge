@@ -1,0 +1,66 @@
+/* The FAQ and the Payout Explainer. Colours and fonts follow site/index.html. */
+:root {
+  --ink: #12141C;
+  --ink-soft: #5B6472;
+  --ink-faint: #8C93A1;
+  --white: #FFFFFF;
+  --paper-alt: #F6F7F9;
+  --line: #E7E8EC;
+  --orange-solid: #D9480F;
+  --good: #1F7A4D;
+  --bad: #B42318;
+  color-scheme: light;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; background: var(--white); color: var(--ink); }
+body { font-family: 'IBM Plex Sans', system-ui, -apple-system, Segoe UI, sans-serif; font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: -0.01em; line-height: 1.25; }
+h1 { font-size: clamp(28px, 5vw, 40px); margin: 8px 0 10px; }
+h2 { font-size: 21px; margin: 36px 0 10px; }
+a { color: var(--orange-solid); }
+.wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+header.top { border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 76px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+header.top img { height: 44px; width: auto; display: block; }
+header.top nav { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 14.5px; }
+header.top nav a { color: var(--ink-soft); text-decoration: none; }
+header.top nav a.cta { color: var(--white); background: var(--orange-solid); padding: 8px 16px; border-radius: 999px; font-weight: 600; }
+main { padding: 28px 0 56px; }
+.lede { color: var(--ink-soft); font-size: 17px; margin: 0 0 8px; }
+.meta { color: var(--ink-faint); font-size: 14px; margin: 0 0 24px; }
+.toc { background: var(--paper-alt); border-radius: 14px; padding: 18px 22px; margin: 24px 0; }
+.toc ol { margin: 0; padding-left: 22px; }
+.toc li { margin-bottom: 4px; }
+details.qa { border-bottom: 1px solid var(--line); padding: 4px 0; }
+details.qa summary { cursor: pointer; list-style: none; padding: 14px 0; font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; font-size: 18px; }
+details.qa summary::-webkit-details-marker { display: none; }
+details.qa summary::after { content: "+"; float: right; color: var(--ink-faint); }
+details.qa[open] summary::after { content: "\2212"; }
+.answer { padding: 0 0 14px; }
+.answer ul { padding-left: 22px; }
+.answer li { margin-bottom: 4px; }
+pre.calc { background: var(--paper-alt); border-radius: 10px; padding: 12px 14px; font-size: 14.5px; overflow-x: auto; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 8px 0 14px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--paper-alt); }
+.cta-block { background: var(--paper-alt); border-radius: 12px; padding: 14px 16px; margin: 6px 0 16px; font-size: 15px; }
+.btn { display: inline-block; background: var(--orange-solid); color: var(--white); text-decoration: none; font-weight: 600; padding: 11px 20px; border-radius: 10px; }
+footer.bottom { background: var(--paper-alt); padding: 28px 0; font-size: 13.5px; color: var(--ink-soft); }
+footer.bottom .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+footer.bottom a { color: var(--ink-soft); }
+
+/* Payout Explainer */
+.tool { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+.tool fieldset { border: 0; padding: 0; margin: 0 0 14px; }
+.tool legend { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; margin-bottom: 8px; }
+.field { display: grid; grid-template-columns: 1fr 140px; gap: 10px; align-items: center; margin-bottom: 8px; }
+.field label { font-size: 15px; }
+.field input[aria-invalid="true"] { border-color: var(--bad); outline: 1px solid var(--bad); }
+.field input { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; width: 100%; text-align: right; }
+.result { background: var(--paper-alt); border-radius: 14px; padding: 18px 20px; position: sticky; top: 16px; }
+.result .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.result .row.total { font-weight: 700; border-bottom: 0; }
+.result .neg { color: var(--bad); }
+.note { color: var(--ink-soft); font-size: 14px; }
+@media (max-width: 760px) { .tool { grid-template-columns: 1fr; } .result { position: static; } .field { grid-template-columns: 1fr 120px; } }

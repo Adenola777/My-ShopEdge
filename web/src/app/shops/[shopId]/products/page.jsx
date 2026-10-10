@@ -26,7 +26,7 @@ import { fetchProducts, formatDate } from "@/lib/api";
 import { Figure } from "@/components/Figure";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
-import { BEFORE_OVERHEADS } from "@/lib/terms";
+import { BEFORE_OVERHEADS, formatMargin } from "@/lib/terms";
 
 export const metadata = { title: "Products" };
 
@@ -119,6 +119,7 @@ export default async function ProductsPage({ params, searchParams }) {
                   <div className="rows__sub">
                     {p.units} sold{p.returns_units ? `, ${p.returns_units} returned` : ""}. Net proceeds{" "}
                     <Figure amount={p.net_proceeds} />
+                    {formatMargin(p.gross_margin_after_returns) && <>. Gross margin {formatMargin(p.gross_margin_after_returns)}</>}
                   </div>
                 </span>
                 <span>
