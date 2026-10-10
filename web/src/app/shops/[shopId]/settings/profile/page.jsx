@@ -9,7 +9,8 @@
  * updateSubscription and links to /billing/card for a new card. A value whose request fails
  * is shown as not available rather than guessed. Since 9 October 2026 an account whose
  * subscription status is `none` sees one line saying it has no plan, and the Choose a plan
- * button, in place of a Plan row that read "None".
+ * button, in place of a Plan row that read "None". Since 10 October 2026 it also shows
+ * EmailNoticesSwitch, the seller's switch for notice emails (NTF-2).
  */
 
 import Link from "next/link";
@@ -17,6 +18,7 @@ import { api, formatDate } from "@/lib/api";
 import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { chipClass } from "@/lib/terms";
 import { PlanControls } from "@/components/PlanControls";
+import { EmailNoticesSwitch } from "@/components/EmailNoticesSwitch";
 
 export const metadata = { title: "Profile and plan" };
 
@@ -87,6 +89,8 @@ export default async function ProfilePage({ params }) {
           </ul>
           <p className="card__why">Your name and email come from the account you sign in with, such as Google, so you change them there.</p>
         </div>
+
+        <EmailNoticesSwitch on={me.email_notices ?? true} />
 
         <div className="card" data-testid="profile-plan">
           <h2>Your plan</h2>

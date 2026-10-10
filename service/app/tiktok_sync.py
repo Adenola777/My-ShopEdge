@@ -723,7 +723,7 @@ def _notify_order_limit(conn, shop: str, now: datetime) -> None:
     caller (`window`, the webhook). The notice is account-wide, so the account is read from the
     shop. It runs in its own savepoint and a fault is logged, not raised: A16.3 says the sync
     never stops over the limit, so it must not stop over the notice either. The email A16.3
-    also asks for is not sent, because nothing here can send email (order_usage.py)."""
+    also asks for is sent later from the notice by `notice_email` (order_usage.py)."""
     from .order_usage import notify_order_limit
 
     try:

@@ -20,6 +20,15 @@ is concerned.
 
 Checked on the development branch, 24 September 2026, with the SQL below: one account,
 one shop.
+
+EMAIL NOTICES, ADDED 10 OCTOBER 2026
+
+`email_notices` is the seller's switch for the emails `notice_email` sends (NTF-2: "unless they
+opt out"), and `updateMe` changes it. It is the only field a seller can change here, because
+the name and email come from the sign-in provider. The column arrives with migration 0031.
+`getMe` reads it through `to_jsonb(a)`, so it answers true, the column's default, on a database
+that does not have the column yet, and the service can be deployed before the migration is
+applied. `updateMe` answers 503 `migration_pending` on such a database rather than a 500.
 """
 
 from __future__ import annotations
@@ -30,8 +39,9 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
+import psycopg
 from fastapi import APIRouter, Depends, Header, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .auth import Account, require_account, require_signed_in
 from .db import tenant
@@ -50,6 +60,12 @@ class AccountOut(BaseModel):
     created_at: datetime
     shop_count: int
     deletion_scheduled_at: datetime | None = None
+    email_notices: bool = True
+
+
+class AccountUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email_notices: bool
 
 
 class Shop(BaseModel):
@@ -74,6 +90,7 @@ class ShopList(BaseModel):
 ACCOUNT_SQL = """
 select a.id, a.email::text as email, a.display_name, a.locale, a.timezone, a.status,
        a.created_at,
+       coalesce((to_jsonb(a) ->> 'email_notices')::boolean, true) as email_notices,
        case when a.status = 'deleted'
             then a.deleted_at + interval '30 days' end as deletion_scheduled_at,
        (select count(*) from shops s
@@ -136,3 +153,25 @@ def list_shops(
         cols = [d.name for d in cur.description]
         rows = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
     return _with_etag(ShopList(shops=[Shop(**r) for r in rows]), response, if_none_match)
+
+
+@router.patch("/me", response_model=AccountOut)
+def update_me(
+    body: AccountUpdate,
+    account: Annotated[Account, Depends(require_account)],
+) -> AccountOut:
+    """Switches email notices on or off. Setting the value the account already has is accepted
+    and changes nothing, so a repeated request is harmless without an idempotency key."""
+    try:
+        with tenant(account.id) as conn:
+            conn.execute("update accounts set email_notices = %s where id = %s",
+                         (body.email_notices, str(account.id)))
+            cur = conn.execute(ACCOUNT_SQL, (str(account.id),))
+            cols = [d.name for d in cur.description]
+            row = cur.fetchone()
+    except psycopg.errors.UndefinedColumn as err:
+        raise Problem(503, "migration_pending",
+                      "Email settings are not available yet, so nothing was changed.") from err
+    if row is None:
+        raise Problem(401, "account_not_found", "We could not find your account. Sign in again.")
+    return AccountOut(**dict(zip(cols, row, strict=True)))
