@@ -55,12 +55,15 @@ function costWords(c) {
 export default async function SettingsPage({ params }) {
   const { shopId } = await params;
   const base = `/shops/${shopId}`;
-  const [shopsRes, taxRes, alertsRes, coverageRes] = await Promise.all([
+  const [shopsRes, taxRes, alertsRes, coverageRes, subRes] = await Promise.all([
     api("/shops", { cache: "no-store" }),
     api("/tax-profile", { cache: "no-store" }),
     fetchShop(shopId, "/alert-settings"),
     fetchShop(shopId, "/costs/coverage"),
+    api("/billing/subscription", { cache: "no-store" }),
   ]);
+  // A36: a connected shop whose account has no trial shows that, with the way to start one.
+  const noTrial = subRes.ok && subRes.data?.status === "none";
   const problem = apiProblem(shopsRes, { what: "your settings", note: NOTHING_CHANGED });
   if (problem) return problem;
 
@@ -98,6 +101,12 @@ export default async function SettingsPage({ params }) {
               <strong>{shop?.last_synced_at ? formatDate(shop.last_synced_at, { time: true }) : "Not yet"}</strong>
             </li>
             <li><span>Access</span><strong>Read-only</strong></li>
+            {noTrial && (
+              <li data-testid="settings-no-trial">
+                <span>Plan</span>
+                <span><strong>Connected, trial not started</strong> <Link href="/billing">Start 30-day free trial</Link></span>
+              </li>
+            )}
             <li>
               <span><Link href={`${base}/sync`}>What has been read</Link></span>
             </li>

@@ -89,6 +89,21 @@ export function apiProblem(result, { what, notFound, note, back }) {
       />
     );
   }
+  // A36 (10 October 2026): with no trial started, figures stay closed and the seller is taken
+  // to the plan page, which names the connected shop and offers Disconnect.
+  if (result.status === 403 && code === "trial_required") {
+    redirect("/billing");
+  }
+  // An ended plan reads but cannot change or export anything. The service's sentence says so.
+  if (result.status === 403 && code === "plan_ended") {
+    return (
+      <section className="state" data-testid="plan-ended">
+        <h1>Your plan has ended.</h1>
+        <p>{String(result.data?.detail ?? "Your figures can be read, but nothing can be changed or exported.")}</p>
+        <p><a className="btn btn--primary" href="/billing">Choose a plan</a></p>
+      </section>
+    );
+  }
   // The plan lacks the feature (entitlements.py, 10 October 2026). The seller is shown what the
   // plan that has it costs and does, with a way to choose it and a way not to.
   if (result.status === 403 && code === "plan_upgrade_required") {

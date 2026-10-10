@@ -325,8 +325,8 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
     """
     row = db.get_subscription_row(account.id)
     if row is None:
-        from .entitlements import ALL
-        return SubscriptionOut(status="none", features=sorted(ALL))
+        # No plan, no features (A36): the seller is still onboarding.
+        return SubscriptionOut(status="none", features=[])
 
     if row["status"] == "incomplete":
         refreshed = _refresh_from_stripe(account.id, row.get("stripe_customer_id"))
@@ -509,8 +509,9 @@ async def stripe_webhook(request: Request, stripe_signature: Annotated[str | Non
     """Authenticated by the signature header rather than by a bearer token.
 
     Delivery is at least once and events can arrive out of order, so every handler is
-    idempotent: each writes the subscription's current state rather than a delta, so a
-    repeated event lands the same value twice.
+    idempotent: each reads the subscription's current state from Stripe and writes that,
+    rather than a delta or the event's own copy, so a repeated or late event lands the same
+    value as the newest one.
 
     An event whose customer we hold no row for is logged and accepted with a 200. It is not
     ours to act on, it belongs to another environment's Stripe account, and answering
@@ -528,6 +529,7 @@ async def stripe_webhook(request: Request, stripe_signature: Annotated[str | Non
 
     etype = event["type"]
     obj = _plain(event["data"]["object"])
+    logger.info("stripe webhook %s %s received", event.get("id"), etype)
 
     try:
         if etype in {
@@ -535,8 +537,13 @@ async def stripe_webhook(request: Request, stripe_signature: Annotated[str | Non
             "customer.subscription.updated",
             "customer.subscription.deleted",
         }:
-            # The event object is the subscription itself, carrying the status that matters.
-            _apply_stripe_subscription(obj)
+            # The subscription is read back from Stripe rather than taken from the event, so a
+            # late, older event writes Stripe's current state and cannot undo a newer one
+            # (A36, the brief's "idempotent" webhook). A deleted subscription is still
+            # returned by Stripe with status canceled. **Unverified against Stripe**: only the
+            # live account is reachable, so this has run against the stand-in client only.
+            current = _stripe().subscriptions.retrieve(obj["id"]) if obj.get("id") else obj
+            _apply_stripe_subscription(current)
         elif etype == "invoice.payment_failed":
             # The invoice names its subscription. Reading it back gives the accurate status
             # Stripe has moved it to, rather than this handler guessing 'past_due'.
@@ -682,7 +689,9 @@ def _refresh_from_stripe(account_id, customer_id: str | None) -> dict | None:
         subs = _stripe().subscriptions.list(
             params={"customer": customer_id, "status": "all", "limit": 1}
         )
-    except stripe.StripeError:
+    except (stripe.StripeError, Problem):
+        # Problem is billing_unconfigured, when no Stripe key is set. Found 10 October 2026 on
+        # the local copy: it reached the seller as a 503 although this read is optional.
         return None
     if not subs.data:
         return None

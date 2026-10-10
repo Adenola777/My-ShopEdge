@@ -72,10 +72,35 @@ export default async function BillingPage() {
     { timeZone: "Europe/London", day: "numeric", month: "long", year: "numeric" },
   );
 
+  // A36 (10 October 2026): until a trial starts the shop stays connected and its figures stay
+  // closed, so the page names the shop, says its figures are being prepared, and offers
+  // Disconnect beside the plans, as the brief's "Connection without subscription" asks.
+  /** @type {{ id: string, shop_name?: string | null }[]} */
+  const shops = shopsRes.ok ? shopsRes.data?.shops ?? [] : [];
   // The whole flow lives in PaymentForm now: the plan cards are the chooser, so the heading,
   // the cards and the trust footer move inside it and change with the step the seller is on.
   return (
     <section className="billing">
+      {shops.length > 0 && (
+        <div className="card billing__shops" data-testid="billing-connected">
+          {shops.map((shop) => (
+            <ul className="rows" key={shop.id}>
+              <li><span>Connected shop</span><strong>{shop.shop_name ?? "Your TikTok Shop"}</strong></li>
+              <li><span>Status</span><strong>{status === "canceled" ? "Connected, plan ended" : "Connected, trial not started"}</strong></li>
+            </ul>
+          ))}
+          <p className="card__why">
+            {status === "canceled"
+              ? "Your figures can still be read. Choose a plan to change, export or update them again."
+              : "We are preparing your shop figures while you choose your plan."}
+          </p>
+          <p>
+            <Link className="btn btn--quiet" href={`/shops/${shops[0]?.id}/settings/disconnect`} data-testid="billing-disconnect">
+              Disconnect shop
+            </Link>
+          </p>
+        </div>
+      )}
       <PaymentForm plans={plans} trialDays={trialDays} trialEnds={trialEnds} ended={status === "canceled"} />
     </section>
   );

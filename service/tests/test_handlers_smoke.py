@@ -90,10 +90,14 @@ app.dependency_overrides[require_account] = lambda: ACCOUNT
 app.dependency_overrides[require_signed_in] = lambda: ACCOUNT
 app.dependency_overrides[shops.require_shop] = lambda: SHOP
 
-# No subscription row, which entitlements.py reads as every feature (the owner's ruling of 10
-# October 2026). The plan cases near the end set a row of their own and put this back.
+# A Pro trial, which holds every feature, so the cases below test the routes and not the plan.
+# Since A36 an account with no plan holds nothing. The plan cases near the end set a row of
+# their own and put this back.
 from app import db as _db  # noqa: E402
-_db.get_subscription_row = lambda _a: None
+_db.get_subscription_row = lambda _a: {"plan_slug": "pro", "status": "trialing",
+                                       "stripe_customer_id": "cus_t", "stripe_subscription_id": "sub_t",
+                                       "trial_end": None, "current_period_end": None,
+                                       "cancel_at_period_end": False}
 client = TestClient(app)
 
 
@@ -2064,8 +2068,11 @@ def plan_gates():
         # Pro holds everything. No live plan holds everything too, as the owner ruled.
         _db.get_subscription_row = lambda _a: _plan_row("pro")
         _assert(entitlements.features_for(ACCOUNT.id) == entitlements.ALL)
-        for row in (None, _plan_row("starter", "canceled"), _plan_row("starter", "incomplete")):
-            _assert(entitlements.features_for_row(row) == entitlements.ALL, row)
+        # A36: no plan holds nothing, and an ended plan keeps its reading features only.
+        for row in (None, _plan_row("starter", "incomplete")):
+            _assert(entitlements.features_for_row(row) == frozenset(), row)
+        _assert(entitlements.features_for_row(_plan_row("pro", "canceled"))
+                == entitlements.ALL - entitlements.EXPORTING)
         _assert(entitlements.features_for_row(_plan_row("starter", "past_due")) == frozenset())
     finally:
         _db.get_subscription_row = saved
@@ -2169,6 +2176,88 @@ def plan_change():
     finally:
         billing._stripe, _db.get_subscription_row, billing.db.apply_subscription_event = saved
 check("updateSubscription moves a running plan by its price, and the plan then decides the features", plan_change)
+
+
+# --- account state decides shop access (A36, the owner's ruling of 10 October 2026)
+def shop_access_by_state():
+    from app import entitlements
+    saved_override = app.dependency_overrides.pop(shops.require_shop)
+    saved_row, saved_tenant = _db.get_subscription_row, shops.tenant
+    shops.tenant = with_conn(shops, [("select id from shops", Result(["id"], [(SHOP,)]))])
+    try:
+        # No trial: only the onboarding routes answer.
+        _db.get_subscription_row = lambda _a: None
+        r = client.get(f"/v1/shops/{SHOP}/today")
+        _assert(r.status_code == 403 and r.json()["code"] == "trial_required", r.text)
+        r = client.get(f"/v1/shops/{SHOP}/settlements")
+        _assert(r.status_code == 403 and r.json()["code"] == "trial_required", r.text)
+        for method, path in (("GET", "/sync"), ("DELETE", "/connection"), ("GET", "/alert-settings")):
+            entitlements.shop_access(None, method, f"/v1/shops/{SHOP}{path}")  # does not raise
+        # An ended plan reads, but writes and exports are refused.
+        ended = _plan_row("growth", "canceled")
+        entitlements.shop_access(ended, "GET", f"/v1/shops/{SHOP}/money")
+        for method, path in (("PUT", f"/skus/{SKU}/cost"), ("POST", "/exports"), ("GET", "/exports")):
+            try:
+                entitlements.shop_access(ended, method, f"/v1/shops/{SHOP}{path}")
+                raise AssertionError(f"{method} {path} allowed on an ended plan")
+            except Exception as exc:  # noqa: BLE001
+                _assert(getattr(exc, "code", "") == "plan_ended", f"{method} {path}: {exc}")
+        # A live plan passes straight through.
+        entitlements.shop_access(_plan_row("starter"), "POST", f"/v1/shops/{SHOP}/exports")
+    finally:
+        app.dependency_overrides[shops.require_shop] = saved_override
+        _db.get_subscription_row, shops.tenant = saved_row, saved_tenant
+check("A shop with no trial answers only onboarding routes, and an ended plan reads only", shop_access_by_state)
+
+
+def stripe_webhook_reads_current_state():
+    import stripe as _stripe_mod
+    from types import SimpleNamespace as NS
+    written, retrieved = [], []
+
+    def sub(status):
+        return _stripe_mod.Subscription.construct_from(
+            {"object": "subscription", "id": "sub_w", "customer": "cus_w", "status": status,
+             "metadata": {"plan": "growth"}, "items": {"object": "list", "data": []}}, "sk_test_x")
+
+    class Subs:
+        def retrieve(self, sid): retrieved.append(sid); return sub("active")
+
+    event = {"id": "evt_1", "type": "customer.subscription.updated",
+             "data": {"object": {"id": "sub_w", "customer": "cus_w", "status": "trialing"}}}
+    saved = (billing._stripe, billing.db.apply_subscription_event, _stripe_mod.Webhook.construct_event)
+    os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
+    billing._stripe = lambda: NS(subscriptions=Subs())
+    billing.db.apply_subscription_event = lambda **kw: written.append(kw)
+    _stripe_mod.Webhook.construct_event = staticmethod(lambda payload, sig, secret: event)
+    try:
+        r = client.post("/v1/webhooks/stripe", content=b"{}", headers={"Stripe-Signature": "t=1,v1=x"})
+        _assert(r.status_code == 200, r.text)
+        # The late event said trialing; Stripe now says active, and active is what is written.
+        _assert(retrieved == ["sub_w"] and written[-1]["status"] == "active", (retrieved, written))
+    finally:
+        billing._stripe, billing.db.apply_subscription_event, _stripe_mod.Webhook.construct_event = saved
+check("The Stripe webhook writes the subscription as Stripe holds it now, not the event's copy", stripe_webhook_reads_current_state)
+
+
+def sync_follows_account_state():
+    from datetime import timedelta
+    from app import tiktok_sync
+    now = NOW
+    saved_row, saved_tenant = _db.get_subscription_row, _db.tenant
+    try:
+        _db.get_subscription_row = lambda _a: _plan_row("starter")
+        _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, now) is True)
+        _db.get_subscription_row = lambda _a: _plan_row("starter", "canceled")
+        _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, now) is False)
+        _db.get_subscription_row = lambda _a: None
+        for days, expected in ((29, True), (30, True), (31, False)):
+            _db.tenant = with_conn(_db, [("select created_at from shops",
+                                          Result(["created_at"], [(now - timedelta(days=days),)]))])
+            _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, now) is expected, (days, expected))
+    finally:
+        _db.get_subscription_row, _db.tenant = saved_row, saved_tenant
+check("A shop with no trial is read for thirty days from connection, and an ended plan not at all", sync_follows_account_state)
 
 print()
 if failures:

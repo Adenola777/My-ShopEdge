@@ -93,6 +93,11 @@ carries every platform, integration and commercial decision taken since.
     exports, the list of recent export files and the statements needing review. The service
     enforces it from the plan Stripe reports, and an account with no live plan keeps
     everything. A seller can change plan in the app; that call is unverified against Stripe.
+15. **No figures before a trial starts**, ruled 10 October 2026 (A36), which replaces the "no
+    live plan keeps everything" of item 14. A shop with no trial is read for 30 days, then no
+    more. An ended plan reads but cannot change or export anything. A36 also records the
+    owner's rulings on the brief's navigation, net sales, gross profit so far, colours and
+    payout statuses, and the build order that follows.
 
 ## Open items, by owner
 
