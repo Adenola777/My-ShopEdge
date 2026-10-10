@@ -10,7 +10,7 @@ import { fetchShop } from "@/lib/api";
 import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { AlertSettingsForm } from "@/components/SettingsForms";
 
-export const metadata = { title: "Alert settings" };
+export const metadata = { title: "Notification settings" };
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function AlertSettingsPage({ params }) {
@@ -22,7 +22,7 @@ export default async function AlertSettingsPage({ params }) {
   return (
     <section data-testid="alert-settings-screen">
       <header className="page-head">
-        <h1>Alert settings</h1>
+        <h1>Notification settings</h1>
         <p>These thresholds decide when a variant is marked low on stock, when MyShopEdge reminds you about a return you have not checked, and when a rise in TikTok&rsquo;s stock count is raised for you to check.</p>
       </header>
       <AlertSettingsForm shopId={shopId} initial={result.data} />

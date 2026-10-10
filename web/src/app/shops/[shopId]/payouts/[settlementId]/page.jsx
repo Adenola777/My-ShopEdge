@@ -104,7 +104,7 @@ export default async function PayoutPage({ params }) {
               })()}
             </li>
             <li><span>Linked statement</span><span>{formatDate(s.statement_time)}, <Figure amount={s.statement_amount} /></span></li>
-            <li><span>Difference</span><Figure amount={r.unexplained} /></li>
+            <li><span>Difference</span><Figure amount={r.unexplained} alert /></li>
           </ul>
           <p className="card__why" data-testid="payout-explanation">{explanation(s, r)}</p>
         </div>
@@ -128,7 +128,7 @@ export default async function PayoutPage({ params }) {
             <li><span>Shipping cost charged by TikTok</span><Figure amount={c.shipping_cost} /></li>
             <li><span>TikTok adjustments</span><Figure amount={c.adjustments} /></li>
             {c.difference && c.difference.amount_minor !== 0 && (
-              <li><span>Not explained by TikTok</span><Figure amount={c.difference} /></li>
+              <li><span>Not explained by TikTok</span><Figure amount={c.difference} alert /></li>
             )}
             <li className="rows__total"><span>Statement total</span><Figure amount={s.statement_amount} /></li>
             <li><span>Reserve withheld</span><Figure amount={s.total_reserve} unsigned /></li>
@@ -147,7 +147,7 @@ export default async function PayoutPage({ params }) {
           <ul className="rows">
             <li><span>Orders settled</span><strong>{r.orders_settled}</strong></li>
             <li><span>Net proceeds from those orders</span><Figure amount={r.net_proceeds} /></li>
-            <li className="rows__total"><span>Unexplained</span><Figure amount={r.unexplained} /></li>
+            <li className="rows__total"><span>Unexplained</span><Figure amount={r.unexplained} alert /></li>
           </ul>
           <p className="card__why">
             {/* A18.3 asks for a route to Discrepancies here, but nothing raises a discrepancy for

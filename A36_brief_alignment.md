@@ -291,13 +291,37 @@ restored afterwards. **Not checked in a browser**, because the local service doe
 the browser's writes across origins. The cost status Needs review on Products is still not
 given, because a seller's choice in the upload is not kept against the product.
 
-## A36.10 Still to build, each step with the owner's approval
-5. Overview and Reconcile, with the six statuses and "Explain this payout".
-6. Products, Returns, Stock, Exports, and VAT and tax, as the brief sets them out.
-7. The cost upload: a template, a preview, and the five row statuses. Existing costs are shown
-   before they are replaced, and dates in the file are used.
-8. Settings, the app footer's legal and support links, and the colour changes. Each colour
-   change goes to the owner first.
+## A36.10 Built in step 8, 10 October 2026
+
+Step 8 follows section 18 of the brief, adds the app footer's links, and applies the colour
+ruling the owner approved (A36.2 item 3).
+
+- **Settings, in the brief's order.** The pages are TikTok Shop connection, Notification
+  settings, Account, billing and plan, Data and privacy, Delete account, Your shops, and Help
+  and glossary. Product costs stay under Products, and the connection page links to them.
+- **The connection page** opens with the brief's sentence: "MyShopEdge can read your TikTok
+  Shop data but cannot place orders, issue refunds or change your shop." It shows the status,
+  the last sync, Data sync, Reconnect and Disconnect.
+- **Data and privacy** says how long each kind of data is kept, in the Privacy Policy's own
+  periods, and links to the policy. It offers Delete account, which asks for the account's
+  email to be typed and can be cancelled for thirty days. It names the privacy and support
+  contacts, and keeps the data download.
+- **The app footer** links to the Privacy Policy, the Terms and Conditions and the Cookie
+  Policy, with the support and privacy addresses the product site publishes.
+- **Colours.**
+  - A deduction is now dark text with its minus sign.
+  - Red is kept for stock written off, for differences nobody has explained, and for Needs
+    review, which covers a failed payment.
+  - No colour token changed, and no other colour change was made.
+
+**One mismatch for the owner.** The Privacy Policy says a seller can download their data
+"under Settings, Your data". That page is now called Data and privacy. The policy is the owner's
+document, so it was not edited.
+
+Checked in a browser on the local copy at 390 and 1280 pixels wide, with no page scrolling
+sideways.
+
+## A36.11 Still to build
 
 Deleting the data of a shop whose account never starts a trial, 30 days after connection, is
 not built. It removes data, so it needs the owner's approval of the job before it runs, and the

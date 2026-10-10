@@ -102,7 +102,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
                 ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
                   <li key={`${s.key}-${l.category}-${i}`}>
                     <span><LineLabel line={l} /></span>
-                    <Figure amount={l.amount} />
+                    <Figure amount={l.amount} alert={l.category === "stock_written_off"} />
                   </li>
                 )),
                 <li key={`${s.key}-total`} className="rows__total">
@@ -146,7 +146,7 @@ export default async function ProductDetailPage({ params, searchParams }) {
               ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
                 <li key={`${s.key}-${l.category}-${i}`}>
                   <span><LineLabel line={l} /></span>
-                  <Figure amount={l.amount} />
+                  <Figure amount={l.amount} alert={l.category === "stock_written_off"} />
                 </li>
               )),
               <li key={`${s.key}-total`} className="rows__total">

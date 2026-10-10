@@ -23,13 +23,18 @@ import { formatMoney } from "@/lib/api";
  *   reason?: string | null,
  *   className?: string,
  *   unsigned?: boolean,
+ *   alert?: boolean,
  * }} props
  *
  * `unsigned` shows the amount without its ledger sign, for money whose direction its label
  * already states. Added 8 October 2026 for the payout and the reserve, which the ledger
  * stores negative and a seller read as money taken.
+ *
+ * `alert` shows the amount in red. Since 10 October 2026 (A36.2 item 3, the owner's ruling) a
+ * deduction is dark text with its minus sign, and red is kept for write-offs, failed payments
+ * and differences nobody has explained, which the caller marks with `alert`.
  */
-export function Figure({ amount, reason, className = "", unsigned = false }) {
+export function Figure({ amount, reason, className = "", unsigned = false, alert = false }) {
   if (amount == null) {
     const why = reason || "Not known";
     return (
@@ -40,10 +45,10 @@ export function Figure({ amount, reason, className = "", unsigned = false }) {
     );
   }
 
-  const negative = !unsigned && amount.amount_minor < 0;
   const shown = unsigned ? { ...amount, amount_minor: Math.abs(amount.amount_minor) } : amount;
+  const red = alert && amount.amount_minor !== 0;
   return (
-    <span className={`money ${negative ? "money--neg" : ""} ${className}`}>
+    <span className={`money ${red ? "money--alert" : ""} ${className}`}>
       {formatMoney(shown)}
     </span>
   );

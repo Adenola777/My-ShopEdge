@@ -36,7 +36,7 @@ export default async function DisconnectPage({ params }) {
   }
 
   const plan = (
-    <>Disconnecting does not change your plan, and you can stop it renewing in <Link href={`/shops/${shopId}/settings/profile`}>Profile and plan</Link>.</>
+    <>Disconnecting does not change your plan, and you can stop it renewing in <Link href={`/shops/${shopId}/settings/profile`}>Account, billing and plan</Link>.</>
   );
 
   if (shop.connection_status === "disconnected") {

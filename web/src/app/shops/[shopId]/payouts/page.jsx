@@ -84,7 +84,7 @@ export default async function PayoutsPage({ params, searchParams }) {
                 </li>
                 <li>
                   <span>Difference</span>
-                  <Figure amount={s.difference} reason="The difference was not worked out for this payout." />
+                  <Figure amount={s.difference} reason="The difference was not worked out for this payout." alert />
                 </li>
               </ul>
               <p className="card__foot">Explain this payout</p>
