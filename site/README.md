@@ -67,3 +67,14 @@ Revised later on 10 October 2026 after the owner's review of the page:
   reads "3.40", so the images show the app as a seller sees it.
 
 The page needs no build.
+
+Revised again on 10 October 2026 from the owner's "Final Landing Page Review":
+
+- The reviewer saw grey boxes where the screenshots sit. They came from the page: each image loaded only on scroll and had no height, so a whole-page capture drew the grey panel with nothing in it. Every screenshot now loads with the page and carries its height. A whole-page capture at 1280 and 390 px showed every image.
+- How it works is the three steps only, as the review asks, without the Overview screenshot.
+- Step 1, step 2, the Products text, the VAT and tax text and the pricing heading and introduction use the review's wording.
+- On the owner's ruling the pricing introduction ends "VAT is not currently charged."
+- The footer carries the company identity block: company number, address, ICO registration number and the support, privacy and legal addresses.
+- Not applied, because the product does not do it: "gross profit and margin". MyShopEdge computes gross profit and no margin, so every sentence that says margin keeps "gross profit" alone until margin is built.
+- Not applied yet: the FAQ and Payout Explainer footer links, because neither page exists, and a Cookie settings control, which the owner ruled against this morning.
+
