@@ -1988,6 +1988,27 @@ def delete_schedule():
     _assert(r.status_code == 404 and r.json()["code"] == "schedule_not_found", r.text)
 check("DELETE export-schedules answers 204, then 404", delete_schedule)
 
+def shared_category_labels():
+    from app import money_lines, tiktok_sync
+    fields: dict[str, set[str]] = {}
+    for f, c in {**tiktok_sync.FEE_MAP, **tiktok_sync.SHIP_MAP}.items():
+        fields.setdefault(c, set()).add(f)
+    shared = {c for c, fs in fields.items() if len(fs) > 1}
+    _assert(shared == set(money_lines.SHARED), (shared, money_lines.SHARED))
+    rows = [
+        {"category": "affiliate_commission", "tiktok_fee_type": "affiliate_commission_amount", "amount_minor": -14723},
+        {"category": "affiliate_commission", "tiktok_fee_type": "affiliate_ads_commission_amount", "amount_minor": -25},
+        {"category": "shipping_fee", "tiktok_fee_type": "actual_shipping_fee_amount", "amount_minor": -83100},
+        {"category": "shipping_fee", "tiktok_fee_type": "customer_paid_shipping_fee_amount", "amount_minor": 85837},
+        {"category": "shipping_fee", "tiktok_fee_type": "shipping_fee_discount_amount", "amount_minor": 3310},
+        {"category": "platform_commission", "tiktok_fee_type": "platform_commission_amount", "amount_minor": -500},
+    ]
+    labels = [money_lines._line(r, "GBP").label for r in rows]
+    _assert(labels == ["Affiliate commission", "Affiliate ads commission", "Actual shipping fee",
+                       "Customer paid shipping fee", "Shipping fee discount", "Platform commission"], labels)
+    _assert(len(set(labels)) == len(labels), labels)
+check("A category TikTok fills from several fields names each line by its field, so none repeats", shared_category_labels)
+
 print()
 if failures:
     print(f"{len(failures)} failure(s)")
