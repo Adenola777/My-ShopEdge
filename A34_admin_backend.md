@@ -226,13 +226,28 @@ What has run:
   started a sync. The audit log listed each action under `admin:<email>`.
 - At 390 px wide the page does not scroll sideways.
 
-**Unverified:** a real Stack sign-in on the admin site. It needs the site's address on Neon
-Auth's trusted domains, which is batch 4.
+**Batch 4, going live, was done on 10 October 2026.**
 
-**Batch 4, going live, is in progress.**
+- The owner named `adenola.adegbesan@gmail.com` as the admin for now. This session set
+  `ADMIN_EMAILS` to that address on `My-ShopEdge-1` through Render's API, on his instruction,
+  and redeployed `ad73a6f`.
+- The Vercel project `myshopedge-admin` (`prj_GP13Qve2KNjNEHRmFgxIiackKU2E`, root `admin`)
+  was created with the owner's approval. It deploys `main`. It holds
+  `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_STACK_PROJECT_ID` and
+  `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY`, the last set by the owner.
+- **The address is `https://myshopedge-admin.vercel.app`.** Vercel Authentication is switched
+  off on the project, with the owner's approval, so that the address opens without a Vercel
+  sign-in. The admin routes still answer 404 to anyone not on the allow-list.
+- **The custom addresses do not work.** `admin.myshopedge.inspirecraftglobal.com` and then
+  `admin.inspirecraftglobal.com` were added to the project, but Namecheap refused to save
+  either record, CNAME or A, and public DNS answers NXDOMAIN for both. The cause is not
+  known. Both domains remain on the project unused.
+- `ALLOWED_ORIGINS` on `My-ShopEdge-1` gained `https://admin.inspirecraftglobal.com` and
+  `https://myshopedge-admin.vercel.app`, redeployed as `dep-db4tpu142hec73evtdfg`.
+- The owner added `myshopedge-admin.vercel.app` to Neon Auth's trusted domains.
+- **The owner signed in on 10 October 2026** with `adenola.adegbesan@gmail.com` on deployment
+  `dpl_CuqjUCCcYdX7hp3YgVHSvUwCiGQM` and reports that it works. That is the first real Stack
+  sign-in on the admin site.
 
-- On 10 October 2026 the owner named `adenola.adegbesan@gmail.com` as the admin for now.
-  This session set `ADMIN_EMAILS` to that address on `My-ShopEdge-1` through Render's API, on
-  his instruction, and redeployed `ad73a6f`.
-- The Vercel project, its address, `ALLOWED_ORIGINS` and Neon Auth's trusted domains are not
-  done.
+**Still unverified:** the Stripe half of suspension, because no account with a live Stripe
+subscription has been suspended.
