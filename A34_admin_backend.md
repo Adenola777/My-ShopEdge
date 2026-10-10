@@ -184,8 +184,8 @@ Each batch is shown to the owner and approved before the next starts.
 **Batch 2, the service, was built on 10 October 2026.** It is unverified against Neon, Stack
 and Stripe:
 
-- `schema/0032_admin_views.sql` holds the seven read functions. **It is applied to no Neon
-  branch**, and applying it needs the owner's authority.
+- `schema/0032_admin_views.sql` holds the seven read functions. It was applied with the
+  owner's authority on 10 October 2026 to development, staging and production.
 - `service/app/admin.py` holds `require_admin`, seven views and eight actions under
   `/v1/admin/`.
 - The deletion steps moved into `account_deletion.close_account` and `cancel_closing`, so the
