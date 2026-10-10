@@ -246,7 +246,52 @@ Checked on the local copy at 390 and 1280 pixels wide, with no page scrolling si
 every one of the six products, net sales plus TikTok deductions equalled net proceeds, and net
 proceeds, product cost and return impact added up to gross profit after returns.
 
-## A36.9 Still to build, each step with the owner's approval
+## A36.9 Built in step 7, 10 October 2026
+
+Step 7 follows section 8A of the brief.
+
+- **The template.** "Download cost template", on the upload page and on Products, gives a CSV
+  of every variant in the shop with the cost in force today. Its columns are SKU, product,
+  variation, cost per unit and effective date. It is laid out by the web app from
+  `listSkuCosts` and works nothing out. A variant with no seller SKU carries TikTok's SKU id,
+  which Excel shortens unless the column is formatted as text, and the page says so.
+- **The upload page** has the brief's heading and body, the expected columns, and a drop area
+  that also opens the file chooser.
+- **Each row takes one of the brief's five statuses** (`cost_files.match`):
+  - Matched: it sets a cost where none is in force on its date, or the same cost.
+  - Needs review: a different cost is already in force on its date, and the row carries
+    that cost.
+  - No match found.
+  - Duplicate: the same variant and date appear earlier in the file.
+  - Invalid cost: the amount or the date cannot be read.
+- **No silent overwrite.** A Needs review row is applied only when the seller ticks "Replace"
+  beside the cost it would replace.
+- **The preview table.** Before anything is saved, the table shows each row's imported code,
+  the matched TikTok product and variation, the SKU, the cost per unit, the effective date
+  and the status. It also shows how many rows are ready to apply and how many need review.
+  The button reads "Apply costs to N products", "Review unmatched products" lists the rest,
+  and the page says "You can edit or replace costs later."
+- **Dates in the file are used.** An optional effective date column is read from an Excel
+  date or as text such as 2026-08-01 or 01/08/2026, day first. Each cost applies from its
+  row's date, or from today when the row has none. Two rows for one variant with different
+  dates are both kept.
+
+The contract's `unmatched` outcome is now `no_match` and `invalid_cost`. `rows_unmatched`
+stays, as their sum, and a match stored before this change is read as before.
+
+Checked on the local copy with a local stand-in for the file store. A seven-row file gave:
+- one Matched;
+- two Needs review, with the cost already set beside them;
+- one No match found;
+- two Invalid cost, one amount and one date;
+- one Duplicate.
+
+Applying wrote each chosen cost from its own date, or from today. The local cost tables were
+restored afterwards. **Not checked in a browser**, because the local service does not allow
+the browser's writes across origins. The cost status Needs review on Products is still not
+given, because a seller's choice in the upload is not kept against the product.
+
+## A36.10 Still to build, each step with the owner's approval
 5. Overview and Reconcile, with the six statuses and "Explain this payout".
 6. Products, Returns, Stock, Exports, and VAT and tax, as the brief sets them out.
 7. The cost upload: a template, a preview, and the five row statuses. Existing costs are shown

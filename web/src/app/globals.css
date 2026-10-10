@@ -804,3 +804,18 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 .table-scroll--sticky td:first-child { position: sticky; left: 0; background: var(--white); min-width: 10rem; z-index: 1; }
 .scroll-hint { display: block; }
 @media (min-width: 64rem) { .scroll-hint { display: none; } }
+
+/* The cost upload's drop area (A36 step 7). A dashed border in the existing grey, and the
+   existing orange tint while a file is held over it. */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-6) var(--space-4);
+  border: 2px dashed var(--ink-200);
+  border-radius: var(--radius);
+  text-align: center;
+  cursor: pointer;
+}
+.dropzone--over { border-color: var(--orange-600); background: var(--orange-50); }

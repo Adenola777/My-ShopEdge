@@ -130,6 +130,8 @@ export default async function ProductsPage({ params, searchParams }) {
         <div className="card--action__buttons">
           <Link className="btn btn--primary" href={`/shops/${shopId}/setup/costs/upload`}>Upload a cost file</Link>
           <Link className="btn btn--quiet" href={`/shops/${shopId}/setup/costs/manual`}>Type costs in</Link>
+          {/* A36 step 7: the brief's template download, filled with the shop's variants. */}
+          <a className="btn btn--quiet" href={`/shops/${shopId}/setup/costs/template`} data-testid="products-template">Download cost template</a>
         </div>
       </div>
 

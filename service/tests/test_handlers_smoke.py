@@ -1318,16 +1318,21 @@ def uploads_map_match_apply():
     _assert(r.status_code == 422, "a mapping in another currency is refused")
     cu.tenant = with_conn(cu, [
         ("from cost_uploads where id", Result(UP_COLS, [upload_row("mapped", mapping)])),
-        ("from skus where shop_id", Result(["id", "seller_sku", "tiktok_sku_id"], [(SKU, "HAIR-BLUE", "1729")])),
+        ("from skus k left join products", Result(["id", "seller_sku", "tiktok_sku_id", "t", "v"],
+                                                   [(SKU, "HAIR-BLUE", "1729", "Hair brush", "Blue")])),
+        ("from product_costs where shop_id", Result(["s", "e", "c", "m"], [])),
         ("update cost_uploads set status = 'confirmed'", Result([], [])),
     ])
     r = client.post(f"/v1/shops/{SHOP}/cost-uploads/{UPLOAD}/match")
     _assert(r.status_code == 200, r.text)
     m = r.json()
-    _assert((m["rows_total"], m["rows_matched"], m["rows_unmatched"]) == (2, 1, 1), m)
+    _assert((m["rows_total"], m["rows_matched"], m["rows_unmatched"], m["rows_no_match"]) == (2, 1, 1, 1), m)
+    hit_row = next(x for x in m["rows"] if x["outcome"] == "matched")
+    _assert((hit_row["product_title"], hit_row["variant_label"], hit_row["imported"])
+            == ("Hair brush", "Blue", "HAIR-BLUE"), hit_row)
     _assert(UP_KEY.rsplit("/", 1)[0] + "/rows.json" in files, "the match is stored beside the file")
     hit = [x["row_id"] for x in m["rows"] if x["outcome"] == "matched"]
-    miss = [x["row_id"] for x in m["rows"] if x["outcome"] == "unmatched"]
+    miss = [x["row_id"] for x in m["rows"] if x["outcome"] == "no_match"]
     writes = []
     class Recording(Conn):
         def execute(self, sql, args=None):

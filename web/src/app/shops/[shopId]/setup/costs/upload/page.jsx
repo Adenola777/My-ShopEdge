@@ -3,6 +3,8 @@
  * upload operations: the browser sends the file straight to the signed URL, the seller
  * confirms which column is which, the service matches the rows, and only matched rows are
  * applied. Unmatched and duplicate rows stay visible with their reason, and are never applied.
+ *
+ * Since 10 October 2026 it carries the brief's heading and body (A36 step 7, section 8A).
  */
 
 import Link from "next/link";
@@ -10,7 +12,7 @@ import { api } from "@/lib/api";
 import { UploadFlow } from "@/components/SetupForms";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 
-export const metadata = { title: "Upload your costs" };
+export const metadata = { title: "Upload your product costs" };
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function UploadPage({ params }) {
@@ -25,8 +27,8 @@ export default async function UploadPage({ params }) {
     <section data-testid="upload-screen">
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/setup/costs`}>Product costs</Link></p>
-        <h1>Upload your costs</h1>
-        <p>Choose your Excel or CSV file. You check the columns before any cost is applied.</p>
+        <h1>Upload your product costs.</h1>
+        <p>Upload an Excel or CSV file. We will show how it matches your TikTok Shop products before anything is saved.</p>
       </header>
       <UploadFlow shopId={shopId} />
     </section>

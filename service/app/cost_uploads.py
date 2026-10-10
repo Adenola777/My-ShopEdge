@@ -30,13 +30,22 @@ STATUS
 The two contract schemas disagree on one word: a matched upload is `confirmed` on
 `CostUpload` and `matched` on `CostUploadSummary`. The database holds `confirmed`, which its
 CHECK allows, and the list translates it.
+
+THE BRIEF'S FIVE STATUSES, A36 STEP 7 (10 October 2026)
+
+Each row is matched, needs review, no match, duplicate or invalid cost (`cost_files.py` says
+what each means), and carries the variant's product and variation, the date it applies from
+and any cost it would replace. Apply takes matched rows and the needs review rows the seller
+chose, and dates each cost from the row's own date, or today when the file has none. The
+`rows_unmatched` count, the database's own column, is no match and invalid cost together.
+A match stored before this change used `unmatched`, which is read as no match.
 """
 
 from __future__ import annotations
 
 import base64
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
@@ -47,7 +56,16 @@ from pydantic import BaseModel, Field
 from . import storage
 from .auth import Account, require_account
 from .entitlements import require as require_feature
-from .cost_files import CSV_TYPE, XLSX_TYPE, FileUnreadable, Variant, match, parse, suggest_mapping
+from .cost_files import (
+    CSV_TYPE,
+    XLSX_TYPE,
+    ExistingCost,
+    FileUnreadable,
+    Variant,
+    match,
+    parse,
+    suggest_mapping,
+)
 from .dates import business_today
 from .db import tenant
 from .idempotency import record, replay, request_hash
@@ -66,6 +84,8 @@ class ColumnMapping(BaseModel):
     cost_column: str
     packing_column: str | None = None
     postage_column: str | None = None
+    # A36 step 7: an optional column of the dates each cost applies from.
+    effective_date_column: str | None = None
     currency: str = "GBP"
 
 
@@ -100,14 +120,23 @@ class CreateUploadOut(BaseModel):
     upload_expires_at: datetime
 
 
+OUTCOMES = ("matched", "needs_review", "no_match", "duplicate", "invalid_cost")
+
+
 class MatchRow(BaseModel):
     row_id: UUID
-    outcome: Literal["matched", "unmatched", "duplicate"]
+    outcome: Literal["matched", "needs_review", "no_match", "duplicate", "invalid_cost"]
     matched_on: Literal["seller_sku", "tiktok_sku_id"] | None = None
     sku_id: UUID | None = None
     seller_sku: str | None = None
     unit_cost: Money | None = None
     reason: str | None = None
+    row_number: int | None = None
+    imported: str | None = None
+    product_title: str | None = None
+    variant_label: str | None = None
+    effective_from: date | None = None
+    existing_cost: Money | None = None
 
 
 class CostMatchResult(BaseModel):
@@ -116,6 +145,9 @@ class CostMatchResult(BaseModel):
     rows_matched: int
     rows_unmatched: int
     rows_duplicate: int
+    rows_needs_review: int = 0
+    rows_no_match: int = 0
+    rows_invalid_cost: int = 0
     rows: list[MatchRow]
 
 
@@ -315,7 +347,8 @@ def put_cost_upload_mapping(
         parsed, error = _read_file(row["storage_key"])
         if parsed is None:
             raise Problem(422, "validation_failed", error or "The file has not finished uploading. Upload it again, then continue.")
-        for field in ("key_column", "cost_column", "packing_column", "postage_column"):
+        for field in ("key_column", "cost_column", "packing_column", "postage_column",
+                      "effective_date_column"):
             name = getattr(body, field)
             if name and name not in parsed.columns:
                 raise Problem(422, "validation_failed", f'The file has no column headed "{name}".')
@@ -335,20 +368,38 @@ def put_cost_upload_mapping(
     return _out(row, parsed, None)
 
 
+def _outcome(r: dict[str, Any]) -> str:
+    # A match stored before 10 October 2026 called a row with no product `unmatched`.
+    return "no_match" if r["outcome"] == "unmatched" else r["outcome"]
+
+
 def _result(upload_id: UUID, stored: list[dict[str, Any]]) -> CostMatchResult:
+    def count(*names: str) -> int:
+        return sum(1 for r in stored if _outcome(r) in names)
+
     return CostMatchResult(
         upload_id=upload_id,
         rows_total=len(stored),
-        rows_matched=sum(1 for r in stored if r["outcome"] == "matched"),
-        rows_unmatched=sum(1 for r in stored if r["outcome"] == "unmatched"),
-        rows_duplicate=sum(1 for r in stored if r["outcome"] == "duplicate"),
+        rows_matched=count("matched"),
+        rows_unmatched=count("no_match", "invalid_cost"),
+        rows_duplicate=count("duplicate"),
+        rows_needs_review=count("needs_review"),
+        rows_no_match=count("no_match"),
+        rows_invalid_cost=count("invalid_cost"),
         rows=[
             MatchRow(
-                row_id=r["row_id"], outcome=r["outcome"], matched_on=r["matched_on"],
+                row_id=r["row_id"], outcome=_outcome(r), matched_on=r["matched_on"],
                 sku_id=r["sku_id"], seller_sku=r["seller_sku"],
                 unit_cost=(money(r["unit_cost_minor"], r["currency"])
                            if r["unit_cost_minor"] is not None else None),
                 reason=r["reason"],
+                row_number=r.get("row_number"),
+                imported=r.get("imported"),
+                product_title=r.get("product_title"),
+                variant_label=r.get("variant_label"),
+                effective_from=r.get("effective_from"),
+                existing_cost=(money(r["existing_cost_minor"], r["currency"])
+                               if r.get("existing_cost_minor") is not None else None),
             )
             for r in stored
         ],
@@ -377,14 +428,22 @@ def match_cost_upload(
         parsed, error = _read_file(row["storage_key"])
         if parsed is None:
             raise Problem(422, "validation_failed", error or "The file has not finished uploading. Upload it again, then continue.")
-        variants = [
-            Variant(sku_id=r[0], seller_sku=r[1], tiktok_sku_id=r[2])
-            for r in conn.execute(
-                "select id, seller_sku, tiktok_sku_id from skus where shop_id = %s", (str(shop_id),)
-            ).fetchall()
-        ]
+        sku_rows = conn.execute(
+            "select k.id, k.seller_sku, k.tiktok_sku_id, p.title, k.variant_label "
+            "from skus k left join products p on p.id = k.product_id where k.shop_id = %s",
+            (str(shop_id),),
+        ).fetchall()
+        variants = [Variant(sku_id=r[0], seller_sku=r[1], tiktok_sku_id=r[2]) for r in sku_rows]
+        names = {str(r[0]): (r[3], r[4]) for r in sku_rows}
+        existing: dict[UUID, list[ExistingCost]] = {}
+        for sku, eff, created, cost in conn.execute(
+            "select sku_id, effective_from, created_at, cost_minor from product_costs "
+            "where shop_id = %s", (str(shop_id),),
+        ).fetchall():
+            existing.setdefault(sku if isinstance(sku, UUID) else UUID(str(sku)), []).append(
+                ExistingCost(effective_from=eff, created_at=created, cost_minor=int(cost)))
         try:
-            outcomes = match(parsed, mapping, variants)
+            outcomes = match(parsed, mapping, variants, existing, business_today())
         except FileUnreadable as exc:
             raise Problem(422, "validation_failed", str(exc)) from exc
         stored = [
@@ -394,6 +453,11 @@ def match_cost_upload(
                 "seller_sku": o.seller_sku, "unit_cost_minor": o.unit_cost_minor,
                 "packing_minor": o.packing_minor, "postage_minor": o.postage_minor,
                 "reason": o.reason, "currency": mapping.get("currency", "GBP"),
+                "imported": o.imported,
+                "product_title": names.get(str(o.sku_id), (None, None))[0] if o.sku_id else None,
+                "variant_label": names.get(str(o.sku_id), (None, None))[1] if o.sku_id else None,
+                "effective_from": o.effective_from.isoformat() if o.effective_from else None,
+                "existing_cost_minor": o.existing_cost_minor,
             }
             for o in outcomes
         ]
@@ -402,8 +466,8 @@ def match_cost_upload(
         conn.execute(
             "update cost_uploads set status = 'confirmed', rows_total = %s, rows_matched = %s, "
             "rows_unmatched = %s, rows_duplicate = %s where id = %s",
-            (result.rows_total, result.rows_matched, result.rows_unmatched,
-             result.rows_duplicate, str(uploadId)),
+            (result.rows_total, result.rows_matched + result.rows_needs_review,
+             result.rows_unmatched, result.rows_duplicate, str(uploadId)),
         )
         record(conn, account.id, op, idempotency_key, digest, 200, result.model_dump(mode="json"))
     return result
@@ -417,11 +481,13 @@ def apply_cost_upload(
     uploadId: UUID,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
-    """Writes a cost for each confirmed matched row, the same way putSkuCost does.
+    """Writes a cost for each chosen row, the same way putSkuCost does.
 
-    The previous cost is stamped superseded and a new row inserted, dated today in London,
-    so past months keep the cost that applied then. A row id that is not a matched row of
-    this upload's last match is refused rather than skipped, because the seller asked for it.
+    A chosen row is matched, or needs review and was chosen by the seller, which is how a cost
+    already set is replaced. The previous cost is stamped superseded and a new row inserted,
+    dated from the row's own date, or today in London when the file gave none, so past months
+    keep the cost that applied then. A row id that is neither of this upload's last match is
+    refused rather than skipped, because the seller asked for it.
     """
     wanted = {str(x) for x in body.apply_row_ids}
     op = "applyCostUpload"
@@ -437,13 +503,13 @@ def apply_cost_upload(
             stored = json.loads(storage.get_bytes(_rows_key(row["storage_key"])))
         except storage.NotStored as exc:
             raise Problem(422, "validation_failed", "Match the file before applying its costs.") from exc
-        matched = {r["row_id"]: r for r in stored if r["outcome"] == "matched"}
+        matched = {r["row_id"]: r for r in stored if _outcome(r) in ("matched", "needs_review")}
         unknown = wanted - matched.keys()
         if unknown:
             raise Problem(
                 422, "validation_failed",
                 f"{len(unknown)} of the rows you chose could not be matched to a product, so no costs "
-                "were applied. Choose only matched rows.",
+                "were applied. Choose only matched rows and rows you have reviewed.",
             )
         currency = _shop_currency(conn, shop_id)
         today = business_today()
@@ -459,7 +525,9 @@ def apply_cost_upload(
                 "postage_minor, currency, source, cost_upload_id, effective_from, created_by) "
                 "values (%s, %s, %s, %s, %s, %s, 'upload', %s, %s, %s)",
                 (str(shop_id), r["sku_id"], r["unit_cost_minor"], r["packing_minor"],
-                 r["postage_minor"], currency, str(uploadId), today, str(account.id)),
+                 r["postage_minor"], currency, str(uploadId),
+                 date.fromisoformat(r["effective_from"]) if r.get("effective_from") else today,
+                 str(account.id)),
             )
         conn.execute(
             "update cost_uploads set status = 'applied', confirmed_at = now() where id = %s",
