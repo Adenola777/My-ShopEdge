@@ -7,6 +7,10 @@
  * Each area has a path under the shop, a label, an icon name and its pages. Each page is
  * [path under the shop or an absolute path, label, further paths that also belong to it].
  * An area's first page is its overview, and its path is the area's own.
+ *
+ * The labels follow the owner's brief of 10 October 2026, approved that day: Today became
+ * Overview, Money became Reconcile and Tax became VAT and tax. The slugs and paths did not
+ * change, so no address a seller has saved stops working.
  */
 
 /** @typedef {[string, string, string[]?]} NavPage */
@@ -15,8 +19,8 @@
 /** The five areas a seller works in. They are the bottom tabs on a phone. @type {NavArea[]} */
 export const AREAS = [
   {
-    slug: "today", label: "Today", icon: "today", pages: [
-      ["today", "Today overview"],
+    slug: "today", label: "Overview", icon: "today", pages: [
+      ["today", "Overview"],
       ["notifications", "Notifications"],
       ["discrepancies", "Discrepancies"],
     ],
@@ -34,16 +38,16 @@ export const AREAS = [
     ],
   },
   {
-    slug: "money", label: "Money", icon: "money", pages: [
-      ["money", "Money overview"],
-      ["payouts", "Payouts and invoices"],
-      ["records", "Records"],
-      ["money/export", "Export"],
+    slug: "money", label: "Reconcile", icon: "money", pages: [
+      ["money", "Where the money went"],
+      ["payouts", "Payouts"],
+      ["records", "Transactions"],
+      ["money/export", "Exports"],
     ],
   },
   {
-    slug: "tax", label: "Tax", icon: "tax", pages: [
-      ["tax", "Tax overview"],
+    slug: "tax", label: "VAT and tax", icon: "tax", pages: [
+      ["tax", "VAT and tax overview"],
       ["setup/tax", "Business details"],
       ["other-sales", "Other-channel sales"],
     ],

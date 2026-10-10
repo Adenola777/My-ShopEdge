@@ -37,7 +37,7 @@ import {
   keptReason,
 } from "@/lib/terms";
 
-export const metadata = { title: "Today" };
+export const metadata = { title: "Overview" };
 
 /** @type {Record<string, string>} */
 const SEVERITY_WORD = { critical: "Act now", warning: "Check", info: "Note" };
@@ -104,8 +104,10 @@ export default async function TodayPage({ params }) {
   return (
     <section>
       <header className="page-head">
-        <h1>Today</h1>
-        {shop?.shop_name && <p>{shop.shop_name}</p>}
+        {/* Named Overview, with this subtitle, from the owner's brief approved 10 October 2026. */}
+        <h1>Overview</h1>
+        <p>A clear picture of what your TikTok Shop has left you.</p>
+        {shop?.shop_name && <p className="muted">{shop.shop_name}</p>}
       </header>
 
       {/* Only `stale` raises the banner. `getting_old` starts six hours after a read, and the
@@ -147,8 +149,10 @@ export default async function TodayPage({ params }) {
             <p className="stat__label">Gross sales this month</p>
           </div>
           <div className="card">
-            <p className="stat__value"><Figure amount={t.month.kept} /></p>
-            <p className="stat__label">Gross profit after returns this month</p>
+            {/* Before every product sold has a cost, the card shows net proceeds and says so,
+                rather than a profit heading over "Not known" (owner's brief, 10 October 2026). */}
+            <p className="stat__value"><Figure amount={t.month.kept ?? t.month.net_proceeds} /></p>
+            <p className="stat__label">{t.month.kept ? "Gross profit after returns this month" : "Net proceeds this month"}</p>
             {!t.month.kept && t.month.kept_reason && (
               <p className="rows__sub">{keptReason(t.month.kept_reason)}</p>
             )}

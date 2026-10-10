@@ -52,7 +52,7 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
         <p className="crumb">
           <Link href={`/shops/${shopId}/products/${productId}`}>Back to product</Link>
         </p>
-        <h1>Records for this product</h1>
+        <h1>Transactions for this product</h1>
         <p>
           {dated
             ? `These are the records behind this product's figures from ${formatDate(query.from)} to ${formatDate(query.to)}.`

@@ -16,7 +16,7 @@ import { api, fetchShop, formatDate, formatMoney } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 
-export const metadata = { title: "Tax" };
+export const metadata = { title: "VAT and tax" };
 
 /** @param {{ params: Promise<{ shopId: string }> }} props */
 export default async function TaxPage({ params }) {
@@ -41,7 +41,7 @@ export default async function TaxPage({ params }) {
   return (
     <section data-testid="tax-screen">
       <header className="page-head">
-        <h1>Tax</h1>
+        <h1>VAT and tax</h1>
         <p>This page tracks your sales against the VAT threshold, estimates tax to set aside and lists your tax dates. It is not financial advice.</p>
       </header>
 
@@ -78,7 +78,7 @@ export default async function TaxPage({ params }) {
             (copy audit finding 110). */}
         {!setAside && (
           <div className="card" data-testid="set-aside-error">
-            <h2>Tax to set aside</h2>
+            <h2>Estimated Income Tax and National Insurance reserve</h2>
             <p className="muted">
               MyShopEdge could not load the set-aside estimate just now. Nothing on your account
               has changed, and the other figures on this page are unaffected. Try again in a moment.
@@ -88,7 +88,7 @@ export default async function TaxPage({ params }) {
 
         {setAside && (
           <div className="card" data-testid="set-aside">
-            <h2>Tax to set aside</h2>
+            <h2>Estimated Income Tax and National Insurance reserve</h2>
             <p className="card__why">
               An estimate of what to keep back for tax
               {setAside.period ? ` on your profit from ${formatDate(setAside.period.from)} to ${formatDate(setAside.period.to)}` : ""}.

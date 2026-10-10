@@ -19,7 +19,7 @@ import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 
-export const metadata = { title: "Records" };
+export const metadata = { title: "Transactions" };
 
 const PASSED = [
   "basis", "from", "to", "category", "entry_type", "sku_id", "product_id", "order_id",
@@ -47,7 +47,7 @@ export default async function RecordsPage({ params, searchParams }) {
   /** @type {{ entries: import("@/lib/api-types").components["schemas"]["LedgerEntry"][], total: any, shown_total: any, next_cursor: string | null }} */
   const page = result.data;
   const first = page.entries[0];
-  const heading = filters.category && first?.label ? first.label : "Records";
+  const heading = filters.category && first?.label ? first.label : "Transactions";
   const base = `/shops/${shopId}/records`;
   /** True when the page was opened from a figure rather than from the menu. */
   const forFigure = Object.keys(filters).some((k) => k !== "basis" && k !== "from" && k !== "to");
@@ -55,7 +55,7 @@ export default async function RecordsPage({ params, searchParams }) {
   return (
     <section>
       <header className="page-head">
-        <p><Link href={`/shops/${shopId}/money`}>Money</Link></p>
+        <p><Link href={`/shops/${shopId}/money`}>Where the money went</Link></p>
         <h1>{heading}</h1>
         <p>
           {filters.from && filters.to

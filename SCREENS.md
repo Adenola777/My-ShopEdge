@@ -49,13 +49,13 @@ by side, except the last, which carries S15 alone.
 | S3 | Product costs choice | Onboarding | Wireframes, amended A15.4 | 03 | `shops/[shopId]/setup/costs` (29 September). Buttons only, as A15.4 ruled, with the footnote kept |
 | S4 | Upload mapping | Onboarding | Wireframes | 03 | `shops/[shopId]/setup/costs/upload` (29 September). The browser PUTs the file to the signed URL, the seller confirms the columns, and only matched rows are applied. Unmatched rows are listed with the service's reason |
 | S5 | Tax profile | Onboarding | Wireframes | 04 | `shops/[shopId]/setup/tax` (29 September). The sheet's sales outside TikTok and last year's income are not asked, because the contract's tax profile holds neither. The first links to S24 |
-| S6 | Today | Core | Wireframes, amended A15.5 | 04 | `shops/[shopId]/today` |
+| S6 | Overview (named Today until 10 October 2026) | Core | Wireframes, amended A15.5 | 04 | `shops/[shopId]/today` |
 | S7 | Stock | Core | Wireframes | 05 | `shops/[shopId]/stock` |
 | S8 | Return check | Core | Wireframes | 05 | `shops/[shopId]/returns`, from a link on Stock (28 September). Several waiting items show on one page, one card each, and the "This will" card names the write-off rule rather than a figure, because the service values it |
 | S9 | Products | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products` |
 | S10 | Product detail | Core | Wireframes, revised A18 | 06 | `shops/[shopId]/products/[productId]` |
-| S11 | Money | Core | Wireframes, revised A18 | 07 | `shops/[shopId]/money` |
-| S12 | Tax | Core | Wireframes | 07 | `shops/[shopId]/tax`, the fifth tab (28 September). A threshold monitor, the set-aside estimate of A30.3 with its basis lines, and the tax dates. Each card empties on its own when its reference rules are missing, and production held none on 28 September |
+| S11 | Where the money went, under Reconcile (named Money until 10 October 2026) | Core | Wireframes, revised A18 | 07 | `shops/[shopId]/money` |
+| S12 | VAT and tax (named Tax until 10 October 2026) | Core | Wireframes | 07 | `shops/[shopId]/tax`, the fifth tab (28 September). A threshold monitor, the set-aside estimate of A30.3 with its basis lines, and the tax dates. Each card empties on its own when its reference rules are missing, and production held none on 28 September |
 | S13 | Notifications | Core | Wireframes | 08 | `shops/[shopId]/notifications`, reached from the bell. Each open notice can be marked read or done, and the bell's count falls with it (25 September). Rows are not links yet, because a notification carries no address |
 | S14 | Discrepancy detail | Core | Wireframes, revised A18 | 08 | `shops/[shopId]/discrepancies`, as a list |
 | S15 | Settings and data | Settings | Wireframes | 09 | `shops/[shopId]/settings`, from the top bar (28 September). Since 7 October 2026 it is the Shop connection page of the Settings area, and the data download and deletion sit on their own pages in that area (S31, S41) |
@@ -65,8 +65,8 @@ by side, except the last, which carries S15 alone.
 | ~~S19~~ | ~~Sign in~~ | | **Cut by A15.2** | | |
 | S20 | Manual cost entry | Onboarding | A3 | | `shops/[shopId]/setup/costs/manual` (29 September), on `listSkuCosts`, added to the contract for it. A zero cost needs a tick. The coverage line is the service's, for the current month |
 | S21 | Add or edit a product cost | Products | A3 | | Inline on each variant of `shops/[shopId]/products/[productId]` |
-| S22 | Records behind a figure | Money | A3, revised A18 | | `shops/[shopId]/records` |
-| S23 | Export | Money | A3, revised A18 | | `shops/[shopId]/money/export`, from Money (29 September). Three kinds only, per A18.6 |
+| S22 | Transactions behind a figure (named Records until 10 October 2026) | Reconcile | A3, revised A18 | | `shops/[shopId]/records` |
+| S23 | Exports (named Export until 10 October 2026) | Reconcile | A3, revised A18 | | `shops/[shopId]/money/export`, from Money (29 September). Three kinds only, per A18.6 |
 | S24 | Other-channel sales | Money | A3 | | `shops/[shopId]/other-sales` (28 September) |
 | S25 | Stock adjustment | Stock | A3, revised A18 | | At the top of `shops/[shopId]/stock/[skuId]` |
 | S26 | Stock movement history | Stock | A3, revised A18 | | `shops/[shopId]/stock/[skuId]`. The heading names the product, variant and seller SKU (25 September) |
