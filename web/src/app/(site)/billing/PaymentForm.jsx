@@ -25,8 +25,9 @@
  * @typedef {Schemas["Plan"]} Plan
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { api, formatMoney } from "@/lib/api";
@@ -107,19 +108,7 @@ export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = fal
   }
 
   if (phase === "done") {
-    return (
-      <section className="card-step card-step--done" aria-live="polite" data-testid="billing-done">
-        <h1>Your free trial has started.</h1>
-        <p>
-          You are on {chosen ? chosen.name : "your plan"} for {trialDays} days. Nothing has
-          been charged. We will email you seven days before the first payment on {trialEnds},
-          and you can cancel before then in Settings and pay nothing.
-        </p>
-        <Link className="btn btn--primary btn--block" href="/shops" data-testid="billing-done-continue">
-          Go to your shop
-        </Link>
-      </section>
-    );
+    return <TrialStarted chosen={chosen} trialDays={trialDays} trialEnds={trialEnds} />;
   }
 
   return (
@@ -298,5 +287,30 @@ function ConfirmCard({ planName, trialDays, onDone }) {
         {busy ? "Confirming with your bank" : `Start ${planName} free for ${trialDays} days`}
       </button>
     </form>
+  );
+}
+
+/**
+ * The moment the trial starts in place. It goes straight on to the trial active page, which
+ * reads the plan, the renewal price and the import's progress from the service (A36 step 2).
+ * The words below show only for the instant before the page changes.
+ *
+ * @param {{ chosen: any, trialDays: number, trialEnds: string }} props
+ */
+function TrialStarted({ chosen, trialDays, trialEnds }) {
+  const router = useRouter();
+  useEffect(() => { router.replace("/billing/confirmed"); }, [router]);
+  return (
+    <section className="card-step card-step--done" aria-live="polite" data-testid="billing-done">
+      <h1>Your free trial has started.</h1>
+      <p>
+        You are on {chosen ? chosen.name : "your plan"} for {trialDays} days. Nothing has
+        been charged. We will email you seven days before the first payment on {trialEnds},
+        and you can cancel before then in Settings and pay nothing.
+      </p>
+      <Link className="btn btn--primary btn--block" href="/billing/confirmed" data-testid="billing-done-continue">
+        Continue
+      </Link>
+    </section>
   );
 }

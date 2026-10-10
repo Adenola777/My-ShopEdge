@@ -22,6 +22,7 @@
  */
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { api } from "@/lib/api";
 import { Problem } from "@/components/ApiProblem";
 
@@ -134,6 +135,10 @@ export default async function TikTokCallbackPage({ searchParams }) {
       </section>
     );
   }
+
+  // A36 step 2 (the brief's section 4): a connected shop goes straight on to its import, with
+  // no extra click. The import page says the shop is connected.
+  if (shop?.id) redirect(`/shops/${shop.id}/sync?connected=1`);
 
   return (
     <section className="state">

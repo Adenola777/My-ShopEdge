@@ -13,36 +13,68 @@
 
 import Link from "next/link";
 import { api, fetchShop } from "@/lib/api";
+import { importSteps } from "@/lib/onboarding";
 import { afterSync } from "@/lib/onboarding";
 import { apiProblem } from "@/components/ApiProblem";
 import { SyncProgress } from "@/components/SyncProgress";
 
-export const metadata = { title: "Getting your shop ready" };
+export const metadata = { title: "We are putting your figures together" };
 
-/** @param {{ params: Promise<{ shopId: string }> }} props */
-export default async function SyncPage({ params }) {
+/** @param {{ params: Promise<{ shopId: string }>, searchParams: Promise<{ connected?: string }> }} props */
+export default async function SyncPage({ params, searchParams }) {
   const { shopId } = await params;
-  const [result, sub] = await Promise.all([
+  const { connected } = await searchParams;
+  const [result, sub, shopsRes] = await Promise.all([
     fetchShop(shopId, "/sync"),
     api("/billing/subscription", { cache: "no-store" }),
+    connected ? api("/shops", { cache: "no-store" }) : Promise.resolve(null),
   ]);
   const problem = apiProblem(result, { what: "your sync status" });
   if (problem) return problem;
   const status = sub.ok ? sub.data?.status ?? null : null;
+  /** @type {{ id: string, shop_name?: string | null } | undefined} */
+  const shop = shopsRes?.ok ? (shopsRes.data?.shops ?? []).find((/** @type {any} */ s) => s.id === shopId) : undefined;
+  const steps = importSteps(result.data?.domains ?? []);
 
+  // The brief's section 5, approved under A36: one heading, four plain steps, no percentage,
+  // and no request for product costs while the import runs.
   return (
     <section data-testid="sync-screen">
+      {connected && (
+        <p className="note" role="status" data-testid="sync-connected">
+          {shop?.shop_name ?? "Your shop"} is connected. MyShopEdge only reads your shop and never changes it.
+        </p>
+      )}
       <header className="page-head">
-        <h1>Getting your shop ready</h1>
-        <p>The first read of your shop starts as soon as it connects. You can leave this screen, and the progress below updates on its own.</p>
+        <h1>We are putting your figures together.</h1>
+        <p>We are securely reading your available orders, fees, refunds, returns, settlements and payouts.</p>
       </header>
       <div className="stack">
-        <SyncProgress shopId={shopId} initial={result.data} />
+        <div className="card" data-testid="import-steps">
+          <ul className="rows">
+            {steps.map(([label, state]) => (
+              <li key={label}>
+                <span>{label}</span>
+                <span className={state === "done" ? "chip chip--good" : state === "now" ? "chip chip--warn" : "chip chip--quiet"}>
+                  {state === "done" ? "Done" : state === "now" ? "In progress" : "Waiting"}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="card__why">We will show your first results as soon as they are ready.</p>
+        </div>
+        {status === "none" && (
+          <p className="card__why">We are preparing your shop figures while you choose your plan.</p>
+        )}
         <p>
           <Link className="btn btn--primary btn--block" href={afterSync(shopId, status)} data-testid="sync-continue">
-            {status === "none" ? "Continue to your plan" : "Continue to your product costs"}
+            {status === "none" ? "Choose your plan" : "See my first results"}
           </Link>
         </p>
+        <details>
+          <summary>What has been read so far</summary>
+          <SyncProgress shopId={shopId} initial={result.data} />
+        </details>
       </div>
     </section>
   );

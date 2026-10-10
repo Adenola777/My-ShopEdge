@@ -77,6 +77,9 @@ export default async function BillingPage() {
   // Disconnect beside the plans, as the brief's "Connection without subscription" asks.
   /** @type {{ id: string, shop_name?: string | null }[]} */
   const shops = shopsRes.ok ? shopsRes.data?.shops ?? [] : [];
+  // A plan chosen but no trial started means the card step was left unfinished: the
+  // subscription row exists, still incomplete, which getSubscription reports as none with a plan.
+  const abandoned = status === "none" && Boolean(subRes.ok && subRes.data?.plan);
   // The whole flow lives in PaymentForm now: the plan cards are the chooser, so the heading,
   // the cards and the trust footer move inside it and change with the step the seller is on.
   return (
@@ -89,6 +92,12 @@ export default async function BillingPage() {
               <li><span>Status</span><strong>{status === "canceled" ? "Connected, plan ended" : "Connected, trial not started"}</strong></li>
             </ul>
           ))}
+          {abandoned && (
+            <p data-testid="billing-abandoned">
+              <strong>No changes were made.</strong> Your TikTok Shop is connected, and you can start
+              your 30-day trial whenever you are ready. Choose your plan below to resume.
+            </p>
+          )}
           <p className="card__why">
             {status === "canceled"
               ? "Your figures can still be read. Choose a plan to change, export or update them again."

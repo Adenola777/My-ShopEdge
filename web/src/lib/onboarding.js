@@ -14,6 +14,12 @@
  *
  * Unverified in one respect: nothing yet moves a shop from `pending` to `connected`, because
  * nothing reads TikTok. Until ingestion is built, a newly connected shop stays on S2.
+ *
+ * **A36 step 2, 10 October 2026.** The owner's brief now sets the order: connect, import, plan
+ * and card, the first reconciliation, then the optional cost choice. Costs and tax no longer
+ * come before the figures (A36.1 item 3), so a seller with a plan goes to Overview, which the
+ * brief makes the first screen after every sign-in. The first reconciliation is shown once,
+ * straight after the trial starts or the import finishes.
  */
 
 /** @typedef {import("./api-types").components["schemas"]["Shop"]} Shop */
@@ -21,11 +27,9 @@
 /**
  * @param {Shop} shop
  * @param {string | null} subscriptionStatus  From getSubscription, or null when unknown.
- * @param {{ setupUntouched?: boolean }} [setup]  True when the account has no cost and no tax
- *   profile. Unknown is treated as touched, so a failed read never forces setup on a seller.
  * @returns {string} The path to send the seller to.
  */
-export function nextStep(shop, subscriptionStatus, setup = {}) {
+export function nextStep(shop, subscriptionStatus) {
   const base = `/shops/${shop.id}`;
   if (shop.connection_status === "needs_reconnect" || shop.connection_status === "disconnected") {
     return `${base}/connection-problem`;
@@ -34,7 +38,6 @@ export function nextStep(shop, subscriptionStatus, setup = {}) {
   // An unknown subscription is not treated as none: a failed request must not push a
   // paying seller back to the plans.
   if (subscriptionStatus === "none") return "/billing";
-  if (setup.setupUntouched) return `${base}/setup`;
   return `${base}/today`;
 }
 
@@ -45,5 +48,29 @@ export function nextStep(shop, subscriptionStatus, setup = {}) {
  * @param {string | null} subscriptionStatus
  */
 export function afterSync(shopId, subscriptionStatus) {
-  return subscriptionStatus === "none" ? "/billing" : `/shops/${shopId}/setup/costs`;
+  return subscriptionStatus === "none" ? "/billing" : `/shops/${shopId}/first-result`;
+}
+
+/**
+ * The brief's four import steps (section 5), worked out from getSyncStatus's domains. A domain
+ * is done when its latest run completed, and under way when it has a run that has not.
+ *
+ * @param {{ domain: string, status: string }[]} domains
+ * @returns {[string, "done" | "now" | "waiting"][]}
+ */
+export function importSteps(domains) {
+  const by = Object.fromEntries(domains.map((d) => [d.domain, d.status]));
+  const done = (/** @type {string[]} */ names) => names.every((n) => by[n] === "completed");
+  const started = (/** @type {string[]} */ names) => names.some((n) => n in by);
+  const orders = ["orders"];
+  const money = ["finance", "returns"];
+  const all = ["products", "inventory", "orders", "finance", "returns"];
+  /** @param {string[]} names */
+  const state = (names) => (done(names) ? "done" : started(names) ? "now" : "waiting");
+  return [
+    ["Connected to your shop", "done"],
+    ["Reading orders and sales", state(orders)],
+    ["Matching fees, refunds and payouts", state(money)],
+    ["Preparing your first summary", done(all) ? "done" : done([...orders, ...money]) ? "now" : "waiting"],
+  ];
 }
