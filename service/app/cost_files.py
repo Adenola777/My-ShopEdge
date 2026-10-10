@@ -34,6 +34,22 @@ kept, because nothing says TikTok treats seller SKUs as case-insensitive. Where 
 one file resolve to the same variant, the first is matched and each later one is a
 duplicate naming the earlier row, because applying both would leave the file's own order
 deciding which cost wins without the seller seeing it.
+
+THE FIVE STATUSES, A36 STEP 7 (the owner's brief, section 8A, approved 10 October 2026)
+
+- `matched`: the row names a variant, its amounts read, and it sets a cost where none is in
+  force on its date, or the same cost.
+- `needs_review`: as matched, but a different cost is already in force on the row's date. The
+  row is not applied unless the seller chooses it, so no cost is replaced silently. The cost
+  it would replace is carried with it.
+- `no_match`: the row names no variant TikTok has returned, or names none at all.
+- `duplicate`: the row repeats a variant and date an earlier row of the file already set.
+- `invalid_cost`: the row names a variant, but an amount or its date cannot be read.
+
+An optional effective date column is read, so a file can carry a cost's history. A date is
+read from an Excel date cell, or as text in the form 2026-08-01 or 01/08/2026 (day first, as
+written in the UK). A row with no date applies from the day it is applied. Two rows for one
+variant with different dates are both kept, because each sets the cost from its own date.
 """
 
 from __future__ import annotations
@@ -42,6 +58,7 @@ import csv
 import io
 import re
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
@@ -71,7 +88,7 @@ class Variant:
 @dataclass
 class RowOutcome:
     row_number: int
-    outcome: str  # matched, unmatched or duplicate
+    outcome: str  # matched, needs_review, no_match, duplicate or invalid_cost
     matched_on: str | None = None
     sku_id: UUID | None = None
     seller_sku: str | None = None
@@ -80,6 +97,50 @@ class RowOutcome:
     postage_minor: int | None = None
     reason: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
+    imported: str | None = None
+    effective_from: date | None = None
+    existing_cost_minor: int | None = None
+
+
+@dataclass
+class ExistingCost:
+    """A cost already held for a variant: from when it applies, and when it was entered."""
+    effective_from: date
+    created_at: datetime
+    cost_minor: int
+
+
+def cost_in_force(history: list[ExistingCost], on: date) -> int | None:
+    """The cost in force on a day, with the tie-break the product figures use (A31.4)."""
+    live = [c for c in history if c.effective_from <= on]
+    if not live:
+        return None
+    return max(live, key=lambda c: (c.effective_from, c.created_at)).cost_minor
+
+
+_ISO_DAY = re.compile(r"^(\d{4})-(\d{1,2})-(\d{1,2})$")
+_UK_DAY = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
+
+
+def read_date(value: Any) -> date:
+    """A date from a cell. Raises ValueError with a reason."""
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    t = _cell_text(value)
+    m = _ISO_DAY.match(t)
+    if m:
+        y, mo, d = int(m[1]), int(m[2]), int(m[3])
+    else:
+        m = _UK_DAY.match(t)
+        if not m:
+            raise ValueError(f'is "{t}", which is not a date in the form 2026-08-01 or 01/08/2026')
+        d, mo, y = int(m[1]), int(m[2]), int(m[3])
+    try:
+        return date(y, mo, d)
+    except ValueError as exc:
+        raise ValueError(f'is "{t}", which is not a real date') from exc
 
 
 def _cell_text(value: Any) -> str:
@@ -175,9 +236,10 @@ _KEY_WORDS = {
     "tiktok_sku_id": ("tiktok sku id", "sku id", "tiktok sku"),
     "seller_sku": ("seller sku", "sku", "seller sku code"),
 }
-_COST_WORDS = ("unit cost", "cost price", "product cost", "cost")
+_COST_WORDS = ("unit cost", "cost per unit", "cost price", "product cost", "cost")
 _PACKING_WORDS = ("packing", "packaging", "packing cost")
 _POSTAGE_WORDS = ("postage", "shipping", "delivery", "postage cost")
+_DATE_WORDS = ("effective date", "effective from", "date from", "from date", "start date", "date")
 
 
 def _norm(h: str) -> str:
@@ -212,12 +274,19 @@ def suggest_mapping(columns: list[str]) -> dict[str, Any] | None:
         "cost_column": cost,
         "packing_column": find(_PACKING_WORDS),
         "postage_column": find(_POSTAGE_WORDS),
+        "effective_date_column": find(_DATE_WORDS),
         "currency": "GBP",
     }
 
 
-def match(parsed: ParsedFile, mapping: dict[str, Any], variants: list[Variant]) -> list[RowOutcome]:
-    for col in ("key_column", "cost_column", "packing_column", "postage_column"):
+def match(parsed: ParsedFile, mapping: dict[str, Any], variants: list[Variant],
+          existing: dict[UUID, list[ExistingCost]] | None = None,
+          today: date | None = None) -> list[RowOutcome]:
+    """Each row's status. `existing` is the costs already held, by variant, and `today` the
+    London date a row without a date of its own would apply from."""
+    existing = existing or {}
+    for col in ("key_column", "cost_column", "packing_column", "postage_column",
+                "effective_date_column"):
         name = mapping.get(col)
         if name and name not in parsed.columns:
             raise FileUnreadable(f'The file has no column headed "{name}".')
@@ -228,12 +297,13 @@ def match(parsed: ParsedFile, mapping: dict[str, Any], variants: list[Variant]) 
             by_seller.setdefault(v.seller_sku.strip(), v)
     by_tiktok = {v.tiktok_sku_id.strip(): v for v in variants}
 
-    seen: dict[UUID, int] = {}
+    seen: dict[tuple[UUID, date | None], int] = {}
     out: list[RowOutcome] = []
     for i, row in enumerate(parsed.rows, start=2):  # row 1 is the headings
         cell = row.get(mapping["key_column"], "")
-        o = RowOutcome(row_number=i, outcome="unmatched",
-                       raw={k: _cell_text(v) for k, v in row.items()})
+        o = RowOutcome(row_number=i, outcome="no_match",
+                       raw={k: _cell_text(v) for k, v in row.items()},
+                       imported=_cell_text(cell) or None)
         if isinstance(cell, float) or (isinstance(cell, int) and abs(cell) >= 10**15):
             # Found on 24 September by writing a real .xlsx: a 19 digit TikTok SKU id typed
             # into a number cell reads back as 1.7291e+18. Excel keeps 15 significant digits,
@@ -276,17 +346,40 @@ def match(parsed: ParsedFile, mapping: dict[str, Any], variants: list[Variant]) 
                     setattr(o, attr, read_amount(_cell_text(row[mapping[col]])))
         except ValueError as err:
             o.sku_id, o.matched_on, o.seller_sku = variant.sku_id, on, variant.seller_sku
+            o.outcome = "invalid_cost"
             o.reason = f'The amount in the "{reading}" column {err}, so this row was not read.'
             o.unit_cost_minor = None
             out.append(o)
             continue
 
         o.sku_id, o.matched_on, o.seller_sku = variant.sku_id, on, variant.seller_sku
-        if variant.sku_id in seen:
+        date_col = mapping.get("effective_date_column")
+        if date_col and _cell_text(row.get(date_col, "")) != "":
+            try:
+                o.effective_from = read_date(row[date_col])
+            except ValueError as err:
+                o.outcome = "invalid_cost"
+                o.reason = f'The date in the "{date_col}" column {err}, so this row was not read.'
+                o.unit_cost_minor = None
+                out.append(o)
+                continue
+
+        slot = (variant.sku_id, o.effective_from)
+        if slot in seen:
             o.outcome = "duplicate"
-            o.reason = f"This variant already appears on row {seen[variant.sku_id]} of this file."
+            o.reason = (f"This variant already appears on row {seen[slot]} of this file"
+                        + (" with the same date." if o.effective_from else "."))
+            out.append(o)
+            continue
+        seen[slot] = i
+        on_day = o.effective_from or today
+        current = cost_in_force(existing.get(variant.sku_id, []), on_day) if on_day else None
+        if current is not None and current != o.unit_cost_minor:
+            o.outcome = "needs_review"
+            o.existing_cost_minor = current
+            o.reason = ("A different cost is already set for this variant on this date. It is "
+                        "replaced only if you choose this row.")
         else:
             o.outcome = "matched"
-            seen[variant.sku_id] = i
         out.append(o)
     return out

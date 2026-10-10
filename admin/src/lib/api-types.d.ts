@@ -1920,11 +1920,33 @@ export interface components {
             rows_matched: number;
             rows_unmatched: number;
             rows_duplicate: number;
+            /** @description Rows that would replace a different cost already in force on their date. Added 10 October 2026 (A36 step 7). */
+            rows_needs_review?: number;
+            /** @description Rows naming no variant TikTok has returned, or none at all. */
+            rows_no_match?: number;
+            /** @description Rows naming a variant whose amount or date cannot be read. `rows_unmatched` is this and `rows_no_match` together. */
+            rows_invalid_cost?: number;
             rows: {
                 /** Format: uuid */
                 row_id: string;
-                /** @enum {string} */
-                outcome: "matched" | "unmatched" | "duplicate";
+                /**
+                 * @description The brief's five statuses (A36 step 7). matched sets a cost where none is in force on the row's date, or the same cost. needs_review would replace a different cost and is applied only when the seller chooses it. no_match names no variant. duplicate repeats a variant and date set earlier in the file. invalid_cost names a variant whose amount or date cannot be read. Until 10 October 2026 the last two were one outcome, unmatched.
+                 * @enum {string}
+                 */
+                outcome: "matched" | "needs_review" | "no_match" | "duplicate" | "invalid_cost";
+                /** @description The row's number in the file, the headings being row 1. */
+                row_number?: number | null;
+                /** @description The code the row carries, as written in the file. */
+                imported?: string | null;
+                product_title?: string | null;
+                variant_label?: string | null;
+                /**
+                 * Format: date
+                 * @description The date the row's cost applies from. Null when the file gives none, and the cost then applies from the day it is applied.
+                 */
+                effective_from?: string | null;
+                /** @description The cost already in force on the row's date, on a needs_review row. */
+                existing_cost?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
                 /**
                  * @description Which key matched. Null on an unmatched row. No SKU is ever created by a cost upload.
                  * @enum {string|null}
@@ -2805,6 +2827,8 @@ export interface components {
             cost_column: string;
             packing_column?: string | null;
             postage_column?: string | null;
+            /** @description The column of dates each cost applies from, as an Excel date or text such as 2026-08-01 or 01/08/2026. Optional. A row with no date applies from the day the costs are applied. Added 10 October 2026 (A36 step 7). */
+            effective_date_column?: string | null;
             /** @default GBP */
             currency: string;
         };

@@ -205,27 +205,44 @@ export function ManualCosts({ shopId, rows, currency }) {
 
 const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-/** Words for a row's outcome, used only when the service gives no reason of its own. */
-/** @type {Record<string, string>} */
-const OUTCOME_WORDS = {
-  unmatched: "No product in your shop has this code.",
-  duplicate: "This code appears more than once in your file.",
+/**
+ * The brief's five statuses for a row (A36 step 7, section 8A), as the service serves them,
+ * with the words used when the service gives no reason of its own. Red is not used, because
+ * none of them is a loss (A36.2 item 3).
+ *
+ * @type {Record<string, [string, string, string]>}
+ */
+const ROW_STATUS = {
+  matched: ["Matched", "good", "Ready to apply."],
+  needs_review: ["Needs review", "warn", "A different cost is already set. Choose the row to replace it."],
+  no_match: ["No match found", "strong", "No product in your shop has this code."],
+  duplicate: ["Duplicate", "quiet", "This code appears more than once in your file."],
+  invalid_cost: ["Invalid cost", "strong", "The amount or date in this row could not be read."],
 };
 
-/** @param {{ shopId: string }} props */
+/**
+ * S4 Upload, rebuilt to the brief's section 8A on 10 October 2026 (A36 step 7): the template,
+ * the expected columns, a file dropped or chosen, the columns confirmed, then a preview of
+ * every row with its status before anything is saved. Matched rows are applied. A row that
+ * would replace a different cost already set is applied only when the seller ticks it, so no
+ * cost is overwritten silently. Every other row stays visible with its reason.
+ *
+ * @param {{ shopId: string }} props
+ */
 export function UploadFlow({ shopId }) {
   const router = useRouter();
   const base = `/shops/${encodeURIComponent(shopId)}/cost-uploads`;
   const [upload, setUpload] = useState(/** @type {Schemas["CostUpload"] | null} */ (null));
   const [mapping, setMapping] = useState(/** @type {Schemas["ColumnMapping"] | null} */ (null));
   const [match, setMatch] = useState(/** @type {any} */ (null));
+  const [replace, setReplace] = useState(/** @type {Record<string, boolean>} */ ({}));
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [done, setDone] = useState(/** @type {string | null} */ (null));
 
-  /** @param {React.ChangeEvent<HTMLInputElement>} e */
-  async function pick(e) {
-    const file = e.target.files?.[0];
+  /** @param {File | undefined | null} file */
+  async function take(file) {
     if (!file) return;
     const type = file.name.toLowerCase().endsWith(".csv") ? "text/csv" : file.name.toLowerCase().endsWith(".xlsx") ? XLSX : null;
     if (!type) {
@@ -256,17 +273,25 @@ export function UploadFlow({ shopId }) {
     setBusy(false);
     if (!r.ok) { setError(failure(r, "The file could not be matched.")); return; }
     setMatch(r.data);
+    setReplace({});
   }
 
+  /** @type {any[]} */
+  const rows = match?.rows ?? [];
+  const chosen = rows.filter((x) => x.outcome === "matched" || (x.outcome === "needs_review" && replace[x.row_id]));
+  const products = new Set(chosen.map((x) => x.sku_id)).size;
+  const needsReview = rows.filter((x) => x.outcome === "needs_review").length;
+  const notApplied = rows.filter((x) => x.outcome === "no_match" || x.outcome === "invalid_cost" || x.outcome === "duplicate");
+
   async function apply() {
-    if (!upload || !match) return;
-    const ids = (match.rows ?? []).filter((/** @type {any} */ x) => x.outcome === "matched").map((/** @type {any} */ x) => x.row_id);
+    if (!upload || chosen.length === 0) return;
     setBusy(true);
     setError(null);
-    const r = await api(`${base}/${upload.id}/apply`, { method: "POST", idempotencyKey: newKey(), body: JSON.stringify({ apply_row_ids: ids }) });
+    const r = await api(`${base}/${upload.id}/apply`, { method: "POST", idempotencyKey: newKey(),
+      body: JSON.stringify({ apply_row_ids: chosen.map((x) => x.row_id) }) });
     setBusy(false);
     if (!r.ok) { setError(failure(r, "The costs were not applied.")); return; }
-    setDone(`${ids.length} ${ids.length === 1 ? "cost" : "costs"} applied.`);
+    setDone(`Costs applied to ${products} ${products === 1 ? "product" : "products"}.`);
     router.refresh();
   }
 
@@ -286,7 +311,7 @@ export function UploadFlow({ shopId }) {
   if (done) {
     return (
       <div className="stack" data-testid="upload-done">
-        <p className="note" role="status">{done}</p>
+        <p className="note" role="status">{done} You can edit or replace costs later.</p>
         <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/profit-reveal`} data-testid="upload-see-profit">See gross profit</Link></p>
       </div>
     );
@@ -295,11 +320,41 @@ export function UploadFlow({ shopId }) {
   return (
     <div className="stack" data-testid="upload-flow">
       {!upload && (
-        <div className="card">
-          <label htmlFor="cost-file">Your cost file, Excel or CSV</label>
-          <input id="cost-file" type="file" accept=".csv,.xlsx" onChange={pick} disabled={busy} data-testid="cost-file" />
+        <div className="card stack">
+          <p>
+            <a className="btn btn--quiet btn--block" href={`/shops/${shopId}/setup/costs/template`} data-testid="cost-template">
+              Download cost template
+            </a>
+          </p>
+          <div>
+            <h2>What the file needs</h2>
+            <ul className="rows" data-testid="expected-columns">
+              <li><span>Product name or SKU</span><span className="muted">Your seller SKU, or TikTok&apos;s SKU ID</span></li>
+              <li><span>Variation</span><span className="muted">Where a product comes in more than one</span></li>
+              <li><span>Cost per unit</span><span className="muted">In pounds, such as 3.40</span></li>
+              <li><span>Effective date</span><span className="muted">Optional, such as 2026-08-01 or 01/08/2026</span></li>
+            </ul>
+            <p className="footnote">
+              The first row names the columns. The template fills in every product in your shop.
+              A product with no seller SKU carries TikTok&apos;s SKU ID; in Excel, format that
+              column as text before saving, or Excel shortens the ID.
+            </p>
+          </div>
+          <label
+            htmlFor="cost-file"
+            className={`dropzone${dragging ? " dropzone--over" : ""}`}
+            data-testid="dropzone"
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); take(e.dataTransfer.files?.[0]); }}
+          >
+            <strong>Drop your Excel or CSV file here</strong>
+            <span className="muted">or browse files</span>
+            <input id="cost-file" type="file" accept=".csv,.xlsx" className="visually-hidden"
+                   onChange={(e) => take(e.target.files?.[0])} disabled={busy} data-testid="cost-file" />
+          </label>
           {busy && <p className="note" role="status" data-testid="upload-reading">Uploading and reading your file.</p>}
-          <p className="footnote">The file goes to MyShopEdge's private file store in the EU and is kept as the record behind your costs. MyShopEdge does not share it.</p>
+          <p className="footnote">The file goes to MyShopEdge&apos;s private file store in the EU and is kept as the record behind your costs. MyShopEdge does not share it.</p>
         </div>
       )}
       {upload && columns.length === 0 && (
@@ -325,43 +380,88 @@ export function UploadFlow({ shopId }) {
           </p>
         </div>
       )}
-      {upload && mapping && columns.length > 0 && (
+      {upload && mapping && columns.length > 0 && !match && (
         <div className="card stack">
           <h2>Which column is which</h2>
           <div>
             <label htmlFor="match-on">The code in your file is</label>
             <select id="match-on" value={mapping.match_on} onChange={(e) => setMapping({ ...mapping, match_on: /** @type {any} */ (e.target.value) })}>
               <option value="seller_sku">Your seller SKU</option>
-              <option value="tiktok_sku_id">TikTok's SKU ID</option>
+              <option value="tiktok_sku_id">TikTok&apos;s SKU ID</option>
             </select>
           </div>
           {picker("key_column", "Code column", false)}
-          {picker("cost_column", "Product cost column", false)}
+          {picker("cost_column", "Cost per unit column", false)}
+          {picker("effective_date_column", "Effective date column", true)}
           {picker("packing_column", "Packaging you pay column", true)}
           {picker("postage_column", "Shipping you pay column", true)}
-          <p><button className="btn btn--quiet btn--block" onClick={check} disabled={busy || !mapping.key_column || !mapping.cost_column} data-testid="check-match">{busy ? "Checking" : "Check the match"}</button></p>
+          <p><button className="btn btn--primary btn--block" onClick={check} disabled={busy || !mapping.key_column || !mapping.cost_column} data-testid="check-match">{busy ? "Checking" : "Show how it matches"}</button></p>
+          <p className="footnote">Nothing is saved until you apply the costs.</p>
         </div>
       )}
       {match && (
-        <div className="card">
-          <h2>Match result</h2>
+        <div className="card stack" data-testid="match-preview">
+          <h2>How your file matches</h2>
           <ul className="rows">
-            <li><span>Matched</span><strong className="chip chip--good">{match.rows_matched ?? 0} of {match.rows_total ?? 0} rows</strong></li>
-            <li><span>Unmatched</span><strong className="chip chip--warn">{match.rows_unmatched ?? 0} rows</strong></li>
-            <li><span>Duplicate codes</span><strong className="chip chip--warn">{match.rows_duplicate ?? 0} rows</strong></li>
+            <li><span>Ready to apply</span><strong className="chip chip--good" data-testid="ready-count">{match.rows_matched ?? 0} {match.rows_matched === 1 ? "row" : "rows"}</strong></li>
+            <li><span>Requiring review</span><strong className="chip chip--warn" data-testid="review-count">{needsReview + notApplied.length} {needsReview + notApplied.length === 1 ? "row" : "rows"}</strong></li>
           </ul>
-          <p><button className="btn btn--primary btn--block" onClick={apply} disabled={busy || !(match.rows_matched > 0)} data-testid="apply-costs">{busy ? "Applying" : `Apply ${match.rows_matched ?? 0} ${match.rows_matched === 1 ? "cost" : "costs"}`}</button></p>
-          {(match.rows ?? []).some((/** @type {any} */ x) => x.outcome !== "matched") && (
-            <details>
-              <summary>Review unmatched rows</summary>
-              <ul className="rows" data-testid="unmatched-rows">
-                {match.rows.filter((/** @type {any} */ x) => x.outcome !== "matched").map((/** @type {any} */ x) => (
-                  <li key={x.row_id}><span>{x.seller_sku ?? "No code"}</span><span className="muted">{x.reason ?? OUTCOME_WORDS[x.outcome] ?? "This row was not matched."}</span></li>
+          <div className="table-scroll table-scroll--sticky">
+            <table data-testid="match-table">
+              <thead>
+                <tr>
+                  <th>Imported product</th>
+                  <th>Matched TikTok product</th>
+                  <th>SKU</th>
+                  <th className="num">Cost per unit</th>
+                  <th>Effective date</th>
+                  <th>Match status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((x) => {
+                  const [word, tone, fallback] = ROW_STATUS[x.outcome] ?? ["Not matched", "quiet", ""];
+                  return (
+                    <tr key={x.row_id} data-testid="match-row">
+                      <td>{x.imported ?? <span className="muted">No code</span>}{x.row_number ? <div className="rows__sub">Row {x.row_number}</div> : null}</td>
+                      <td>{x.product_title ? `${x.product_title}${x.variant_label ? `, ${x.variant_label}` : ""}` : <span className="muted">None</span>}</td>
+                      <td>{x.seller_sku ?? <span className="muted">None</span>}</td>
+                      <td className="num">{x.unit_cost ? formatMoney(x.unit_cost) : <span className="muted">Not read</span>}</td>
+                      <td>{x.effective_from ? formatDate(x.effective_from) : <span className="muted">From today</span>}</td>
+                      <td>
+                        <span className={`chip chip--${tone}`}>{word}</span>
+                        <div className="rows__sub">{x.reason ?? fallback}</div>
+                        {x.outcome === "needs_review" && (
+                          <label className="rows__sub" style={{ display: "block" }}>
+                            <input type="checkbox" checked={!!replace[x.row_id]} data-testid="replace-cost"
+                                   onChange={(e) => setReplace((r) => ({ ...r, [x.row_id]: e.target.checked }))} />{" "}
+                            Replace {x.existing_cost ? formatMoney(x.existing_cost) : "the cost already set"}
+                          </label>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <button className="btn btn--primary btn--block" onClick={apply} disabled={busy || chosen.length === 0} data-testid="apply-costs">
+              {busy ? "Applying" : `Apply costs to ${products} ${products === 1 ? "product" : "products"}`}
+            </button>
+          </p>
+          {notApplied.length > 0 && (
+            <details data-testid="unmatched-rows">
+              <summary>Review unmatched products</summary>
+              <ul className="rows">
+                {notApplied.map((x) => (
+                  <li key={x.row_id}><span>{x.imported ?? "No code"}</span><span className="muted">{x.reason ?? ROW_STATUS[x.outcome]?.[2] ?? "This row was not matched."}</span></li>
                 ))}
               </ul>
-              <p className="footnote">These rows are not applied. Correct them in your file and upload it again.</p>
+              <p className="footnote">These rows are not applied. Correct them in your file and upload it again, or type the costs in.</p>
             </details>
           )}
+          <p className="footnote">You can edit or replace costs later.</p>
         </div>
       )}
       {error && <p className="form-error" role="alert">{error}</p>}
