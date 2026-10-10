@@ -1,0 +1,80 @@
+/*
+ * The admin site's styles. The colours are the seller app's tokens (web/src/app/globals.css,
+ * A7.5 and A7.10): navy text, the interface orange for the primary action, red for a
+ * destructive one. The admin site is a working tool, so it is dense and plain.
+ */
+
+:root {
+  --orange: #c4400c;
+  --orange-dark: #9e330a;
+  --navy: #111820;
+  --ink-500: #64748b;
+  --ink-200: #cbd5e1;
+  --ink-50: #f1f5f9;
+  --bad: #b3261e;
+  --bad-50: #fbe9e7;
+  --good: #1e6b3a;
+  --white: #ffffff;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans Variable", system-ui, sans-serif;
+  color: var(--navy);
+  background: var(--white);
+  font-size: 14px;
+}
+a { color: var(--orange-dark); }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+.top {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid var(--ink-200); background: var(--ink-50);
+}
+.top__name { font-weight: 700; margin-right: 8px; }
+.top nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.content { padding: 16px; max-width: 1400px; margin: 0 auto; }
+
+h1 { font-size: 22px; margin: 4px 0 4px; }
+h2 { font-size: 17px; margin: 24px 0 8px; }
+.lede { color: var(--ink-500); margin: 0 0 16px; }
+.note { padding: 12px 16px; border: 1px solid var(--ink-200); border-radius: 8px; background: var(--ink-50); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.tile { border: 1px solid var(--ink-200); border-radius: 8px; padding: 12px; }
+.tile__label { color: var(--ink-500); font-size: 13px; }
+.tile__value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--ink-200); vertical-align: top; }
+th { background: var(--ink-50); font-weight: 600; white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-500); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--ink-50); border: 1px solid var(--ink-200); }
+.chip--bad { background: var(--bad-50); border-color: var(--bad); color: var(--bad); }
+.chip--good { color: var(--good); border-color: var(--good); }
+
+.btn {
+  display: inline-block; min-height: 32px; padding: 5px 12px; border-radius: 6px;
+  border: 1px solid var(--orange); background: var(--orange); color: var(--white);
+  font: inherit; cursor: pointer; text-decoration: none;
+}
+.btn:hover { background: var(--orange-dark); }
+.btn--quiet { background: var(--white); color: var(--navy); border-color: var(--ink-200); }
+.btn--quiet:hover { background: var(--ink-50); }
+.btn--danger { background: var(--bad); border-color: var(--bad); color: var(--white); }
+.btn[disabled] { opacity: 0.6; cursor: default; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.action { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.action__ask { font-weight: 600; }
+.action__said { color: var(--ink-500); }
+
+form.search { display: flex; gap: 8px; margin-bottom: 12px; }
+form.search input { min-height: 32px; padding: 4px 8px; border: 1px solid var(--ink-200); border-radius: 6px; font: inherit; width: 320px; max-width: 100%; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

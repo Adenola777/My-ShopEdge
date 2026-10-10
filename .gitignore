@@ -27,3 +27,6 @@ service/.env
 service/__pycache__/
 service/**/__pycache__/
 *.pyc
+admin/.next/
+admin/next-env.d.ts
+admin/package-lock.json
