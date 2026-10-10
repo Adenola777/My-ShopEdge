@@ -743,6 +743,11 @@ a.chip { text-decoration: none; }
 /* Setup forms, 29 September 2026: three money fields side by side, and a tick box with its words. */
 .cost-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
 .check { display: flex; gap: 8px; align-items: center; }
+/* The rule for every input above gives a tick box full width, padding and a 44px height, which
+   pushed its words to the far side of the row (found 10 October 2026 on S20). A tick box keeps
+   its own size here; the label around it keeps the 44px touch target. */
+.check { min-height: 44px; cursor: pointer; }
+.check input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; padding: 0; margin: 0; flex: none; accent-color: var(--orange-600); }
 details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 
 /* A card whose purpose is one action, such as adding product costs. */
