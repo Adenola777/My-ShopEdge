@@ -45,6 +45,8 @@ tags:
 - name: Stock
 - name: Returns
 - name: Exports
+- name: Admin
+  description: The admin backend (A34). Every operation answers 404 to anyone not on the service's ADMIN_EMAILS allow-list with a verified email, exactly as a missing path does.
 paths:
   /me:
     get:
@@ -3067,6 +3069,461 @@ paths:
           description: Received
         '401':
           description: The signature did not verify
+  /admin/accounts:
+    get:
+      tags:
+      - Admin
+      summary: Every account
+      description: Every account, newest first, with its plan and number of shops. `email` narrows the list
+        to the one account that holds that address, compared without regard to case, which is how an admin
+        finds the account named in a data protection request.
+      operationId: listAdminAccounts
+      parameters:
+      - name: email
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 320
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccountList'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: &id001
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/shops:
+    get:
+      tags:
+      - Admin
+      summary: Every shop and its connection
+      description: Every shop with its account, its connection state, its last sync, the latest token refresh
+        failure, and how many of its statements reconcile and how many do not. No TikTok token is returned,
+        and no money figure (A34.8, ruling 4).
+      operationId: listAdminShops
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminShopList'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+  /admin/sync-runs:
+    get:
+      tags:
+      - Admin
+      summary: The latest sync runs
+      description: The latest sync runs across every shop, newest first, with each run's status, record
+        counts and error.
+      operationId: listAdminSyncRuns
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSyncRunList'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/webhook-events:
+    get:
+      tags:
+      - Admin
+      summary: The latest TikTok webhook events
+      description: The latest TikTok webhook events, newest first, with how each was processed. The payload
+        is not returned.
+      operationId: listAdminWebhookEvents
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminWebhookEventList'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/notice-emails:
+    get:
+      tags:
+      - Admin
+      summary: Notice emails by state, and the ones not yet sent
+      description: How many notices are in each email state, and the notices whose email is pending or has
+        failed, with Resend's last answer.
+      operationId: getAdminNoticeEmails
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminNoticeEmails'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/audit:
+    get:
+      tags:
+      - Admin
+      summary: The latest audit log entries
+      description: The latest audit log entries across every account, newest first. Every admin action writes
+        one; views write none.
+      operationId: listAdminAudit
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditList'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/figures:
+    get:
+      tags:
+      - Admin
+      summary: Sign-ups, trials and plans
+      description: Sign-ups by month in Europe/London, and per plan the accounts on trial, paying and with
+        a failed payment. Revenue is each paying plan's list price each month, not money taken, because
+        Stripe holds the money actually taken (A34.5).
+      operationId: getAdminFigures
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminFigures'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+  /admin/accounts/{accountId}/suspend:
+    post:
+      tags:
+      - Admin
+      summary: Suspend an account
+      description: Suspends an active account (A34.8, rulings 2 and 3). Renewal is stopped at Stripe first,
+        so a Stripe failure changes nothing. The seller is then refused on every route but getMe, the daily
+        sync skips the account, and a critical `account_suspended` notice is written and emailed. Writes
+        one audit log entry.
+      operationId: suspendAccount
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountStatusOut'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '409':
+          description: The account is not active
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '502':
+          description: Stripe could not be reached, so nothing was changed
+          content: *id001
+  /admin/accounts/{accountId}/reactivate:
+    post:
+      tags:
+      - Admin
+      summary: Reactivate a suspended account
+      description: Reactivates a suspended account. Renewal is turned back on only where the suspension
+        stopped it, and an `account_reactivated` notice is written and emailed. Writes one audit log entry.
+      operationId: reactivateAccount
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountStatusOut'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '409':
+          description: The account is not suspended
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '502':
+          description: Stripe could not be reached, so nothing was changed
+          content: *id001
+  /admin/shops/{shopId}/sync:
+    post:
+      tags:
+      - Admin
+      summary: Sync one shop now
+      description: Refreshes and syncs one shop in the background, as the daily run does. Writes one audit
+        log entry.
+      operationId: syncShopNow
+      parameters:
+      - name: shopId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueuedOut'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/notifications/{notificationId}/retry-email:
+    post:
+      tags:
+      - Admin
+      summary: Try a failed notice email again
+      description: Puts a notice whose email failed back to pending with no attempts, and runs the account's
+        email sweep in the background. Writes one audit log entry.
+      operationId: retryNoticeEmail
+      parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryOut'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '409':
+          description: That notice's email has not failed
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/accounts/{accountId}/export:
+    post:
+      tags:
+      - Admin
+      summary: Build an account's data export on its seller's request
+      description: Builds an account's data export on its seller's request, as requestAccountExport does
+        for the seller. Writes one audit log entry.
+      operationId: requestAccountExportForAccount
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '409':
+          description: An export of this account is already being prepared
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/accounts/{accountId}/export/{exportId}:
+    get:
+      tags:
+      - Admin
+      summary: An account export's status and signed link
+      description: An account export's status, and its signed link once ready, as getAccountExport gives
+        the seller.
+      operationId: getAccountExportForAccount
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: exportId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /admin/accounts/{accountId}/deletion:
+    post:
+      tags:
+      - Admin
+      summary: Close an account for deletion on its seller's request
+      description: Closes an account for deletion on its seller's request, with the thirty days A30.1 sets,
+        exactly as deleteMe does. A suspended account is refused with 409 and must be reactivated first.
+        Writes one audit log entry.
+      operationId: deleteAccountForSeller
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionAcknowledgement'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '409':
+          description: The account is suspended
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '502':
+          description: Stripe could not be reached, so nothing was changed
+          content: *id001
+  /admin/accounts/{accountId}/deletion/cancel:
+    post:
+      tags:
+      - Admin
+      summary: Cancel an account's deletion on its seller's request
+      description: Cancels a deletion within the thirty days, on its seller's request, exactly as cancelAccountDeletion
+        does. Writes one audit log entry.
+      operationId: cancelAccountDeletionForSeller
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelOut'
+        '404':
+          description: Not an admin, not signed in, or no such account, shop, notice or export. A refused
+            admin request is answered exactly as a path that does not exist.
+          content: *id001
+        '409':
+          description: The account has no deletion to cancel
+          content: *id001
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '502':
+          description: Stripe could not be reached, so nothing was changed
+          content: *id001
 components:
   securitySchemes:
     bearerAuth:
@@ -5965,3 +6422,466 @@ components:
                 type:
                 - string
                 - 'null'
+    AccountStatusOut:
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - active
+          - suspended
+        renewal:
+          type: string
+      type: object
+      required:
+      - account_id
+      - status
+      - renewal
+    AdminAccount:
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        display_name:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - active
+          - suspended
+          - deleted
+        created_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        erased_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        email_notices:
+          type: boolean
+        plan_slug:
+          type:
+          - string
+          - 'null'
+        plan_status:
+          type:
+          - string
+          - 'null'
+        trial_end:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        current_period_end:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        cancel_at_period_end:
+          type:
+          - boolean
+          - 'null'
+        shop_count:
+          type: integer
+      type: object
+      required:
+      - account_id
+      - email
+      - status
+      - created_at
+      - email_notices
+      - shop_count
+    AdminAccountList:
+      properties:
+        accounts:
+          items:
+            $ref: '#/components/schemas/AdminAccount'
+          type: array
+      type: object
+      required:
+      - accounts
+    AdminAuditEntry:
+      properties:
+        audit_id:
+          type: string
+          format: uuid
+        occurred_at:
+          type: string
+          format: date-time
+        account_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        actor:
+          type: string
+        action:
+          type: string
+        entity_type:
+          type:
+          - string
+          - 'null'
+        entity_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      type: object
+      required:
+      - audit_id
+      - occurred_at
+      - actor
+      - action
+    AdminAuditList:
+      properties:
+        entries:
+          items:
+            $ref: '#/components/schemas/AdminAuditEntry'
+          type: array
+      type: object
+      required:
+      - entries
+    AdminEmailProblem:
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        account_email:
+          type: string
+        type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        email_status:
+          type: string
+          enum:
+          - pending
+          - failed
+        email_attempts:
+          type: integer
+        email_note:
+          type:
+          - string
+          - 'null'
+      type: object
+      required:
+      - notification_id
+      - account_id
+      - account_email
+      - type
+      - created_at
+      - email_status
+      - email_attempts
+    AdminFigures:
+      properties:
+        currency:
+          type: string
+        accounts:
+          type: integer
+        accounts_active:
+          type: integer
+        signups_by_month:
+          items:
+            $ref: '#/components/schemas/MonthCount'
+          type: array
+        plans:
+          items:
+            $ref: '#/components/schemas/PlanFigure'
+          type: array
+        list_revenue_minor:
+          type: integer
+        note:
+          type: string
+      type: object
+      required:
+      - currency
+      - accounts
+      - accounts_active
+      - signups_by_month
+      - plans
+      - list_revenue_minor
+      - note
+    AdminNoticeEmails:
+      properties:
+        counts:
+          additionalProperties:
+            type: integer
+          type: object
+        problems:
+          items:
+            $ref: '#/components/schemas/AdminEmailProblem'
+          type: array
+      type: object
+      required:
+      - counts
+      - problems
+    AdminShop:
+      properties:
+        shop_id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        account_email:
+          type: string
+        shop_name:
+          type:
+          - string
+          - 'null'
+        tiktok_shop_code:
+          type:
+          - string
+          - 'null'
+        region:
+          type: string
+        seller_type:
+          type:
+          - string
+          - 'null'
+        connection_status:
+          type: string
+        first_synced_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_synced_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        access_expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        refresh_succeeded_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        refresh_failure_code:
+          type:
+          - string
+          - 'null'
+        refresh_failure_reason:
+          type:
+          - string
+          - 'null'
+        revoked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        statements:
+          type: integer
+        statements_unexplained:
+          type: integer
+      type: object
+      required:
+      - shop_id
+      - account_id
+      - account_email
+      - region
+      - connection_status
+      - statements
+      - statements_unexplained
+    AdminShopList:
+      properties:
+        shops:
+          items:
+            $ref: '#/components/schemas/AdminShop'
+          type: array
+      type: object
+      required:
+      - shops
+    AdminSyncRun:
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        shop_id:
+          type: string
+          format: uuid
+        shop_name:
+          type:
+          - string
+          - 'null'
+        kind:
+          type: string
+        domain:
+          type: string
+        status:
+          type: string
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        records_read:
+          type:
+          - integer
+          - 'null'
+        records_written:
+          type:
+          - integer
+          - 'null'
+        records_failed:
+          type:
+          - integer
+          - 'null'
+        error:
+          type:
+          - string
+          - 'null'
+      type: object
+      required:
+      - run_id
+      - shop_id
+      - kind
+      - domain
+      - status
+    AdminSyncRunList:
+      properties:
+        runs:
+          items:
+            $ref: '#/components/schemas/AdminSyncRun'
+          type: array
+      type: object
+      required:
+      - runs
+    AdminWebhookEvent:
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        received_at:
+          type: string
+          format: date-time
+        event_type:
+          type:
+          - string
+          - 'null'
+        tiktok_shop_id:
+          type:
+          - string
+          - 'null'
+        shop_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        processed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        process_status:
+          type:
+          - string
+          - 'null'
+        process_note:
+          type:
+          - string
+          - 'null'
+      type: object
+      required:
+      - event_id
+      - received_at
+    AdminWebhookEventList:
+      properties:
+        events:
+          items:
+            $ref: '#/components/schemas/AdminWebhookEvent'
+          type: array
+      type: object
+      required:
+      - events
+    CancelOut:
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        shops_disconnected:
+          type: integer
+      type: object
+      required:
+      - account_id
+      - status
+      - shops_disconnected
+    MonthCount:
+      properties:
+        month:
+          type: string
+        signups:
+          type: integer
+      type: object
+      required:
+      - month
+      - signups
+    PlanFigure:
+      properties:
+        plan_slug:
+          type: string
+        trialing:
+          type: integer
+        paying:
+          type: integer
+        past_due:
+          type: integer
+        list_revenue_minor:
+          type: integer
+      type: object
+      required:
+      - plan_slug
+      - trialing
+      - paying
+      - past_due
+      - list_revenue_minor
+    QueuedOut:
+      properties:
+        queued:
+          type: boolean
+        shop_id:
+          type: string
+          format: uuid
+      type: object
+      required:
+      - queued
+      - shop_id
+    RetryOut:
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+        email_status:
+          type: string
+          const: pending
+      type: object
+      required:
+      - notification_id
+      - email_status

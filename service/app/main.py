@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from . import (
     account_deletion,
+    admin,
     alert_settings,
     billing,
     connections,
@@ -91,6 +92,7 @@ app.add_exception_handler(HTTPException, problem_handler)
 app.add_exception_handler(Exception, problem_handler)
 
 app.include_router(account_deletion.router, prefix="/v1")
+app.include_router(admin.router, prefix="/v1")
 app.include_router(alert_settings.router, prefix="/v1")
 app.include_router(billing.router, prefix="/v1")
 app.include_router(connections.router, prefix="/v1")
