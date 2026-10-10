@@ -12,6 +12,8 @@ import { formatMargin, keptReason } from "@/lib/terms";
 
 /** Lines whose label states their direction, shown without the ledger's sign. */
 const UNSIGNED = new Set(["settlement", "reserve_withheld"]);
+/** Lines shown in red under the owner's ruling (A36.2 item 3): stock written off. */
+const ALERT = new Set(["stock_written_off"]);
 
 /**
  * The records page for a line, over the same period and basis.
@@ -48,7 +50,7 @@ export function MoneySections({ m, shopId, basis }) {
             {s.lines.map((l, i) => (
               <li key={`${l.category}-${l.tiktok_fee_type ?? i}`}>
                 <Link className="rowlink rowlink--quiet" href={recordsHref(shopId, basis, period, l)}><LineLabel line={l} /></Link>
-                <Figure amount={l.amount} unsigned={UNSIGNED.has(l.category ?? "")} />
+                <Figure amount={l.amount} unsigned={UNSIGNED.has(l.category ?? "")} alert={ALERT.has(l.category ?? "")} />
               </li>
             ))}
             {s.key !== "payout" && (

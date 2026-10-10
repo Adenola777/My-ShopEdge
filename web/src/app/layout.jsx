@@ -60,6 +60,15 @@ export default function RootLayout({ children }) {
             MyShopEdge is operated by Inspirecraft Global Ltd, Leicester. Your figures come from
             your own shop data. They are not financial advice.
           </p>
+          {/* The legal and support links (A36 step 8), the same addresses the product site's
+              footer publishes. */}
+          <nav className="footer__links" aria-label="Legal and support" data-testid="app-footer-links">
+            <a href="/legal/privacy.html">Privacy Policy</a>
+            <a href="/legal/terms.html">Terms and Conditions</a>
+            <a href="/legal/cookies.html">Cookie Policy</a>
+            <a href="mailto:support@inspirecraftglobal.com">Support</a>
+            <a href="mailto:privacy@inspirecraftglobal.com">Privacy contact</a>
+          </nav>
         </div>
       </footer>
     </div>

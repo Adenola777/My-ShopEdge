@@ -16,6 +16,11 @@
  * On 7 October 2026 Settings became an area with its own pages (`lib/nav.js`), and this
  * page became its shop page. The data download moved to Your data and the deletion to
  * Profile and plan, where the area's row of pages reaches them.
+ *
+ * On 10 October 2026 (A36 step 8) it took the brief's name and its sentence on what
+ * MyShopEdge can and cannot do, and offers Data sync and Reconnect. Your data became Data and
+ * privacy, Profile and plan became Account, billing and plan, and deletion has its own page in
+ * the area as well.
  */
 
 import Link from "next/link";
@@ -23,7 +28,7 @@ import { api, fetchShop, formatDate } from "@/lib/api";
 import { apiProblem, NOTHING_CHANGED } from "@/components/ApiProblem";
 import { chipClass } from "@/lib/terms";
 
-export const metadata = { title: "Shop connection" };
+export const metadata = { title: "TikTok Shop connection" };
 
 /** @type {Record<string, [string, string]>} */
 const CONNECTION = {
@@ -82,8 +87,8 @@ export default async function SettingsPage({ params }) {
   return (
     <section data-testid="settings-page">
       <header className="page-head">
-        <h1>Shop connection</h1>
-        <p>This page shows how this shop is connected to TikTok and how it is set up.</p>
+        <h1>TikTok Shop connection</h1>
+        <p>MyShopEdge can read your TikTok Shop data but cannot place orders, issue refunds or change your shop.</p>
       </header>
       <div className="stack">
         <div className="card" data-testid="settings-connection">
@@ -98,7 +103,7 @@ export default async function SettingsPage({ params }) {
               )}
             </li>
             <li>
-              <span>Last updated</span>
+              <span>Last sync</span>
               <strong>{shop?.last_synced_at ? formatDate(shop.last_synced_at, { time: true }) : "Not yet"}</strong>
             </li>
             <li><span>Access</span><strong>Read-only</strong></li>
@@ -109,7 +114,12 @@ export default async function SettingsPage({ params }) {
               </li>
             )}
             <li>
-              <span><Link href={`${base}/sync`}>What has been read</Link></span>
+              <span><Link href={`${base}/sync`}>Data sync</Link></span>
+              <span className="muted">What has been read from TikTok</span>
+            </li>
+            <li>
+              <span><Link href={`${base}/connection-problem`} data-testid="settings-reconnect">Reconnect</Link></span>
+              <span className="muted">Approve MyShopEdge on TikTok again</span>
             </li>
             <li>
               <span><Link href="/shops/connect">Connect another shop</Link></span>

@@ -20,7 +20,7 @@ import { chipClass } from "@/lib/terms";
 import { PlanControls } from "@/components/PlanControls";
 import { EmailNoticesSwitch } from "@/components/EmailNoticesSwitch";
 
-export const metadata = { title: "Profile and plan" };
+export const metadata = { title: "Account, billing and plan" };
 
 /** @type {Record<string, [string, string]>} */
 const STATUS = {
@@ -75,7 +75,7 @@ export default async function ProfilePage({ params }) {
   return (
     <section data-testid="profile-page">
       <header className="page-head">
-        <h1>Profile and plan</h1>
+        <h1>Account, billing and plan</h1>
         <p>This page shows how you sign in and which plan this account is on.</p>
       </header>
       <div className="stack">

@@ -129,7 +129,7 @@ export function DisconnectAction({ shopId }) {
     return (
       <div className="note" role="status" data-testid="disconnect-done">
         <p>Your shop is disconnected. Your records are still here. Reconnect the same shop at any time and everything continues from where it stopped.</p>
-        <p>Disconnecting does not change your plan. You manage your plan in <Link href={`/shops/${shopId}/settings/profile`}>Profile and plan</Link>.</p>
+        <p>Disconnecting does not change your plan. You manage your plan in <Link href={`/shops/${shopId}/settings/profile`}>Account, billing and plan</Link>.</p>
         <p><Link href={`/shops/${shopId}/settings`}>Back to settings</Link> &middot; <Link href="/shops/connect">Reconnect this shop</Link></p>
       </div>
     );

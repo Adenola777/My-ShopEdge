@@ -77,11 +77,14 @@ export const AREAS = [
 
 /** Settings is the eighth area: the foot of the sidebar, and a line on the More page. @type {NavArea} */
 export const SETTINGS = {
+  // The brief's Settings (section 18), in its order, since 10 October 2026 (A36 step 8).
+  // Product costs stay under Products, and the connection page links to them.
   slug: "settings", label: "Settings", icon: "settings", phone: "more", pages: [
-    ["settings/profile", "Profile and plan"],
-    ["settings", "Shop connection", ["sync", "connection-problem", "setup", "settings/disconnect"]],
-    ["settings/alerts", "Alert settings"],
-    ["settings/data", "Your data", ["settings/delete"]],
+    ["settings", "TikTok Shop connection", ["sync", "connection-problem", "setup", "settings/disconnect"]],
+    ["settings/alerts", "Notification settings"],
+    ["settings/profile", "Account, billing and plan"],
+    ["settings/data", "Data and privacy"],
+    ["settings/delete", "Delete account"],
     ["/shops?all=1", "Your shops"],
     ["glossary", "Help and glossary"],
   ],

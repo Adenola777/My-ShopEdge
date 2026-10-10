@@ -376,6 +376,8 @@ a:hover { color: var(--orange-700); }
   padding: var(--space-4);
 }
 .footer p { margin: 0; max-width: none; }
+.footer__links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-top: var(--space-2); }
+.footer__links a { color: var(--ink-700); }
 /* The footer sits outside the shop frame, so it makes room for the tabs itself. */
 .shell:has(.shopframe) .footer { padding-bottom: var(--tabbar); }
 @media (min-width: 64rem) {
@@ -395,7 +397,9 @@ a:hover { color: var(--orange-700); }
 /* A deduction is shown in red with its minus sign. Ruled by the owner on 24 September
    2026, amending A7.10: red marks money going out as well as money that has not arrived.
    #B3261E is 5.58 : 1 on white, so it passes AA. */
-.money--neg { color: var(--bad-600); }
+/* A deduction keeps its minus sign in the ordinary dark figure colour. Red is for a
+   write-off, a failed payment or a difference nobody has explained (A36.2 item 3). */
+.money--alert { color: var(--bad-600); }
 .money--unknown { color: var(--ink-500); font-weight: 500; }
 
 /* --- surfaces -------------------------------------------------------------------- */
