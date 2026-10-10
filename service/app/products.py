@@ -44,7 +44,7 @@ from .db import tenant
 from .entitlements import features_for, refuse
 from .entitlements import require as require_feature
 from .money import Money, money, per_unit
-from .money_lines import SHARED, gross_margin, line_label
+from .money_lines import SHARED, VERBATIM, gross_margin, line_label
 from .settlements import MAX_LIMIT, decode_cursor, encode_cursor
 from .shops import require_shop
 from .stock import StockPosition
@@ -92,6 +92,28 @@ class ProductRow(BaseModel):
     returns_units: int = 0
     cost_known: bool = False
     gross_margin_after_returns: float | None = None
+    # A36 step 6, the brief's product table (section 13). Net sales on A36's definition; what
+    # TikTok took between net sales and net proceeds; the cost of the units kept; what returns
+    # cost; and how much of the product carries a cost. Product cost is null unless every
+    # variant sold had a cost, and both cost figures are null on a plan without profit.
+    net_sales: Money | None = None
+    tiktok_deductions: Money | None = None
+    product_cost: Money | None = None
+    return_impact: Money | None = None
+    cost_status: str | None = None
+
+
+# How much of a product carries a cost, from the variants it sold in the period. `needs_review`
+# is in the contract for a cost an upload could not match with certainty; nothing raises it yet.
+COST_STATUSES = ("complete", "cost_needed", "partially_costed", "needs_review")
+
+
+def cost_status(skus_sold: int, skus_without_cost: int) -> str | None:
+    if skus_sold == 0:
+        return None
+    if skus_without_cost == 0:
+        return "complete"
+    return "cost_needed" if skus_without_cost >= skus_sold else "partially_costed"
 
 
 class Others(BaseModel):
@@ -248,7 +270,8 @@ returned_cost as (
 retained as (
   select sc.product_id,
          sum(greatest(sc.cost_minor - coalesce(rc.cost_minor, 0), 0)) as cost_retained_minor,
-         count(*) filter (where sc.missing or coalesce(rc.missing, false)) as skus_without_cost
+         count(*) filter (where sc.missing or coalesce(rc.missing, false)) as skus_without_cost,
+         count(*) as skus_sold
     from sold_cost sc
     left join returned_cost rc on rc.sku_id = sc.sku_id
    group by sc.product_id
@@ -267,6 +290,7 @@ select p.id as product_id, p.tiktok_product_id, p.title,
        -led.return_entries_minor as return_loss_minor,
        rt.cost_retained_minor,
        coalesce(rt.skus_without_cost, 0) as skus_without_cost,
+       coalesce(rt.skus_sold, 0) as skus_sold,
        case when coalesce(rt.skus_without_cost, 1) = 0
             then led.net_proceeds_minor - rt.cost_retained_minor + led.return_entries_minor
        end as kept_minor
@@ -276,6 +300,12 @@ select p.id as product_id, p.tiktok_product_id, p.title,
   left join rets rr on rr.product_id = led.product_id
   left join retained rt on rt.product_id = led.product_id
 """
+
+
+def _net_sales(r: dict[str, Any]) -> int:
+    """Net sales on A36's definition: gross sales less discounts less refunds."""
+    return (int(r["gross_sales_minor"]) + int(r.get("seller_discount_minor") or 0)
+            + int(r.get("refund_minor") or 0))
 
 
 @router.get("/shops/{shopId}/products", response_model=ProductRanking)
@@ -330,6 +360,7 @@ def list_products(
         for r in rows:
             r["kept_minor"] = None
             r["cost_retained_minor"] = None
+            r["no_profit"] = True
     # A count is not money, so a units ranking totals the money it is about: gross profit
     # after returns, or net proceeds on a plan without profit.
     count_money = "kept_minor" if profit else "net_proceeds_minor"
@@ -387,6 +418,16 @@ def list_products(
             ),
             returns_units=int(r["returns_units"]),
             cost_known=r["kept_minor"] is not None,
+            net_sales=money(_net_sales(r), currency),
+            tiktok_deductions=money(int(r["net_proceeds_minor"]) - _net_sales(r), currency),
+            product_cost=(money(-int(r["cost_retained_minor"]), currency)
+                          if r["kept_minor"] is not None and r["cost_retained_minor"] is not None
+                          else None),
+            # Stock written off is costed, so it stays out on a plan without profit (A35.3).
+            return_impact=(None if r.get("no_profit")
+                           else money(-int(r["return_loss_minor"] or 0), currency)),
+            cost_status=(None if r.get("no_profit")
+                         else cost_status(int(r.get("skus_sold") or 0), int(r["skus_without_cost"]))),
             gross_margin_after_returns=gross_margin(
                 int(r["kept_minor"]) if r["kept_minor"] is not None else None,
                 # Net sales on A36's definition, gross less discounts less refunds.
@@ -647,7 +688,10 @@ def get_product(
                       else LABELS.get(l["category"], l["category"]),
                 amount=money(int(l["amount_minor"]), currency),
                 category=l["category"],
-                tiktok_fee_type=l["tiktok_fee_type"],
+                # As Money sets it (money_lines._line): TikTok's fee type only on the categories
+                # the contract says carry one. Until 10 October 2026 every fee here carried it,
+                # so the page called each one a fee MyShopEdge does not recognise.
+                tiktok_fee_type=l["tiktok_fee_type"] if l["category"] in VERBATIM else None,
             )
             for l in rows
         ]

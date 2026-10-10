@@ -791,3 +791,16 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 .upgrade { max-width: var(--measure); }
 .upgrade__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
 .card.upgrade .upgrade__actions { justify-content: flex-start; }
+
+/* A progress bar, such as turnover against the VAT threshold (A36 step 6). It uses the
+   existing navy and grey tokens, so no new colour is introduced. */
+.meter { height: 10px; border-radius: 999px; background: var(--ink-100); overflow: hidden; margin: var(--space-3) 0; }
+.meter > span { display: block; height: 100%; background: var(--navy-900); border-radius: 999px; }
+
+/* The product table (A36 step 6) has nine columns, so on a phone it scrolls inside its card
+   with the product's name held at the left, and the names keep a readable width. */
+.table-scroll--sticky table { min-width: 56rem; }
+.table-scroll--sticky th:first-child,
+.table-scroll--sticky td:first-child { position: sticky; left: 0; background: var(--white); min-width: 10rem; z-index: 1; }
+.scroll-hint { display: block; }
+@media (min-width: 64rem) { .scroll-hint { display: none; } }

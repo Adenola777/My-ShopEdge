@@ -197,7 +197,56 @@ delayed. TikTok's expected payouts were not shown, because the local copy cannot
 **Unverified on production**: Needs review has run in the smoke test only, because the local
 copy has no statement with a difference.
 
-## A36.8 Still to build, each step with the owner's approval
+## A36.8 Built in step 6, 10 October 2026
+
+Step 6 follows sections 13 to 17 of the brief.
+
+- **Products**
+  - The page has the brief's subtitle and names the measure the ranking uses.
+  - The brief's table is served by `listProducts`. It shows the product, units sold, net
+    sales, TikTok deductions, product cost, return impact, gross profit after returns, gross
+    margin and cost status. Starter's table stops at net proceeds.
+  - The cost status is Complete, Cost needed or Partially costed, from the variants sold
+    (`products.cost_status`). Needs review is in the contract for a cost an upload cannot
+    match with certainty, which step 7 handles. It is not given yet.
+  - The product page adds net proceeds and the cost status, and names "Edit product cost".
+  - A fault found on the way was fixed: the product page called every fee one MyShopEdge
+    does not recognise. It now marks only the fees Money marks.
+- **Returns**
+  - The page has the brief's title and subtitle, and shows the items awaiting inspection.
+  - It shows the items already checked, read only, as Resellable, Unsellable and written off,
+    or Nothing came back, with what each did.
+  - The brief's wording for each choice is on the form, and Unsellable asks for a second
+    press before it records.
+  - **The optional note is not built**, because the service has nowhere to keep one.
+- **Stock**
+  - The page has the brief's subtitle.
+  - It shows the whole shop's units in hand, sold but not posted, coming back and written off.
+  - It lists the three variants still in stock with the fewest days of cover. `getStock`
+    serves both on its first page.
+  - The brief's "add costs to see profit contribution" is not shown, because no stock figure
+    is costed.
+- **Exports**
+  - The page has the brief's subtitle, and the cash basis is worded as the day TikTok settled
+    it.
+  - The confirmation reads "This export covers ... on the ... basis".
+  - Each scheduled export shows its next run (`next_run_on`).
+- **VAT and tax**
+  - The page has the brief's subtitle.
+  - The VAT card shows the rolling twelve-month turnover, this month's sales, the threshold
+    with the date it was checked against gov.uk, and the amount remaining.
+  - It shows a progress bar from the service's `share_of_threshold` and the time the figures
+    were worked out. Its wording is calm and does not state a legal duty.
+  - With costs missing, the tax card shows the brief's heading and copy. It always carries the
+    brief's disclaimer.
+  - **"Approaching" is not shown**, because no ruling says at what share of the threshold it
+    begins. It needs the owner's figure.
+
+Checked on the local copy at 390 and 1280 pixels wide, with no page scrolling sideways. On
+every one of the six products, net sales plus TikTok deductions equalled net proceeds, and net
+proceeds, product cost and return impact added up to gross profit after returns.
+
+## A36.9 Still to build, each step with the owner's approval
 5. Overview and Reconcile, with the six statuses and "Explain this payout".
 6. Products, Returns, Stock, Exports, and VAT and tax, as the brief sets them out.
 7. The cost upload: a template, a preview, and the five row statuses. Existing costs are shown

@@ -614,7 +614,7 @@ export function ExportForm({ shopId, today, history = true }) {
         <label htmlFor="basis">Basis</label>
         <select id="basis" value={basis} onChange={(e) => setBasis(e.target.value)} data-testid="basis">
           <option value="sales">Sales basis, by the day of the sale</option>
-          <option value="cash">Cash basis, by the settlement</option>
+          <option value="cash">Cash basis, by the day TikTok settled it</option>
         </select>
       </div>
       <div>
@@ -625,7 +625,7 @@ export function ExportForm({ shopId, today, history = true }) {
         </select>
       </div>
       <p className="note">
-        The file covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis.
+        This export covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis.
         {kind === "month_summary" && " Its totals match your Overview figures for the same period and basis."}
       </p>
       <FormError failure={error} />
@@ -651,7 +651,9 @@ function describeSchedule(s) {
   const when = s.cadence === "weekly"
     ? `every ${WEEKDAYS[s.day_of_week ?? 1]}, covering the Monday to Sunday before`
     : `on the ${ordinal(s.day_of_month ?? 1)} of each month, covering the month before`;
-  return `${KINDS[s.kind] ?? s.kind}, ${s.format === "xlsx" ? "Excel" : "CSV"}, ${s.basis} basis, ${when}`;
+  // The brief's "Next run" (A36 step 6), from the service's `next_run_on`.
+  const next = s.next_run_on ? `. Next run ${formatDate(s.next_run_on)}` : "";
+  return `${KINDS[s.kind] ?? s.kind}, ${s.format === "xlsx" ? "Excel" : "CSV"}, ${s.basis} basis, ${when}${next}`;
 }
 
 /**
@@ -791,7 +793,7 @@ export function ScheduledExports({ shopId }) {
           <label htmlFor="sched-basis">Basis</label>
           <select id="sched-basis" value={basis} onChange={(e) => setBasis(e.target.value)} data-testid="sched-basis">
             <option value="sales">Sales basis, by the day of the sale</option>
-            <option value="cash">Cash basis, by the settlement</option>
+            <option value="cash">Cash basis, by the day TikTok settled it</option>
           </select>
         </div>
       )}

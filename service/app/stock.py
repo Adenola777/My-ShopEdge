@@ -95,10 +95,25 @@ class StockPosition(BaseModel):
     as_of: datetime
 
 
+class StockTotals(BaseModel):
+    """The brief's totals across every variant (A36 step 6, section 15)."""
+    on_shelf: int
+    sold_not_posted: int
+    coming_back: int
+    written_off: int
+
+
 class StockPage(BaseModel):
     as_of: datetime
     items: list[StockPosition]
     next_cursor: str | None = None
+    # Served on the first page only, for the whole shop whatever the filter: the totals, and
+    # the variants with the fewest days of cover, at most RUNS_OUT_FIRST of them.
+    totals: StockTotals | None = None
+    runs_out_first: list[StockPosition] | None = None
+
+
+RUNS_OUT_FIRST = 3
 
 
 class StockMovement(BaseModel):
@@ -249,6 +264,20 @@ def get_stock(
         latest = conn.execute(
             "select max(as_of) from stock_positions where shop_id = %s", (str(shop_id),)
         ).fetchone()
+        every = positions(conn, shop_id) if cursor is None else None
+
+    totals = runs_out = None
+    if every is not None:
+        totals = StockTotals(
+            on_shelf=sum(p.on_shelf for p in every),
+            sold_not_posted=sum(p.sold_not_posted for p in every),
+            coming_back=sum(p.coming_back for p in every),
+            written_off=sum(p.written_off for p in every),
+        )
+        # Only a variant still selling has days of cover; one already out of stock is shown
+        # by its state, not ranked here.
+        runs_out = sorted((p for p in every if p.days_left is not None and p.on_shelf > 0),
+                          key=lambda p: (p.days_left, str(p.sku_id)))[:RUNS_OUT_FIRST]
 
     next_cursor = None
     if len(items) > limit:
@@ -258,7 +287,8 @@ def get_stock(
     # The page's own as_of is the newest count held for the shop. A shop with no positions
     # yet has no count to date, so the moment of the answer is used instead.
     as_of = latest[0] if latest and latest[0] is not None else now_utc()
-    return StockPage(as_of=as_of, items=items, next_cursor=next_cursor)
+    return StockPage(as_of=as_of, items=items, next_cursor=next_cursor,
+                     totals=totals, runs_out_first=runs_out)
 
 
 @router.get("/shops/{shopId}/stock/{skuId}/movements", response_model=MovementPage)

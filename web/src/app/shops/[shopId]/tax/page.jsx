@@ -9,6 +9,13 @@
  * `chip--ok`, which this stylesheet does not have, with `chip--good`. On 28 September the
  * set-aside card was changed to show the service's reason and basis lines, when A30.3's
  * estimate was built.
+ *
+ * Since 10 October 2026 (A36 step 6, the brief's section 17) the VAT card shows the rolling
+ * twelve months, this month, the dated threshold, the amount remaining, a progress bar from
+ * the service's `share_of_threshold`, and when it was worked out, in calm words that state no
+ * legal duty. The brief's "approaching" state is not shown, because no ruling sets where
+ * approaching begins. The tax card carries the brief's heading when costs are missing and its
+ * disclaimer.
  */
 
 import Link from "next/link";
@@ -42,30 +49,60 @@ export default async function TaxPage({ params }) {
     <section data-testid="tax-screen">
       <header className="page-head">
         <h1>VAT and tax</h1>
-        <p>This page tracks your sales against the VAT threshold, estimates tax to set aside and lists your tax dates. It is not financial advice.</p>
+        <p>Track your VAT position and plan a tax reserve from available shop data.</p>
       </header>
 
       <div className="stack">
         <div className="card" data-testid="vat-monitor">
           <h2>VAT registration threshold</h2>
-          <p className="card__why">This compares your gross sales over the last twelve months with the current threshold.</p>
+          <p className="card__why">This compares your gross sales over the last twelve months with the current threshold. It is not tax advice.</p>
           {!vat ? (
             <p className="muted" data-testid="vat-unconfigured">
               The VAT threshold is not loaded yet, so your position cannot be shown.
             </p>
           ) : (<>
-          <ul className="rows">
-            <li><span>Gross sales over the last twelve months</span><Figure amount={vat.rolling_twelve_month_turnover} /></li>
-            <li><span>Threshold</span><Figure amount={vat.threshold} /></li>
-            <li className="rows__total">
-              <span>{vat.above_threshold ? "Over the threshold by" : "Headroom before the threshold"}</span>
-              <span className={vat.above_threshold ? "chip chip--warn" : "chip chip--good"}>
-                {formatMoney(vat.above_threshold
-                  ? { amount_minor: -vat.headroom.amount_minor, currency: vat.headroom.currency }
-                  : vat.headroom)}
-              </span>
-            </li>
-          </ul>
+          {(() => {
+            const last = vat.months?.[vat.months.length - 1];
+            const share = vat.share_of_threshold;
+            return (
+              <>
+                <ul className="rows">
+                  <li><span>Rolling twelve-month taxable turnover</span><Figure amount={vat.rolling_twelve_month_turnover} /></li>
+                  {last && <li><span>TikTok sales this month so far</span><Figure amount={last.tiktok_gross} /></li>}
+                  {last && last.other_channels_gross.amount_minor !== 0 && (
+                    <li><span>Other-channel sales this month</span><Figure amount={last.other_channels_gross} /></li>
+                  )}
+                  <li>
+                    <span>
+                      VAT registration threshold
+                      {vat.reviewed_at && <div className="rows__sub">Checked against gov.uk on {formatDate(vat.reviewed_at)}</div>}
+                    </span>
+                    <Figure amount={vat.threshold} />
+                  </li>
+                  <li className="rows__total">
+                    <span>{vat.above_threshold ? "Above the threshold by" : "Amount remaining before the threshold"}</span>
+                    <span className={vat.above_threshold ? "chip chip--warn" : "chip chip--good"}>
+                      {formatMoney(vat.above_threshold
+                        ? { amount_minor: -vat.headroom.amount_minor, currency: vat.headroom.currency }
+                        : vat.headroom)}
+                    </span>
+                  </li>
+                </ul>
+                {share != null && (
+                  <div className="meter" role="img" data-testid="vat-meter"
+                       aria-label={`${(share * 100).toFixed(1)} per cent of the threshold`}>
+                    <span style={{ width: `${Math.min(share, 1) * 100}%` }} />
+                  </div>
+                )}
+                <p className="card__why" data-testid="vat-status">
+                  {vat.above_threshold
+                    ? "Your turnover here is above the VAT registration threshold. HMRC's own guidance decides whether you need to register, so check it or ask an accountant."
+                    : "Your turnover here is below the VAT registration threshold."}{" "}
+                  Worked out {formatDate(vat.as_of, { time: true })}.
+                </p>
+              </>
+            );
+          })()}
           <p className="card__foot">
             {vat.includes_other_channels
               ? "This includes the other-channel sales you entered."
@@ -103,7 +140,14 @@ export default async function TaxPage({ params }) {
               <p className="card__foot"><Link href={`/shops/${shopId}/setup/tax`}>Fill in your business details</Link></p>
             )}
             {setAside.unavailable_reason === "incomplete_costs" && (
-              <p className="card__foot"><Link href={`/shops/${shopId}/products`}>Add costs</Link></p>
+              <div data-testid="set-aside-costs">
+                <h3>Add product costs for a more useful tax estimate.</h3>
+                <p className="card__why">
+                  We can track turnover and net proceeds now. Add product costs before relying on
+                  a profit-based tax reserve.
+                </p>
+                <p className="card__foot"><Link href={`/shops/${shopId}/products`}>Add product costs</Link></p>
+              </div>
             )}
             {setAside.amount && (
               <ul className="rows">
@@ -114,6 +158,7 @@ export default async function TaxPage({ params }) {
                 ))}
               </ul>
             )}
+            <p className="footnote">This is an estimate based on the information in MyShopEdge and is not tax advice.</p>
           </div>
         )}
 

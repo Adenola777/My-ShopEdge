@@ -5,12 +5,11 @@
  * they arrive. The labels are A8's: stock on hand, sold not yet dispatched, returns in
  * transit, stock written off and days of cover.
  *
- * Two parts of the wireframe are not here yet, and both wait on the contract rather than
- * on this screen. The "Units in hand" block is a set of totals across every variant, and
- * `getStock` serves no totals. Adding them up here would put a figure in the browser that
- * the service never computed, against A29.1. "What runs out first" is an ordering by days
- * of cover, and the endpoint pages by variant, so an ordering applied here would sort only
- * the page in hand.
+ * Since 10 October 2026 (A36 step 6, the brief's section 15) the page opens with the
+ * shop's totals, units in hand, sold but not posted, coming back and written off, and what
+ * runs out first. `getStock` serves both on its first page for the whole shop, so nothing is
+ * added up or ordered here (A29.1). The brief's "profit contribution" is not on this page,
+ * because no stock figure here is costed, so its "add costs" line has nothing to qualify.
  */
 
 import Link from "next/link";
@@ -43,20 +42,52 @@ export default async function StockPage({ params, searchParams }) {
   const problem = apiProblem(result, { what: "your stock" });
   if (problem) return problem;
 
-  /** @type {{ as_of: string, items: import("@/lib/api-types").components["schemas"]["StockPosition"][], next_cursor: string | null }} */
-  const { as_of, items, next_cursor } = result.data;
+  /** @type {import("@/lib/api-types").components["schemas"]["StockPosition"][]} */
+  const items = result.data.items ?? [];
+  const { as_of, next_cursor, totals, runs_out_first: runsOut } = result.data;
   const base = `/shops/${shopId}/stock`;
 
   return (
     <section>
       <header className="page-head">
         <h1>Stock</h1>
-        <p>
+        <p>Know what is on hand, what is coming back and what may run out next.</p>
+        <p className="muted">
           This is your stock as TikTok last reported it, with your own adjustments.
           {items.length > 0 && ` The newest count is from ${formatDate(as_of, { time: true })}.`}
         </p>
-        <p><Link href={`/shops/${shopId}/returns`} data-testid="returns-link">Check returns</Link></p>
       </header>
+
+      {totals && (
+        <div className="card" data-testid="stock-totals">
+          <h2>Units in hand</h2>
+          <ul className="rows">
+            <li><span>Units in hand</span><strong className="money">{totals.on_shelf}</strong></li>
+            <li><span>Sold but not posted</span><strong className="money">{totals.sold_not_posted}</strong></li>
+            <li><span>Coming back</span><strong className="money">{totals.coming_back}</strong></li>
+            <li><span>Written off</span><strong className="money">{totals.written_off}</strong></li>
+          </ul>
+          {totals.coming_back > 0 && (
+            <p className="card__foot"><Link href={`/shops/${shopId}/returns`} data-testid="returns-link">Check returns</Link></p>
+          )}
+        </div>
+      )}
+
+      {runsOut && runsOut.length > 0 && (
+        <div className="card" data-testid="stock-runs-out">
+          <h2>What runs out first</h2>
+          <ul className="rows">
+            {runsOut.map((/** @type {import("@/lib/api-types").components["schemas"]["StockPosition"]} */ s) => (
+              <li key={s.sku_id}>
+                <Link href={`${base}/${s.sku_id}`}>{s.product_title || "Untitled product"}</Link>
+                <strong>
+                  {s.days_left} {s.days_left === 1 ? "day" : "days"} of cover, {s.on_shelf} on hand
+                </strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <nav className="switch" aria-label="Show">
         {FILTERS.map(([value, label]) => (
