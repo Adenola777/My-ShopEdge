@@ -86,7 +86,7 @@ with scoped as (
 ),
 ns as (
   select product_id,
-         coalesce(sum(amount_minor) filter (where category in ('gross_sales', 'seller_discount')), 0)
+         coalesce(sum(amount_minor) filter (where category in ('gross_sales', 'seller_discount', 'refund')), 0)
            as net_sales_minor
     from scoped group by product_id
 ),

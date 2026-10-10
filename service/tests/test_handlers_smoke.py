@@ -294,10 +294,12 @@ def money_chain():
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
     b = r.json()
     keys = [s["key"] for s in b["sections"]]
-    _assert(keys == ["revenue","tiktok_fees","refunds","your_costs","return_costs","payout"],
-            f"A8.5 order, then the payout section last: {keys}")
+    # A36 ruling 5: refunds sit in Sales, so net sales is gross less discounts less refunds.
+    _assert(keys == ["revenue","tiktok_fees","your_costs","return_costs","payout"],
+            f"A36 order, then the payout section last: {keys}")
     sec = {s["key"]: s for s in b["sections"]}
-    _assert(sec["revenue"]["subtotal"]["amount_minor"] == 85700)
+    _assert([l["category"] for l in sec["revenue"]["lines"]] == ["gross_sales", "seller_discount", "refund"])
+    _assert(sec["revenue"]["subtotal"]["amount_minor"] == 58300)
     _assert(sec["revenue"]["subtotal_label"] == "Net sales")
     fees = sec["tiktok_fees"]
     labels = [l["label"] for l in fees["lines"]]
@@ -305,9 +307,8 @@ def money_chain():
     # words since 10 October 2026.
     _assert("Logistics reimbursement" in labels, f"adjustment inside fees: {labels}")
     _assert("Some new fee" in labels, "an unrecognised fee keeps TikTok's name")
-    _assert(fees["subtotal"]["amount_minor"] == 78576)
-    _assert(sec["refunds"]["subtotal"]["amount_minor"] == 51176)
-    _assert(sec["refunds"]["subtotal_label"] == "Net proceeds")
+    _assert(fees["subtotal"]["amount_minor"] == 51176)
+    _assert(fees["subtotal_label"] == "Net proceeds")
     # Cost of goods is computed from retained cost, never read from the ledger (A4.1).
     cogs = sec["your_costs"]["lines"][0]
     _assert(cogs["category"] == "cost_of_goods_sold" and cogs["amount"]["amount_minor"] == -10200)
@@ -316,7 +317,7 @@ def money_chain():
     _assert(sec["return_costs"]["subtotal_label"] == "Gross profit after returns")
     t = b["totals"]
     _assert(t["gross_sales"]["amount_minor"] == 86200)
-    _assert(t["net_sales"]["amount_minor"] == 85700)
+    _assert(t["net_sales"]["amount_minor"] == 58300)
     _assert(t["net_proceeds"]["amount_minor"] == 51176)
     _assert(t["cost_of_goods_sold"]["amount_minor"] == -10200)
     _assert(t["gross_profit"]["amount_minor"] == 40976)
@@ -2258,6 +2259,22 @@ def sync_follows_account_state():
     finally:
         _db.get_subscription_row, _db.tenant = saved_row, saved_tenant
 check("A shop with no trial is read for thirty days from connection, and an ended plan not at all", sync_follows_account_state)
+
+
+def coverage_and_profit_so_far():
+    # One product costed, one not: coverage by net sales, and profit over the costed one only.
+    _money([DESK, NOCOST])
+    b = client.get(f"/v1/shops/{SHOP}/money").json()
+    t, c = b["totals"], b["coverage"]
+    _assert(t.get("gross_profit_after_returns") is None and b["kept_reason"] == "incomplete_costs", t)
+    _assert(t["gross_profit_so_far"]["amount_minor"] == 6000, t)  # DESK's kept only
+    # DESK nets 36000 of sales and NOCOST 4000, with no discounts or refunds in the rows.
+    _assert(c["share_of_sales"] == 0.9 and c["products_missing"] == 1
+            and c["sales_missing"]["amount_minor"] == 4000, c)
+    _money([DESK])
+    b = client.get(f"/v1/shops/{SHOP}/money").json()
+    _assert(b["totals"].get("gross_profit_so_far") is None and b["coverage"]["share_of_sales"] == 1.0, b["coverage"])
+check("Money serves cost coverage by sales value, and gross profit so far over costed products only", coverage_and_profit_so_far)
 
 print()
 if failures:

@@ -98,9 +98,32 @@ row). The browser never sets it.
 **Unverified**: the trial active page has run against the local copy only, where the demo
 shop has no import records, so "See my shop figures" has not been seen on screen.
 
-## A36.5 Still to build, each step with the owner's approval
-3. The definitions: the net sales order, gross profit so far, and cost coverage on every
-   screen that shows profit.
+## A36.5 Built in step 3, 10 October 2026
+
+- **Net sales** (`money_view.CHAIN`). The first section is Sales: gross sales, seller discounts
+  and refunds to customers, with Net sales as its subtotal. The TikTok fees section ends at Net
+  proceeds, and the separate refunds stage is gone. Net proceeds come to the same figure. The
+  product ranking, product detail and insights use the same definition. A8.5 is amended.
+- **Gross profit so far** (`Totals.gross_profit_so_far`, and the Overview month). When some
+  sold products lack a cost, it is the sum of gross profit after returns over the costed
+  products. It is null when every product has a cost, because gross profit after returns is
+  then shown, and null on Starter.
+- **Cost coverage by sales value** (`CostCoverageBySales`, served on `getMoney`, `getToday`'s
+  month and `getProducts`). It carries the costed share of net sales, the count of products
+  missing a cost and their net sales.
+- **The screens.** Overview, Where the money went, Products and the gross profit reveal show
+  "Gross profit so far" with the sentence "Based on product costs for X% of sales value. Costs
+  are still missing for N products affecting £Y of sales." and a link to the missing costs.
+  The first reconciliation shows the Sales and TikTok fees sections only.
+
+Checked on the local copy of the showcase shop, in the browser and through the service. With every cost present, net
+sales read £6,428.00 (they read £7,130.00 before), net proceeds stayed at £5,668.77, and gross
+margin read 52.7% (47.5% before), because the denominator lost the refunds. With the Computer
+Desk's costs set aside, gross profit so far read £2,660.07, equal to the sum of the costed
+products' gross profit after returns, and coverage read 73.9% with 1 product and £1,675.00 of
+sales missing, the same on Money and Products.
+
+## A36.6 Still to build, each step with the owner's approval
 4. The navigation in A36.1 item 4.
 5. Overview and Reconcile, with the six statuses and "Explain this payout".
 6. Products, Returns, Stock, Exports, and VAT and tax, as the brief sets them out.

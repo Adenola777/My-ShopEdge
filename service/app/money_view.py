@@ -68,11 +68,13 @@ from .shops import require_shop
 
 router = APIRouter(tags=["Money"])
 
-# (key, label, label of the running figure it reaches, categories). A8.5's order.
+# (key, label, label of the running figure it reaches, categories). The owner's order since
+# A36 (10 October 2026, ruling 5): net sales is gross sales less seller discounts less refunds,
+# and TikTok's deductions then reach net proceeds. Until then refunds came after the fees
+# (A8.5); net proceeds is the same figure either way, and only net sales moved.
 CHAIN: list[tuple[str, str, str, tuple[str, ...]]] = [
-    ("revenue", "Sales", "Net sales", ("gross_sales", "seller_discount")),
-    ("tiktok_fees", "TikTok fees", "Net proceeds before refunds", TIKTOK_FEES),
-    ("refunds", "Refunds", "Net proceeds", ("refund",)),
+    ("revenue", "Sales", "Net sales", ("gross_sales", "seller_discount", "refund")),
+    ("tiktok_fees", "TikTok fees", "Net proceeds", TIKTOK_FEES),
     ("your_costs", "Your costs", "Gross profit", ("seller_shipping",)),
     ("return_costs", "Return costs", "Gross profit after returns",
      ("return_shipping", "stock_written_off")),
@@ -118,6 +120,17 @@ class Totals(BaseModel):
     gross_profit: Money | None = None
     gross_profit_after_returns: Money | None = None
     gross_margin_after_returns: float | None = None
+    # A36.2 answer 1: with some costs missing, gross profit after returns over the products
+    # that have a cost only. Null when every cost is known (the full figure is served) and
+    # when none is.
+    gross_profit_so_far: Money | None = None
+
+
+class Coverage(BaseModel):
+    """How much of the period's sales carry a product cost (A36, the brief's section 9)."""
+    share_of_sales: float | None = None
+    products_missing: int
+    sales_missing: Money
 
 
 class MoneyView(BaseModel):
@@ -131,6 +144,7 @@ class MoneyView(BaseModel):
     cost_coverage: float
     confidence: str
     unmapped_fee_count: int
+    coverage: Coverage | None = None
 
 
 def _etag(view: MoneyView) -> str:
@@ -265,8 +279,8 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
         ))
 
     gross_sales = total(("gross_sales",))
-    net_sales = gross_sales + total(("seller_discount",))
-    net_proceeds = net_sales + total(TIKTOK_FEES) + total(("refund",))
+    net_sales = gross_sales + total(("seller_discount",)) + total(("refund",))
+    net_proceeds = net_sales + total(TIKTOK_FEES)
     gross_profit = gross_profit_after = None
     if costs_complete:
         gross_profit = net_proceeds + (cogs_minor or 0) + total(("seller_shipping",))
@@ -306,6 +320,12 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
     totals.gross_margin_after_returns = gross_margin(
         gross_profit_after if kept_reason is None else None, net_sales)
 
+    sales_coverage = None
+    if profit:
+        sales_coverage, so_far = cost_coverage(sold, currency)
+        if not costs_complete and so_far is not None:
+            totals.gross_profit_so_far = money(so_far, currency)
+
     view = MoneyView(
         as_of=datetime.now(timezone.utc),
         period={"from": start.isoformat(), "to": end.isoformat(), "basis": basis},
@@ -322,8 +342,36 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
         unmapped_fee_count=sum(
             int(r["entries"]) for r in rows if r["category"] == "unmapped_fee"
         ),
+        coverage=sales_coverage,
     )
     return view
+
+
+def product_net_sales(p: dict[str, Any]) -> int:
+    """A product's net sales on A36's definition: gross sales less discounts less refunds."""
+    return (int(p["gross_sales_minor"]) + int(p.get("seller_discount_minor") or 0)
+            + int(p.get("refund_minor") or 0))
+
+
+def cost_coverage(sold: list[dict[str, Any]], currency: str) -> tuple[Coverage, int | None]:
+    """Cost coverage by sales value, and gross profit so far over the costed products.
+
+    A product counts as costed when every variant it sold had a cost on its sale day, which is
+    the same test that makes its `kept` known. The share is costed products' net sales over all
+    sold products' net sales, to four places, and null when net sales come to nothing.
+    """
+    costed = [p for p in sold if int(p["skus_without_cost"]) == 0 and p.get("kept_minor") is not None]
+    uncosted = [p for p in sold if p not in costed]
+    total_ns = sum(product_net_sales(p) for p in sold)
+    costed_ns = sum(product_net_sales(p) for p in costed)
+    share = (float((Decimal(costed_ns) / Decimal(total_ns)).quantize(Decimal("0.0001"), ROUND_HALF_UP))
+             if total_ns > 0 else None)
+    so_far = sum(int(p["kept_minor"]) for p in costed) if costed else None
+    return Coverage(
+        share_of_sales=share,
+        products_missing=len(uncosted),
+        sales_missing=money(sum(product_net_sales(p) for p in uncosted), currency),
+    ), so_far
 
 
 # The two routes below were written by Emergent AI in `Adenola777/MYSHOPEDGE` (commit

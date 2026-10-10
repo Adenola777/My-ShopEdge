@@ -2334,6 +2334,8 @@ export interface components {
                 gross_profit_after_returns?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
                 /** @description Gross margin after returns, as a fraction of net sales to four places (0.4752 is 47.52 per cent). Null wherever gross profit after returns is unknown, and when net sales are zero. Ruled by the owner on 10 October 2026. */
                 gross_margin_after_returns?: number | null;
+                /** @description With some product costs missing, gross profit after returns over the products that have a cost only (A36). Null when every cost is known, and when none is. */
+                gross_profit_so_far?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
             };
             /** @description Null when cost coverage is incomplete. Never a zero standing in for unknown. */
             kept?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
@@ -2346,6 +2348,7 @@ export interface components {
              *     because those amounts are in the totals but not in any named line.
              */
             unmapped_fee_count?: number;
+            coverage?: components["schemas"]["CostCoverageBySales"];
         };
         WhereItWent: {
             period: components["schemas"]["Period"];
@@ -2390,6 +2393,9 @@ export interface components {
                 kept_reason?: string | null;
                 /** @description Gross margin after returns, as a fraction of net sales to four places (0.4752 is 47.52 per cent). Null wherever gross profit after returns is unknown, and when net sales are zero. Ruled by the owner on 10 October 2026. */
                 gross_margin_after_returns?: number | null;
+                /** @description With some product costs missing, gross profit after returns over the products that have a cost only (A36). Null when every cost is known, and when none is. */
+                gross_profit_so_far?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+                coverage?: components["schemas"]["CostCoverageBySales"];
             };
             /**
              * @description All time, A29.7. `generated` is net proceeds as A8 defines it. Return
@@ -2525,7 +2531,15 @@ export interface components {
              */
             shop_total?: components["schemas"]["Money"] | null;
             next_cursor?: string | null;
+            coverage?: components["schemas"]["CostCoverageBySales"];
         };
+        /** @description How much of the period's net sales carry a product cost (A36, 10 October 2026). A product counts once every variant it sold had a cost on its sale day. Null on a plan without product costs. */
+        CostCoverageBySales: {
+            /** @description Costed products' net sales over all sold products' net sales, to four places. Null when net sales come to nothing. */
+            share_of_sales?: number | null;
+            products_missing: number;
+            sales_missing: components["schemas"]["Money"];
+        } | null;
         ProductRow: {
             /** Format: uuid */
             product_id: string;

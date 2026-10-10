@@ -114,6 +114,9 @@ class ProductRanking(BaseModel):
     unattributed: Unattributed | None = None
     shop_total: Money | None = None
     next_cursor: str | None = None
+    # A36: cost coverage by sales value for the period, as Money serves it. Null on a plan
+    # without product costs.
+    coverage: Any | None = None
 
 
 # Money in the period that belongs to the shop and to no variant, such as a platform
@@ -146,7 +149,7 @@ def _measure_categories(measure: str) -> list[str]:
 
     if measure == "gross_sales":
         return ["gross_sales"]
-    upto = "refunds" if measure == "net_proceeds" else "return_costs"
+    upto = "tiktok_fees" if measure == "net_proceeds" else "return_costs"
     categories: list[str] = []
     for key, _label, _reached, cats in CHAIN:
         categories.extend(cats)
@@ -172,6 +175,7 @@ led as (
          coalesce(sum(amount_minor) filter (where entry_type = any(%(rl)s)), 0) as return_entries_minor,
          coalesce(sum(amount_minor) filter (where category = 'gross_sales'), 0) as gross_sales_minor,
          coalesce(sum(amount_minor) filter (where category = 'seller_discount'), 0) as seller_discount_minor,
+         coalesce(sum(amount_minor) filter (where category = 'refund'), 0) as refund_minor,
          coalesce(max(currency), 'GBP') as currency
     from scoped group by product_id
 ),
@@ -258,7 +262,7 @@ rets as (
 select p.id as product_id, p.tiktok_product_id, p.title,
        coalesce(u.units_sold, 0) as units_sold,
        coalesce(rr.returns_units, 0) as returns_units,
-       led.gross_sales_minor, led.seller_discount_minor, led.net_proceeds_minor, led.currency,
+       led.gross_sales_minor, led.seller_discount_minor, led.refund_minor, led.net_proceeds_minor, led.currency,
        -- Return Loss is positive money lost. Both entry types are negative in the ledger.
        -led.return_entries_minor as return_loss_minor,
        rt.cost_retained_minor,
@@ -385,7 +389,9 @@ def list_products(
             cost_known=r["kept_minor"] is not None,
             gross_margin_after_returns=gross_margin(
                 int(r["kept_minor"]) if r["kept_minor"] is not None else None,
-                int(r["gross_sales_minor"]) + int(r.get("seller_discount_minor") or 0),
+                # Net sales on A36's definition, gross less discounts less refunds.
+                int(r["gross_sales_minor"]) + int(r.get("seller_discount_minor") or 0)
+                + int(r.get("refund_minor") or 0),
             ),
         )
         for r in page
@@ -425,7 +431,14 @@ def list_products(
         ),
         shop_total=money(int(total_minor) + loose_minor, currency) if shop_known else None,
         next_cursor=next_cursor,
+        coverage=_coverage(rows, currency) if profit else None,
     )
+
+
+def _coverage(rows: list[dict[str, Any]], currency: str):
+    """Money's coverage for the same rows. Imported here because money_view imports this module."""
+    from .money_view import cost_coverage
+    return cost_coverage([r for r in rows if int(r["units_sold"]) > 0], currency)[0]
 
 
 def encode_cursor_offset(offset: int) -> str:
@@ -504,14 +517,15 @@ INCOMPLETE_TOTALS = {"your_costs": "Total your costs", "return_loss": "Total ret
 # does not name. Until 9 October 2026 refunds sat in the first stage under "Sales after
 # refunds" (copy audit, Area B row 60). Only the stages moved; every line and the figure the
 # chain ends on are unchanged.
+# Since A36 (10 October 2026, ruling 5) refunds sit in the first stage, so net sales is gross
+# less discounts less refunds, and the deductions reach net proceeds, as on Money.
 SECTIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
-    ("sales", "Sales", "Net sales", ("gross_sales", "seller_discount")),
-    ("deductions", "TikTok fees", "Net proceeds before refunds", (
+    ("sales", "Sales", "Net sales", ("gross_sales", "seller_discount", "refund")),
+    ("deductions", "TikTok fees", "Net proceeds", (
         "platform_commission", "affiliate_commission", "transaction_fee",
         "smart_promotions_fee", "shipping_fee", "return_handling_fee",
         "fbt_operations_fee", "fbt_shipping_fee", "fbt_storage_fee", "unmapped_fee",
     )),
-    ("refunds", "Refunds", "Net proceeds", ("refund",)),
     ("your_costs", "Your costs", "Gross profit", ("seller_shipping",)),
     ("return_loss", "Return costs", "Gross profit after returns",
      ("return_shipping", "stock_written_off")),

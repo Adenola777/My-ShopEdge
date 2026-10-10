@@ -3,17 +3,16 @@
  * October 2026). A seller reaches it after saving product costs. It covers the last 30 London
  * days, like the first reconciliation.
  *
- * Every figure is the service's (`getMoney` and `listProducts`). Until A36 step 3, gross
- * profit is served only when every product sold has a cost, so with some costs missing this
- * page shows the cost coverage and the products still missing a cost, and no profit figure.
- * The brief's "share of sales value" wording waits for step 3, which serves that share.
+ * Every figure is the service's (`getMoney`). With every cost known it shows gross profit and
+ * margin. With some missing it shows gross profit so far, over the costed products only, and
+ * the brief's coverage sentence by share of sales value (A36 step 3).
  */
 
 import Link from "next/link";
-import { fetchProducts, fetchShop, formatDate } from "@/lib/api";
+import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
-import { BEFORE_OVERHEADS, formatMargin } from "@/lib/terms";
+import { BEFORE_OVERHEADS, coverageSentence, formatMargin } from "@/lib/terms";
 
 export const metadata = { title: "Your product profit" };
 
@@ -24,20 +23,15 @@ export default async function ProfitRevealPage({ params }) {
   const start = new Date(`${today}T12:00:00Z`);
   start.setUTCDate(start.getUTCDate() - 29);
   const from = start.toISOString().slice(0, 10);
-  const [money, products] = await Promise.all([
-    fetchShop(shopId, "/money", { from, to: today }),
-    fetchProducts(shopId, { from, to: today }),
-  ]);
+  const money = await fetchShop(shopId, "/money", { from, to: today });
   const problem = apiProblem(money, { what: "your product profit", back: `/shops/${shopId}/today` });
   if (problem) return problem;
 
   /** @type {import("@/lib/api-types").components["schemas"]["MoneyView"]} */
   const m = money.data;
-  /** @type {{ cost_known?: boolean }[]} */
-  const rows = products.ok ? products.data?.products ?? [] : [];
-  const missing = rows.filter((p) => !p.cost_known).length;
+  const missing = m.coverage?.products_missing ?? 0;
   const profit = m.totals?.gross_profit_after_returns ?? null;
-  const coverage = Math.round((m.cost_coverage ?? 0) * 100);
+  const soFar = m.totals?.gross_profit_so_far ?? null;
   const base = `/shops/${shopId}`;
 
   return (
@@ -49,18 +43,15 @@ export default async function ProfitRevealPage({ params }) {
       <div className="card" data-testid="profit-reveal-card">
         <ul className="rows">
           <li className="rows__total">
-            <span>Gross profit after returns</span>
-            <Figure amount={profit} reason="Not every product sold has a cost yet, so gross profit cannot be worked out." />
+            <span>{profit || !soFar ? "Gross profit after returns" : "Gross profit so far"}</span>
+            <Figure amount={profit ?? soFar} reason="No product sold in this period has a cost yet." />
           </li>
           {profit && formatMargin(m.totals.gross_margin_after_returns) && (
             <li><span>Gross margin after returns</span><strong className="money">{formatMargin(m.totals.gross_margin_after_returns)}</strong></li>
           )}
-          <li><span>Cost coverage</span><strong>{coverage}% of products sold</strong></li>
         </ul>
         {missing > 0 ? (
-          <p className="card__why" data-testid="profit-reveal-missing">
-            Costs are still missing for {missing} {missing === 1 ? "product" : "products"}.
-          </p>
+          <p className="card__why" data-testid="profit-reveal-missing">{coverageSentence(m.coverage)}</p>
         ) : (
           <p className="card__why">{BEFORE_OVERHEADS}</p>
         )}

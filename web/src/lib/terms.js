@@ -8,6 +8,7 @@
  */
 
 import { NOT_ON_PLAN } from "./upgrade";
+import { formatMoney } from "./api";
 
 /** The statement CLR-5 requires wherever gross profit after returns is shown. */
 export const BEFORE_OVERHEADS = "This is before your own running costs and your tax.";
@@ -21,6 +22,21 @@ export const BEFORE_OVERHEADS = "This is before your own running costs and your 
 export function formatMargin(m) {
   if (m === null || m === undefined) return null;
   return `${(m * 100).toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
+/**
+ * The brief's coverage sentence (section 9, A36), from the service's `coverage`. Nothing when
+ * every product sold has a cost, or when the plan holds no product costs. The share is shown to
+ * one decimal place at most, so 99.6 per cent never reads as 100.
+ *
+ * @param {{ share_of_sales?: number | null, products_missing: number, sales_missing: { amount_minor: number, currency?: string } } | null | undefined} c
+ */
+export function coverageSentence(c) {
+  if (!c || c.products_missing === 0) return null;
+  const share = c.share_of_sales == null ? null
+    : `${(Math.floor(c.share_of_sales * 1000) / 10).toLocaleString("en-GB", { maximumFractionDigits: 1 })}%`;
+  const products = `${c.products_missing} ${c.products_missing === 1 ? "product" : "products"}`;
+  return `${share ? `Based on product costs for ${share} of sales value. ` : ""}Costs are still missing for ${products} affecting ${formatMoney(/** @type {any} */ (c.sales_missing))} of sales.`;
 }
 
 /** @type {Record<string, string>} */

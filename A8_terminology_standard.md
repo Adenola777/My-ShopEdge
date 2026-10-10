@@ -141,6 +141,24 @@ A fee that is zero for the period is omitted rather than shown as £0.00, except
 
 **Amended 10 October 2026, on the owner's instruction.** Four of these lines are filled by TikTok from more than one field: affiliate commission (`affiliate_commission_amount`, `affiliate_ads_commission_amount`, `affiliate_partner_commission_amount`), shipping fee (`actual_shipping_fee_amount`, `customer_paid_shipping_fee_amount`, `shipping_fee_discount_amount`), Smart Promotions fee (`smart_promotion_fee_amount`, `cofunded_promotion_service_fee_amount`) and return shipping (`return_shipping_fee_amount`, `free_return_subsidy_amount`). Each field arrives as its own line, so under the category's name alone production showed "Affiliate commission" twice and "Shipping fee" three times. Each of those lines now carries TikTok's own name for its field, such as "Affiliate ads commission" or "Customer paid shipping fee", as an unrecognised fee already does. The order above and the totals are unchanged.
 
+**Amended 10 October 2026, on the owner's ruling (A36.1 item 5).** Net sales are gross sales less seller discounts less refunds to customers. Refunds to customers therefore sit in the first section, above Net sales, and the lines "Net proceeds before refunds" and the refunds stage below it are withdrawn. Net proceeds are net sales less total TikTok fees, so the figure itself does not change. Gross margin divides by the new net sales, so it rises wherever a period carries refunds. The order now reads:
+
+```
+  Gross sales (GMV)
+− Seller discounts
+− Refunds to customers
+= Net sales
+
+  TikTok fees, itemised as above
+  = Total TikTok fees
+
+= Net proceeds
+```
+
+The rest of the order is unchanged. The worked example below was written before this ruling and keeps the earlier order; its percentages describe TikTok's own fee base, which this ruling does not change.
+
+**Gross profit so far, added 10 October 2026 on the owner's ruling (A36.1 item 6, A36.2 item 1).** Where some products sold in a period have no cost, gross profit after returns stays blank, and "Gross profit so far" is shown in its place. It is the sum of gross profit after returns over the products that have a cost, and it never adds an uncosted product at its net proceeds. It is always shown with cost coverage: "Based on product costs for X% of sales value. Costs are still missing for N products affecting £Y of sales." The share is the costed products' net sales over all products' net sales, so it is measured by sales value and not by a count of products.
+
 ### Worked example, August 2026, the sample shop
 
 | Line | Amount |
