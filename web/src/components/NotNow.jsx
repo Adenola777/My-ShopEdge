@@ -7,13 +7,13 @@
 
 import { useRouter } from "next/navigation";
 
-/** @param {{ fallback: string }} props */
-export function NotNow({ fallback }) {
+/** @param {{ fallback: string, label?: string }} props */
+export function NotNow({ fallback, label = "Not now" }) {
   const router = useRouter();
   return (
     <button type="button" className="btn btn--quiet" data-testid="upgrade-not-now"
       onClick={() => (window.history.length > 1 ? router.back() : router.push(fallback))}>
-      Not now
+      {label}
     </button>
   );
 }

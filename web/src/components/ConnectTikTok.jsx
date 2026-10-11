@@ -21,6 +21,8 @@ const REFUSAL = {
 export function ConnectTikTok() {
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
+  // A38: the plan's shop limit, when the service refused a new shop for it.
+  const [limit, setLimit] = useState(/** @type {number | null} */ (null));
 
   async function connect() {
     setBusy(true);
@@ -38,8 +40,28 @@ export function ConnectTikTok() {
       setError("MyShopEdge could not be reached. Try again in a moment.");
       return;
     }
+    if (r.data?.code === "shop_limit_reached") {
+      setLimit(Number(r.data?.shop_limit ?? 1));
+      return;
+    }
     const code = /** @type {keyof typeof REFUSAL} */ (r.data?.code);
     setError(REFUSAL[code] ?? r.data?.detail ?? "The connection could not be started. Nothing has changed. Try again in a moment.");
+  }
+
+  if (limit !== null) {
+    return (
+      <div className="note note--warn" role="status" data-testid="shop-limit">
+        <h2>You have reached your shop limit</h2>
+        <p>
+          Your current plan includes {limit === 1 ? "1 TikTok Shop" : `${limit} TikTok Shops`}.
+          Upgrade to connect more shops and manage them in one place.
+        </p>
+        <p className="upload__actions">
+          <a className="btn btn--primary btn--small" href="/pricing">Upgrade</a>
+          <a className="btn btn--quiet btn--small" href="/shops">Manage shops</a>
+        </p>
+      </div>
+    );
   }
 
   return (

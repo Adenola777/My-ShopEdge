@@ -23,7 +23,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
-import { api, fetchPlans, formatMoney } from "@/lib/api";
+import { api, fetchPlans } from "@/lib/api";
 import { importSteps } from "@/lib/onboarding";
 
 export const metadata = { title: "Card confirmed" };
@@ -61,10 +61,10 @@ export default async function ConfirmedPage({ searchParams }) {
         {status === "trialing" && firstPayment ? (
           <p>
             You will not be charged until {firstPayment}.
-            {plan ? ` Your selected ${plan.name} plan will renew at ${formatMoney(plan.price)} per month unless you cancel before then.` : ""}
+            {plan ? ` Your selected ${plan.name} plan will then renew unless you cancel before then.` : ""}
           </p>
         ) : (
-          plan && <p>Your {plan.name} plan renews at {formatMoney(plan.price)} per month unless you cancel in Settings.</p>
+          plan && <p>Your {plan.name} plan renews unless you cancel in Settings.</p>
         )}
         <p className="card__why">We will email you seven days before the first payment.</p>
         <Link className="btn btn--primary" href={next} data-testid="trial-active-next">

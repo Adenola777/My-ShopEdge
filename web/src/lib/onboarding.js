@@ -20,6 +20,10 @@
  * come before the figures (A36.1 item 3), so a seller with a plan goes to Overview, which the
  * brief makes the first screen after every sign-in. The first reconciliation is shown once,
  * straight after the trial starts or the import finishes.
+ *
+ * **A38, 11 October 2026.** An account with no plan is on Explorer, the free plan, and sees its
+ * figures, so the plan is no longer a step a seller must pass. Plans and pricing is reached
+ * from upgrade prompts, the banner and Settings instead.
  */
 
 /** @typedef {import("./api-types").components["schemas"]["Shop"]} Shop */
@@ -35,20 +39,18 @@ export function nextStep(shop, subscriptionStatus) {
     return `${base}/connection-problem`;
   }
   if (shop.connection_status === "pending") return `${base}/sync`;
-  // An unknown subscription is not treated as none: a failed request must not push a
-  // paying seller back to the plans.
-  if (subscriptionStatus === "none") return "/billing";
   return `${base}/today`;
 }
 
 /**
- * Where S2's button leads: the plan if none has been chosen, otherwise the shop.
+ * Where S2's button leads: the first result, on every plan (A38).
  *
  * @param {string} shopId
  * @param {string | null} subscriptionStatus
  */
 export function afterSync(shopId, subscriptionStatus) {
-  return subscriptionStatus === "none" ? "/billing" : `/shops/${shopId}/first-result`;
+  void subscriptionStatus;  // kept for callers; every plan, Explorer included, sees the result
+  return `/shops/${shopId}/first-result`;
 }
 
 /**
