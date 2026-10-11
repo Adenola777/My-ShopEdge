@@ -19,6 +19,11 @@
  * The neutrals are not set by any ruling, so they were measured from the wireframe sheets
  * on 24 September: borders #CBD5E1, muted text #64748B, soft panels #F1F5F9, the orange
  * tints #FFF2EC and #FFE1D4.
+ *
+ * 11 October 2026, the owner's ruling after the UI audit: the page is white with a touch of
+ * orange rather than pure white, so the white cards stand off it, and the greys around the
+ * cards and the rail are warm rather than slate. The three values below were proposed in
+ * the session and approved by the owner; no ruling or wireframe fixes them.
  */
 
 :root {
@@ -44,6 +49,11 @@
   --ink-100: #e2e8f0;
   --ink-50:  #f1f5f9;
   --white:   #ffffff;
+
+  /* The warm surfaces, 11 October 2026. */
+  --page: #fffaf7;
+  --rail: #fff5f0;
+  --line: #f0e4dc;
 
   /* The three data families, A7.10. Fees are blue in fee order, the seller's costs plum. */
   --data-navy:   #10263d;
@@ -93,7 +103,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background: var(--white);
+  background: var(--page);
   color: var(--ink-900);
   font-family: var(--font);
   font-size: 16px;
@@ -317,7 +327,7 @@ a:hover { color: var(--orange-700); }
     gap: var(--space-1);
     padding: 100px var(--space-3) var(--space-4);
     border-top: 0;
-    background: var(--ink-50);
+    background: var(--rail);
     box-shadow: none;
     overflow-y: auto;
   }
@@ -406,7 +416,7 @@ a:hover { color: var(--orange-700); }
 
 .card {
   background: var(--white);
-  border: 1px solid var(--ink-200);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
 }
@@ -641,11 +651,21 @@ tbody tr:last-child td { border-bottom: 0; }
 /* --- the shop screens ------------------------------------------------------------ */
 
 .page-head { margin-bottom: var(--space-4); }
-.page-head h1 { margin-bottom: var(--space-1); }
+.page-head h1 { margin-bottom: var(--space-2); }
 .page-head p { color: var(--ink-500); margin: 0; font-size: 0.9375rem; }
 .crumb { font-size: 0.875rem; margin-bottom: var(--space-2); }
 
 .stack { display: grid; gap: var(--space-3); }
+/* A stack of cards is spaced wider than the padding inside a card, so each section reads as
+   its own block (11 October 2026). A stack of form fields keeps the closer gap. */
+.stack:has(> .card) { gap: var(--space-5); }
+/* A heading in such a stack stays close to the cards it names: the negative margin takes the
+   wider gap back down to 8 px below it, while the gap above it stays wide. */
+.stack:has(> .card) > h2 { margin-bottom: calc(var(--space-2) - var(--space-5)); }
+/* Cards laid out outside a stack, as on Stock, take the same gap from a margin. A heading
+   keeps its own closer spacing above the card it names. */
+.content :not(.stack, .pair, .plan-cards) > .card + *,
+.content :not(.stack, .pair, .plan-cards) > :not(h1, h2, h3) + .card { margin-top: var(--space-5); }
 .pair { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; }
 
 /* The hero: an orange tinted panel with a navy figure. The tint marks the panel as the
