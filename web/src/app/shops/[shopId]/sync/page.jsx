@@ -47,7 +47,7 @@ export default async function SyncPage({ params, searchParams }) {
       )}
       <header className="page-head">
         <h1>We are putting your figures together.</h1>
-        <p>We are securely reading your available orders, fees, refunds, returns, settlements and payouts.</p>
+        <p>Reading your orders, fees, returns and payouts.</p>
       </header>
       <div className="stack">
         <div className="card" data-testid="import-steps">
@@ -61,7 +61,7 @@ export default async function SyncPage({ params, searchParams }) {
               </li>
             ))}
           </ul>
-          <p className="card__why">We will show your first results as soon as they are ready.</p>
+          <p className="card__why">First results appear when ready.</p>
         </div>
         {status === "none" && (
           <p className="card__why">We are preparing your shop figures while you choose your plan.</p>

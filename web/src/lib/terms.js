@@ -11,7 +11,7 @@ import { NOT_ON_PLAN } from "./upgrade";
 import { formatMoney } from "./api";
 
 /** The statement CLR-5 requires wherever gross profit after returns is shown. */
-export const BEFORE_OVERHEADS = "This is before your own running costs and your tax.";
+export const BEFORE_OVERHEADS = "Before your running costs and tax.";
 
 /**
  * Gross margin after returns as words, from the service's fraction (0.4752 reads "47.5%").
@@ -46,17 +46,23 @@ export const HERO_LABEL = {
 };
 
 /*
- * Chip tones. A7.10 keeps red, amber and green for the three payment statuses and nothing
- * else, "so that red on this product always means money that has not arrived". Every other
- * state here is navy (`critical`, `strong`) or neutral (`quiet`), and the word carries the
- * meaning. Until 24 September these used the payment colours.
+ * Chip tones, A37 (11 October 2026), which amends A7.10. Each tone carries an icon as well as
+ * a colour, so no status relies on colour alone:
+ *   good     pale green, a tick: complete or reconciled, and nothing else
+ *   warn     pale amber, a clock: pending or waiting on timing
+ *   review   pale amber, "!": the seller should look
+ *   cost     pale amber, "+": a product cost is needed
+ *   delayed  pale amber, a circular arrow: an update is late
+ *   bad      muted red, "!": a write-off, a confirmed loss or a failure
+ *   quiet    neutral, no icon
+ * `strong` and `critical` are the tones before A37 and are drawn as `review` and `bad`.
  */
 
 /** @type {Record<string, [string, string]>} label and chip tone */
 export const CONFIDENCE = {
   confirmed: ["Confirmed", "quiet"],
-  estimated: ["Estimated", "strong"],
-  incomplete: ["Incomplete", "strong"],
+  estimated: ["Estimated", "warn"],
+  incomplete: ["Incomplete", "cost"],
 };
 
 /**
@@ -74,8 +80,8 @@ export const CONFIDENCE_MEANING = {
 /** @type {Record<string, [string, string]>} */
 export const FRESHNESS = {
   fresh: ["Up to date", "quiet"],
-  getting_old: ["Not current", "strong"],
-  stale: ["Out of date", "critical"],
+  getting_old: ["Not current", "delayed"],
+  stale: ["Out of date", "delayed"],
 };
 
 /** @type {Record<string, string>} */
@@ -87,8 +93,9 @@ export const AWAITING = {
 
 /**
  * The six payout statuses the owner ruled on 10 October 2026 (A36.1 item 8), as the service
- * serves them in `reconcile_status`. Red is kept for a difference or a failed payment, which
- * is what Needs review means (A36.2 item 3). Timing is never shown as a fault.
+ * serves them in `reconcile_status`. Timing is never shown as a fault. Since A37 Needs review
+ * is amber with "!" rather than red, because a difference nobody has explained is not yet a
+ * confirmed loss.
  *
  * @type {Record<string, [string, string]>}
  */
@@ -96,15 +103,15 @@ export const PAYOUT_STATUS = {
   reconciled: ["Reconciled", "good"],
   awaiting_settlement: ["Awaiting settlement", "warn"],
   pending_payment: ["Pending payment", "warn"],
-  needs_review: ["Needs review", "bad"],
-  unmatched: ["Unmatched", "strong"],
-  sync_delayed: ["Sync delayed", "quiet"],
+  needs_review: ["Needs review", "review"],
+  unmatched: ["Unmatched", "review"],
+  sync_delayed: ["Sync delayed", "delayed"],
 };
 
 /** @type {Record<string, [string, string]>} */
 export const STOCK_STATE = {
-  out: ["Out of stock", "critical"],
-  low: ["Low", "strong"],
+  out: ["Out of stock", "review"],
+  low: ["Low", "review"],
   coming_back: ["Returns in transit", "quiet"],
   healthy: ["Healthy", "quiet"],
 };
@@ -148,7 +155,7 @@ export const RECORD_SOURCE = {
 };
 
 /** @type {Record<string, string>} */
-export const SEVERITY_TONE = { critical: "critical", warning: "strong", info: "quiet" };
+export const SEVERITY_TONE = { critical: "bad", warning: "review", info: "quiet" };
 
 /** @param {string} tone */
 export function chipClass(tone) {

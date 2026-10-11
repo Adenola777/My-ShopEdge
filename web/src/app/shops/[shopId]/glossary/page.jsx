@@ -113,7 +113,7 @@ export default async function GlossaryPage() {
     <section data-testid="glossary-screen">
       <header className="page-head">
         <h1>Glossary and tax rules</h1>
-        <p>What each figure means, and the tax rules MyShopEdge uses with the date each was last checked.</p>
+        <p>What each figure means, and the tax rules used.</p>
       </header>
       <div className="card" data-testid="glossary-terms">
         <h2>The figures</h2>

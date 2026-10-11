@@ -60,7 +60,7 @@ export default async function PayoutsPage({ params, searchParams }) {
     <section data-testid="payouts-screen">
       <header className="page-head">
         <h1>Reconcile</h1>
-        <p>Match settlements and payouts, then inspect every deduction behind them.</p>
+        <p>Payouts matched to statements.</p>
       </header>
 
       <div className="stack">
@@ -90,7 +90,7 @@ export default async function PayoutsPage({ params, searchParams }) {
                 </li>
                 <li>
                   <span>Difference</span>
-                  <Figure amount={s.difference} reason="The difference was not worked out for this payout." alert />
+                  <Figure amount={s.difference} reason="The difference was not worked out for this payout." review />
                 </li>
               </ul>
               <p className="card__foot">Explain this payout</p>
@@ -147,10 +147,7 @@ function PaidAndOwed({ sm }) {
   return (
     <div className="card" data-testid="paid-and-owed">
       <h2>Paid and still to come</h2>
-      <p className="card__why">
-        This covers every sale MyShopEdge holds for this shop: what TikTok has paid you, and what
-        it still owes you.
-      </p>
+      <p className="card__why">Paid to you, and still owed.</p>
       <ul className="rows">
         <li><span>Net proceeds, all time</span><Figure amount={sm.generated} /></li>
         {sm.return_postage && sm.return_postage.amount_minor !== 0 && (
@@ -159,10 +156,7 @@ function PaidAndOwed({ sm }) {
         <li><span>Paid out</span><Figure amount={sm.paid_out} /></li>
         <li><span>Awaiting settlement</span><Figure amount={sm.awaiting} /></li>
       </ul>
-      <p className="rows__sub">
-        Paid out and awaiting settlement together make up net proceeds less the return shipping
-        TikTok deducted.
-      </p>
+      <p className="rows__sub">Paid out + awaiting = net proceeds less return shipping.</p>
       {awaiting.length > 0 && (
         <details className="disclose">
           <summary>What is awaiting settlement</summary>
@@ -193,10 +187,7 @@ function AwaitingSettlement({ result }) {
     return (
       <div className="card" data-testid="awaiting-settlement">
         <h2>Awaiting settlement</h2>
-        <p className="card__why">
-          TikTok did not answer just now, so the payouts it still expects to make are not shown.
-          The payouts below are unaffected.
-        </p>
+        <p className="card__why">TikTok is not answering. Try again shortly.</p>
       </div>
     );
   }

@@ -32,7 +32,7 @@ export default async function OtherSalesPage({ params }) {
     <section data-testid="other-sales-screen">
       <header className="page-head">
         <h1>Other-channel sales</h1>
-        <p>Enter the sales you make outside TikTok, so MyShopEdge compares your whole turnover with the VAT registration threshold.</p>
+        <p>Sales outside TikTok, counted towards the VAT threshold.</p>
       </header>
 
       <div className="stack">

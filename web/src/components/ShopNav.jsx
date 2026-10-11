@@ -4,7 +4,9 @@
  * The shop's areas, as the owner approved them from the brief on 10 October 2026 (A36.1
  * item 4). On a larger screen the sidebar lists the eight areas in the brief's order:
  * Overview, Reconcile, Products, Returns, Stock, Exports, VAT and tax, and Settings at its
- * foot. The area in use opens to list its pages. On a phone the bottom tabs are Overview,
+ * foot. An area with more than one page is folded, and its pages appear only when the seller
+ * clicks the area's name, which the owner asked for on 11 October 2026 (A37.1 item 8). The
+ * area in use is still marked in orange while it is folded. On a phone the bottom tabs are Overview,
  * Reconcile, Products, Exports and More, and the More page holds the rest (`more/page.jsx`).
  * An area's pages sit in a row at the top of the page on a phone (`SectionNav`).
  *
@@ -14,6 +16,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useId, useState } from "react";
 import { AREAS, MORE, SETTINGS, hrefOf, locate } from "@/lib/nav";
 
 /** @type {Record<string, React.ReactElement>} */
@@ -78,21 +81,45 @@ const ICON = {
  *   here: ReturnType<typeof locate>, className?: string }} props
  */
 function Area({ area, base, here, className = "" }) {
-  const open = here.area === area;
+  const inUse = here.area === area;
   const first = area.pages[0];
   const href = hrefOf(base, first ? first[0] : area.slug);
+  const folds = area.pages.length > 1;
+  // Folded until the seller clicks the area's name. The shop layout keeps this component
+  // mounted between pages, so an area the seller opened stays open as they move within it.
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const current = inUse && here.page === first ? "page" : inUse ? "true" : undefined;
   return (
     <div className={`tabs__area${open ? " tabs__area--open" : ""}${area.phone === "more" ? " tabs__area--rail" : ""} ${className}`}>
+      {/* The link is the phone's bottom tab, and the only control for an area with one page.
+          On a larger screen an area with several pages shows the button instead. */}
       <Link
-        className="tabs__tab"
+        className={`tabs__tab${folds ? " tabs__tab--link" : ""}`}
         href={href}
-        aria-current={open && here.page === first ? "page" : open ? "true" : undefined}
+        aria-current={current}
       >
         {ICON[area.icon]}
         <span>{area.label}</span>
       </Link>
-      {open && area.pages.length > 1 && (
-        <ul className="tabs__pages" aria-label={area.label}>
+      {folds && (
+        <button
+          type="button"
+          className="tabs__tab tabs__tab--toggle"
+          aria-expanded={open}
+          aria-controls={listId}
+          data-current={current ? "true" : undefined}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {ICON[area.icon]}
+          <span>{area.label}</span>
+          <svg className="tabs__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        </button>
+      )}
+      {folds && open && (
+        <ul className="tabs__pages" id={listId} aria-label={area.label}>
           {area.pages.map((page) => (
             <li key={page[0]}>
               <Link href={hrefOf(base, page[0])} aria-current={here.page === page ? "page" : undefined}>

@@ -28,7 +28,7 @@ export default async function UploadPage({ params }) {
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/setup/costs`}>Product costs</Link></p>
         <h1>Upload your product costs.</h1>
-        <p>Upload an Excel or CSV file. We will show how it matches your TikTok Shop products before anything is saved.</p>
+        <p>Excel or CSV. You review the matches before anything is saved.</p>
       </header>
       <UploadFlow shopId={shopId} />
     </section>

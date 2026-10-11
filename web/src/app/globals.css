@@ -19,6 +19,18 @@
  * The neutrals are not set by any ruling, so they were measured from the wireframe sheets
  * on 24 September: borders #CBD5E1, muted text #64748B, soft panels #F1F5F9, the orange
  * tints #FFF2EC and #FFE1D4.
+ *
+ * A37, 11 October 2026: Inter for text and figures, tabular numerals everywhere, no gradient
+ * outside the logo, orange for primary actions and the selected state only, pale green for
+ * complete or reconciled, pale amber for pending or review, muted red for a write-off, a loss
+ * or a failure, every status chip carrying an icon as well as a colour, 12 and 16 px corners,
+ * and the spacing the owner set: 40 px page padding and 48 px between sections on a larger
+ * screen, 16 px and about 32 px on a phone, 24 px inside a card and 32 px inside the main one.
+ *
+ * 11 October 2026, the owner's ruling after the UI audit: the page is white with a touch of
+ * orange rather than pure white, so the white cards stand off it, and the greys around the
+ * cards and the rail are warm rather than slate. The three values below were proposed in
+ * the session and approved by the owner; no ruling or wireframe fixes them.
  */
 
 :root {
@@ -45,6 +57,13 @@
   --ink-50:  #f1f5f9;
   --white:   #ffffff;
 
+  /* The surfaces. The owner ruled a warm tint on 11 October 2026 and the same day asked for
+     white instead (A37.1 item 5): the page, the navigation and every card are pure white,
+     borders are a neutral grey with no pink in them, and orange is the highlight. */
+  --page: #ffffff;
+  --rail: #ffffff;
+  --line: #e5e7eb;
+
   /* The three data families, A7.10. Fees are blue in fee order, the seller's costs plum. */
   --data-navy:   #10263d;
   --data-blue-1: #1d4fa8;
@@ -62,11 +81,10 @@
   --good-600: #12633a;
   --good-50:  #e2f1e8;
 
-  /* A7.11, 30 September 2026: the logo's own gradient, shown as brand accents. Never as a
-     text colour, because #FF9A1F and #FF6A00 fall below 4.5 : 1 on white. */
-  --brand-gradient: linear-gradient(135deg, #ff9a1f 0%, #ff6a00 50%, #f4511e 100%);
-  --radius: 10px;
-  --radius-lg: 12px;
+  /* A7.11's --brand-gradient token was removed by A37: the gradient is for the logo only. */
+  --radius: 12px;
+  --radius-lg: 16px;
+  --ease: 180ms ease-out;
   --shadow-1: none;
   --shadow-2: 0 2px 8px rgb(17 24 32 / 8%);
 
@@ -83,8 +101,12 @@
   --column: 560px;
   --tabbar: 64px;
 
-  --font: "Plus Jakarta Sans Variable", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-num: "Archivo Variable", "Plus Jakarta Sans Variable", system-ui, sans-serif;
+  --font: "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-num: var(--font);
+  /* A37 spacing. */
+  --card-pad: var(--space-4);
+  --hero-pad: 20px;
+  --section-gap: var(--space-6);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -93,17 +115,20 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background: var(--white);
+  background: var(--page);
   color: var(--ink-900);
   font-family: var(--font);
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* A37: tabular numerals for every amount, percentage, quantity and date. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 h1, h2, h3 { line-height: 1.2; margin: 0 0 var(--space-3); letter-spacing: -0.01em; color: var(--navy-900); }
-h1 { font-size: 1.625rem; font-weight: 700; }
-h2 { font-size: 1.125rem; font-weight: 700; }
+h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 1.25rem; font-weight: 650; }
 h3 { font-size: 1rem; font-weight: 700; }
 p  { margin: 0 0 var(--space-4); max-width: var(--measure); }
 
@@ -143,15 +168,9 @@ a:hover { color: var(--orange-700); }
   top: 0;
   z-index: 30;
   background: var(--white);
-  border-bottom: 1px solid var(--ink-200);
+  border-bottom: 1px solid var(--line);
 }
-/* A7.11: a band of the logo's gradient along the top of every screen. */
-.appbar::before {
-  content: "";
-  display: block;
-  height: 4px;
-  background: var(--brand-gradient);
-}
+/* A7.11's band of the logo's gradient along the top of every screen was removed by A37. */
 .appbar__inner {
   max-width: 72rem;
   margin: 0 auto;
@@ -165,7 +184,7 @@ a:hover { color: var(--orange-700); }
 .appbar__logo { display: block; flex: none; line-height: 0; }
 .appbar__logo img { height: 44px; width: auto; display: block; }
 .appbar__status { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
-.appbar__updated { color: var(--ink-700); font-size: 0.8125rem; white-space: nowrap; }
+.appbar__updated { color: var(--ink-700); font-size: 0.875rem; white-space: nowrap; }
 .appbar__updated--stale { color: var(--navy-900); font-weight: 650; }
 .appbar__link { color: var(--navy-900); font-weight: 600; font-size: 0.9375rem; text-decoration: none; padding: var(--space-2); }
 .appbar__link:hover { color: var(--orange-600); }
@@ -214,6 +233,9 @@ a:hover { color: var(--orange-700); }
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-7);
 }
+@media (min-width: 64rem) {
+  .content { padding: var(--space-6) 40px var(--space-7); }
+}
 .shopframe .content { padding-bottom: calc(var(--tabbar) + var(--space-6)); }
 
 /* The tabs: five across the bottom of a phone, a rail down the left of a larger
@@ -251,7 +273,8 @@ a:hover { color: var(--orange-700); }
 }
 .tabs__tab svg { width: 22px; height: 22px; }
 .tabs__tab[aria-current] { background: var(--orange-50); color: var(--orange-600); }
-/* A7.11: the active tab carries a bar of the brand gradient. */
+/* The active tab carries a bar of the interface orange. It was the brand gradient (A7.11)
+   until A37. */
 .tabs__tab[aria-current]::after {
   content: "";
   position: absolute;
@@ -260,12 +283,12 @@ a:hover { color: var(--orange-700); }
   right: 25%;
   height: 3px;
   border-radius: 0 0 3px 3px;
-  background: var(--brand-gradient);
+  background: var(--orange-600);
 }
 /* On a phone the bottom tabs are Overview, Reconcile, Products, Exports and More (A36.1
    item 4). Returns, Stock, VAT and tax and Settings are on the More page, and an area's
    pages are the row above the page. */
-.tabs__area--rail, .tabs__pages { display: none; }
+.tabs__area--rail, .tabs__pages, .tabs__tab--toggle { display: none; }
 
 /* The pages of an area, on a phone: a row of chips that wraps onto a second line when it
    does not fit. Until 10 October 2026 the row scrolled sideways, which hid the last page off
@@ -296,13 +319,13 @@ a:hover { color: var(--orange-700); }
   white-space: nowrap;
 }
 .subnav a:hover { border-color: var(--orange-600); color: var(--orange-600); }
-.subnav a[aria-current="page"] { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
+.subnav a[aria-current="page"] { background: var(--orange-50); border-color: var(--orange-300); color: var(--orange-700); }
 
 /* WFW 7: on larger screens the column is centred and the tabs become a left rail. The
    column widens on a larger screen, so figures and tables are not squeezed into a phone's
    width in the middle of an empty page. */
 @media (min-width: 64rem) {
-  :root { --column: 760px; }
+  :root { --column: 1040px; --card-pad: var(--space-5); --hero-pad: var(--space-6); --section-gap: var(--space-7); }
   .shopframe { padding-left: 232px; }
   .shopframe .content { padding-bottom: var(--space-7); }
   .subnav { display: none; }
@@ -314,26 +337,45 @@ a:hover { color: var(--orange-700); }
     height: auto;
     flex-direction: column;
     justify-content: flex-start;
-    gap: var(--space-1);
+    gap: var(--space-2);
     padding: 100px var(--space-3) var(--space-4);
     border-top: 0;
-    background: var(--ink-50);
+    background: var(--rail);
     box-shadow: none;
     overflow-y: auto;
   }
   .tabs__area { flex: none; max-width: none; flex-direction: column; }
-  .tabs__tab { flex: none; min-height: 40px; flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding: 0 var(--space-3); font-size: 0.9375rem; }
+  .tabs__tab { flex: none; min-height: 44px; flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding: 0 var(--space-3); font-size: 0.9375rem; }
+  /* An area with several pages is a button that folds them away (A37.1 item 8). */
+  .tabs__tab--link { display: none; }
+  .tabs__tab--toggle {
+    display: flex;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--ease), color var(--ease);
+  }
+  .tabs__tab--toggle[data-current] { background: var(--orange-50); color: var(--orange-600); }
+  .tabs__chevron { width: 16px !important; height: 16px !important; margin-left: auto; transition: transform var(--ease); }
+  .tabs__tab--toggle[aria-expanded="true"] .tabs__chevron { transform: rotate(90deg); }
   /* No side lines on a larger screen, at the owner's request: the active area is marked by
      its background and colour alone. */
   .tabs__tab[aria-current]::after { display: none; }
-  .tabs__tab[aria-current] { background: var(--white); }
+  /* The area in use is highlighted in orange on the white rail (A37.1 item 5). */
+  .tabs__tab[aria-current] { background: var(--orange-50); }
+  .tabs__tab:hover { color: var(--orange-700); }
   /* Inside an open area the page in use carries the mark, so the area's own row is quieter. */
-  .tabs__area--open .tabs__tab[aria-current="true"] { background: transparent; }
-  .tabs__pages { display: block; list-style: none; margin: 2px 0 var(--space-2); padding: 0 0 0 34px; }
+  .tabs__area--open .tabs__tab--toggle[data-current="true"] { background: transparent; }
+  .tabs__pages { display: grid; gap: var(--space-2); list-style: none; margin: var(--space-2) 0 var(--space-2); padding: 0 0 0 34px; }
   .tabs__pages a {
     display: flex;
     align-items: center;
-    min-height: 34px;
+    min-height: 40px;
     padding: 0 var(--space-3);
     border-radius: var(--radius);
     color: var(--ink-700);
@@ -342,7 +384,7 @@ a:hover { color: var(--orange-700); }
     text-decoration: none;
   }
   .tabs__pages a:hover { color: var(--orange-600); }
-  .tabs__pages a[aria-current="page"] { color: var(--orange-600); font-weight: 650; background: var(--white); }
+  .tabs__pages a[aria-current="page"] { color: var(--orange-700); font-weight: 650; background: var(--orange-50); }
   /* The sidebar lists all eight areas, so More is not needed there. */
   .tabs__area--rail { display: flex; }
   .tabs__area--more { display: none; }
@@ -366,9 +408,9 @@ a:hover { color: var(--orange-700); }
 .morelist a:hover { color: var(--orange-600); }
 
 .footer {
-  border-top: 1px solid var(--ink-200);
-  color: var(--ink-500);
-  font-size: 0.8125rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-700);
+  font-size: 0.875rem;
 }
 .footer__inner {
   max-width: var(--column);
@@ -400,18 +442,20 @@ a:hover { color: var(--orange-700); }
 /* A deduction keeps its minus sign in the ordinary dark figure colour. Red is for a
    write-off, a failed payment or a difference nobody has explained (A36.2 item 3). */
 .money--alert { color: var(--bad-600); }
+/* A37: an unexplained difference, amber like its Needs review label. #8A5A00 is 6.1 : 1 on white. */
+.money--review { color: var(--warn-700); }
 .money--unknown { color: var(--ink-500); font-weight: 500; }
 
 /* --- surfaces -------------------------------------------------------------------- */
 
 .card {
   background: var(--white);
-  border: 1px solid var(--ink-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--card-pad);
 }
 /* WFW 1.1: a title and one line on why the card matters. */
-.card > h2 { font-size: 1.0625rem; margin: 0 0 var(--space-1); }
+.card > h2 { font-size: 1rem; font-weight: 650; margin: 0 0 var(--space-2); }
 .card__why { color: var(--ink-700); font-size: 0.875rem; margin: 0 0 var(--space-3); }
 
 .note {
@@ -424,7 +468,7 @@ a:hover { color: var(--orange-700); }
 .note p:last-child { margin-bottom: 0; }
 /* Notes that are not about payment take no status colour. */
 .note--info { background: var(--ink-50); border-color: var(--ink-200); color: var(--ink-700); }
-.note--warn { background: var(--ink-50); border-color: var(--ink-300); color: var(--navy-900); }
+.note--warn { background: var(--warn-50); border-color: #ecd6a6; color: var(--warn-700); }
 .note--good { background: var(--good-50); border-color: #b7dcc6; color: var(--good-600); }
 .note--bad  { background: var(--bad-50);  border-color: #f3c9c5; color: var(--bad-600); }
 
@@ -443,7 +487,7 @@ a:hover { color: var(--orange-700); }
   border: 1.5px solid transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition: background-color var(--ease), border-color var(--ease), color var(--ease);
 }
 .btn--primary { background: var(--orange-600); color: var(--white); }
 .btn--primary:hover:not(:disabled) { background: var(--orange-700); color: var(--white); }
@@ -468,6 +512,9 @@ input, select, textarea {
   color: var(--ink-900);
 }
 input:hover, select:hover, textarea:hover { border-color: var(--ink-300); }
+/* A37.1 item 9: a hint inside an empty field, faint but still 4.76 : 1 on white. */
+input::placeholder, textarea::placeholder { color: var(--ink-500); opacity: 1; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--orange-600); outline: none; box-shadow: 0 0 0 3px var(--orange-300); border-radius: var(--radius); }
 
 /* --- tables ---------------------------------------------------------------------- */
 
@@ -476,7 +523,7 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9375rem; }
 caption { text-align: left; color: var(--ink-500); padding-bottom: var(--space-2); }
 th, td { text-align: left; padding: var(--space-3); border-bottom: 1px solid var(--ink-100); }
 th { font-weight: 600; color: var(--ink-700); white-space: nowrap; }
-td.num, th.num { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tbody tr:last-child td { border-bottom: 0; }
 
 /* --- states ---------------------------------------------------------------------- */
@@ -492,7 +539,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .skeleton {
   background: linear-gradient(90deg, var(--ink-100) 25%, var(--ink-50) 37%, var(--ink-100) 63%);
   background-size: 400% 100%;
-  animation: shimmer 1.4s ease infinite;
+  animation: shimmer 1.6s ease-out infinite;
   border-radius: var(--radius);
   color: transparent;
 }
@@ -640,23 +687,110 @@ tbody tr:last-child td { border-bottom: 0; }
 
 /* --- the shop screens ------------------------------------------------------------ */
 
-.page-head { margin-bottom: var(--space-4); }
-.page-head h1 { margin-bottom: var(--space-1); }
-.page-head p { color: var(--ink-500); margin: 0; font-size: 0.9375rem; }
+.page-head { margin-bottom: var(--space-5); }
+.page-head h1 { margin-bottom: var(--space-2); }
+.page-head p { color: var(--ink-700); margin: 0; font-size: 0.9375rem; }
 .crumb { font-size: 0.875rem; margin-bottom: var(--space-2); }
 
 .stack { display: grid; gap: var(--space-3); }
+/* A stack of cards is spaced wider than the padding inside a card, so each section reads as
+   its own block (11 October 2026). A stack of form fields keeps the closer gap. */
+.stack:has(> .card) { gap: var(--space-5); }
+/* A heading in such a stack stays close to the cards it names: the negative margin takes the
+   wider gap back down to 8 px below it, while the gap above it stays wide. */
+.stack:has(> .card) > h2 { margin-bottom: calc(var(--space-3) - var(--space-5)); }
+/* A37: a heading in a stack starts a new section, so the space above it is the section gap. */
+.stack:has(> .card) > h2:not(:first-child) { margin-top: calc(var(--section-gap) - var(--space-5)); }
+/* Cards laid out outside a stack, as on Stock, take the same gap from a margin. A heading
+   keeps its own closer spacing above the card it names. */
+.content :not(.stack, .pair, .plan-cards) > .card + *,
+.content :not(.stack, .pair, .plan-cards) > :not(h1, h2, h3) + .card { margin-top: var(--space-5); }
 .pair { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; }
 
-/* The hero: an orange tinted panel with a navy figure. The tint marks the panel as the
-   headline; the figure is navy because orange never carries data (A7.10). */
-.hero { position: relative; overflow: hidden; background: var(--orange-50); border-color: var(--orange-100); }
+/* A37 phase 2: a page title with its actions beside it, and the page's controls on one row
+   on a larger screen. */
+.page-head--row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
+.page-head__actions { display: flex; align-items: center; gap: var(--space-3); font-size: 0.875rem; }
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-5); }
+.toolbar .switch { margin: 0; }
+/* A compact switch sizes to its words rather than filling the row (A37 phase 2). On a phone
+   it fills the row and keeps a 44 px target. */
+.switch--compact { flex: 1 1 100%; }
+@media (min-width: 40rem) {
+  .switch--compact { flex: none; display: inline-flex; }
+  .switch--compact a { flex: none; min-height: 36px; padding: 0 var(--space-4); font-size: 0.875rem; white-space: nowrap; }
+}
 
-.hero__label { font-weight: 700; margin: 0; color: var(--navy-900); }
-.hero__value { font-size: 2.25rem; font-weight: 700; margin: var(--space-1) 0; line-height: 1.1; }
+/* The hero: a white panel, set apart by its size, its 16 px corners and its figure, the
+   largest on the page. It had an orange tint until the owner asked for white (A37.1 item 5). */
+.hero { position: relative; overflow: hidden; background: var(--white); border-color: var(--line); border-radius: var(--radius-lg); padding: var(--hero-pad); }
+
+.hero__label { font-weight: 650; margin: 0; color: var(--navy-900); }
+.hero__value { font-size: 2.5rem; font-weight: 700; margin: var(--space-2) 0; line-height: 1.1; letter-spacing: -0.02em; }
 .hero__value .money { color: var(--navy-figure); font-weight: 700; }
-.hero__line { color: var(--ink-500); font-size: 0.875rem; margin: 0; }
-.stat__value { font-family: var(--font-num); font-size: 1.5rem; font-weight: 700; color: var(--navy-figure); margin: 0; line-height: 1.2; }
+/* #334155 on the tint is 9.4 : 1; the #64748B used until A37 was 4.34 : 1, below AA. */
+.hero__line { color: var(--ink-700); font-size: 0.9375rem; margin: 0; }
+.hero__line strong { color: var(--navy-900); }
+.hero__meta { max-width: none; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); color: var(--ink-700); font-size: 0.9375rem; margin: var(--space-2) 0 0; }
+.hero__meta strong { color: var(--navy-900); font-weight: 650; }
+.hero__action { margin: var(--space-5) 0 0; font-weight: 600; }
+.hero__action a { text-decoration: none; }
+.hero__action a::after { content: " \2192"; }
+.hero__action a:hover { text-decoration: underline; }
+
+/* The Overview, A37 phase 2: generous space between its four parts. */
+.overview > .hero, .overview > .card { margin-bottom: 0; }
+.content .overview .overview__heading { font-size: 1rem; font-weight: 650; color: var(--navy-900); margin: var(--section-gap) 0 var(--space-3); }
+.overview__clear { margin: 0; color: var(--ink-700); }
+.overview__clear span { color: var(--good-600); font-weight: 700; margin-right: var(--space-1); }
+
+/* The statement: the whole calculation in one card, each section a group with a small label
+   and closed by its subtotal (A37 phase 2). */
+.statement { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.statement__group { padding: var(--space-3) 0; }
+.statement__group + .statement__group { border-top: 1px solid var(--line); }
+.statement__label { font-size: 0.875rem; font-weight: 600; color: var(--ink-500); margin: 0 0 var(--space-1); letter-spacing: 0.01em; }
+.statement .rows li { border-bottom: 0; padding: 7px 0; }
+.statement .rows .rowlink--quiet { color: var(--ink-700); font-weight: 450; }
+.statement .rows .money { font-weight: 500; color: var(--ink-900); }
+.statement .rows .money--alert { color: var(--bad-600); }
+.statement .rows .money--review { color: var(--warn-700); }
+.statement .rows__total { margin-top: var(--space-1); border-top: 1px solid var(--ink-100) !important; padding-top: 10px !important; }
+.statement .rows__total .money, .statement .rows__total span { font-weight: 650; color: var(--navy-900); }
+
+/* The side panel a waterfall line opens (A37 phase 2). A native dialog: on a larger screen it
+   slides in from the right at 440 px; on a phone it fills the screen. */
+.drawer {
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  width: min(440px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: var(--white);
+  box-shadow: -8px 0 32px rgb(17 24 32 / 12%);
+  color: var(--ink-900);
+}
+.drawer[open] { animation: drawer-in 200ms ease-out; }
+.drawer::backdrop { background: rgb(17 24 32 / 28%); }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer__panel { padding: var(--space-5); min-height: 100%; }
+.drawer__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.drawer__head h2 { margin: 0; font-size: 1.125rem; }
+.drawer__close {
+  flex: none; width: 44px; height: 44px; margin: -10px -10px 0 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius); background: transparent; color: var(--ink-700); cursor: pointer;
+}
+.drawer__close:hover { background: var(--orange-50); color: var(--orange-700); }
+.drawer__close svg { width: 20px; height: 20px; }
+.drawer__foot { margin: var(--space-5) 0 0; }
+@media (max-width: 40rem) {
+  .drawer { width: 100vw; }
+  .drawer__panel { padding: var(--space-4); }
+}
+.stat__value { font-size: 1.5rem; font-weight: 700; color: var(--navy-figure); margin: 0; line-height: 1.2; }
 .stat__value .money { font-weight: 700; }
 .stat__label { color: var(--ink-500); margin: 0; font-size: 0.875rem; }
 
@@ -667,66 +801,88 @@ tbody tr:last-child td { border-bottom: 0; }
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-4);
-  padding: var(--space-2) 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--ink-100);
+  font-size: 0.9375rem;
 }
 .rows li:last-child { border-bottom: 0; }
-.rows__total { font-weight: 700; }
-.rows__sub { color: var(--ink-500); font-size: 0.8125rem; }
+.rows__total { font-weight: 700; font-size: 1rem; }
+.rows__sub { color: var(--ink-700); font-size: 0.875rem; }
 /* A small heading inside a list, such as Products' money that belongs to no one product. */
 .rows li.rows__group {
   padding-top: var(--space-4);
-  color: var(--ink-500);
-  font-size: 0.8125rem;
+  color: var(--ink-700);
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
-/* Chips. Payment statuses keep A7.10's three colours. Everything else is navy or neutral,
-   and the word on the chip carries the meaning. */
+/* Chips, A37. Each tone carries an icon as well as a colour, so a status never relies on
+   colour alone (terms.js lists what each tone means). The icon is drawn by CSS with empty
+   alternative text, so a screen reader reads the word only. */
 .chip {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border-radius: 999px;
-  padding: 2px var(--space-3);
-  font-size: 0.8125rem;
-  font-weight: 700;
+  padding: 2px 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
   vertical-align: middle;
+  line-height: 1.5;
 }
-.chip--bad  { background: var(--bad-50);  color: var(--bad-600); }
-.chip--warn { background: var(--warn-50); color: var(--warn-700); }
-.chip--good { background: var(--good-50); color: var(--good-600); }
-.chip--critical { background: var(--navy-900); color: var(--white); }
-.chip--strong { background: var(--white); color: var(--navy-900); border-color: var(--navy-900); }
-.chip--quiet { background: var(--ink-50); color: var(--ink-700); }
-.chip--info { background: var(--ink-50); color: var(--ink-700); }
+.chip::before { font-weight: 700; line-height: 1; }
+.chip--good { background: var(--good-50); color: var(--good-600); border-color: #c4e2d0; }
+.chip--good::before { content: "\2713" / ""; }
+.chip--warn { background: var(--warn-50); color: var(--warn-700); border-color: #ecd6a6; }
+.chip--warn::before { content: "\25F7" / ""; }
+.chip--review, .chip--strong { background: var(--warn-50); color: var(--warn-700); border-color: #ecd6a6; }
+.chip--review::before, .chip--strong::before { content: "!" / ""; }
+.chip--cost { background: var(--warn-50); color: var(--warn-700); border-color: #ecd6a6; }
+.chip--cost::before { content: "+" / ""; }
+.chip--delayed { background: var(--warn-50); color: var(--warn-700); border-color: #ecd6a6; }
+.chip--delayed::before { content: "\21BB" / ""; }
+.chip--bad, .chip--critical { background: var(--bad-50); color: var(--bad-600); border-color: #f3c9c5; }
+.chip--bad::before, .chip--critical::before { content: "!" / ""; }
+.chip--quiet, .chip--info { background: var(--ink-50); color: var(--ink-700); border-color: var(--ink-100); }
 
 /* Choices that change what the page shows. They are links, so every state has an address
    and the back button works. */
+/* A37: the choice in use is the orange one; the others are neutral, so the eye lands on what
+   the page is showing. */
 .switch {
   display: flex;
   gap: var(--space-1);
-  background: var(--orange-50);
+  background: var(--white);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: var(--space-1);
   margin: 0 0 var(--space-3);
 }
 .switch a {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: var(--space-2) var(--space-3);
-  border-radius: calc(var(--radius) - 2px);
-  color: var(--orange-600);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: calc(var(--radius) - 4px);
+  color: var(--ink-700);
   text-decoration: none;
   font-weight: 600;
   font-size: 0.9375rem;
-  border: 1.5px solid transparent;
+  line-height: 1.25;
+  border: 1px solid transparent;
+  transition: background-color var(--ease), color var(--ease);
 }
-.switch a[aria-current="true"] { background: var(--white); color: var(--navy-900); border-color: var(--ink-200); font-weight: 700; }
+.switch a:hover { color: var(--orange-700); background: var(--orange-50); }
+.switch a[aria-current="true"] { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-300); font-weight: 650; }
 
 .muted { color: var(--ink-500); }
 .pager { margin-top: var(--space-4); text-align: right; }
-.footnote { color: var(--ink-700); font-size: 0.8125rem; font-style: normal; margin: var(--space-2) 0 0; }
+.footnote { color: var(--ink-700); font-size: 0.875rem; font-style: normal; margin: var(--space-2) 0 0; }
 
 /* --- forms on the shop screens --------------------------------------------------- */
 .inline-form { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-top: var(--space-2); }
@@ -751,17 +907,18 @@ tbody tr:last-child td { border-bottom: 0; }
 /* A row whose name opens its detail. The name reads as a name, navy and bold, as on the
    wireframes, and the underline appears on hover and focus. */
 .rowlink { color: var(--navy-900); font-weight: 700; text-decoration: none; }
-.rowlink:hover, .rowlink:focus-visible { color: var(--orange-600); text-decoration: underline; }
+.rowlink:hover, .rowlink:focus-visible { color: var(--orange-700); text-decoration: underline; }
+.rowlink { transition: color var(--ease); }
 a.chip { text-decoration: none; }
 .rowlink--quiet { font-weight: 500; }
 .card__sub { font-size: 0.9375rem; margin: var(--space-3) 0 var(--space-1); }
 
 /* S8 Return check (28 September 2026): the choice between resellable, unsellable and
    nothing came back, drawn as the segmented control on wireframe sheet 05. */
-.segmented { display: flex; gap: 0; border: 1px solid var(--ink-200); border-radius: var(--radius); padding: 3px; margin: 0; background: var(--orange-50); }
-.segmented label { flex: 1; text-align: center; padding: 8px 6px; border-radius: calc(var(--radius) - 3px); font-weight: 600; font-size: 0.875rem; color: var(--orange-600); cursor: pointer; }
+.segmented { display: flex; gap: 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 3px; margin: 0; background: var(--white); }
+.segmented label { flex: 1; text-align: center; padding: 8px 6px; border-radius: calc(var(--radius) - 3px); font-weight: 600; font-size: 0.875rem; color: var(--ink-700); cursor: pointer; }
 .segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.segmented .segmented__on { background: var(--white); color: var(--navy-900); box-shadow: 0 0 0 1px var(--ink-200); }
+.segmented .segmented__on { background: var(--orange-50); color: var(--orange-700); box-shadow: 0 0 0 1px var(--orange-300); }
 .segmented label:focus-within { outline: 2px solid var(--orange-600); outline-offset: 1px; }
 
 /* Setup forms, 29 September 2026: three money fields side by side, and a tick box with its words. */

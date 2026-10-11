@@ -34,7 +34,7 @@ import { Figure } from "@/components/Figure";
 import { MoneySections } from "@/components/MoneySections";
 import {
   coverageSentence,
-  BEFORE_OVERHEADS, CONFIDENCE, CONFIDENCE_MEANING, SEVERITY_TONE, chipClass,
+  CONFIDENCE, CONFIDENCE_MEANING, SEVERITY_TONE, chipClass,
   formatMargin,
 } from "@/lib/terms";
 
@@ -163,134 +163,131 @@ export default async function TodayPage({ params, searchParams }) {
   const withPeriod = periodKey === "month" ? {} : { period: periodKey };
   const soFar = m.totals?.gross_profit_so_far;
   const attention = t.needs_you;
+  // The period and basis, in a few words, under the main figure (A37 phase 2).
+  const when = periodKey === "today" ? `Today, ${formatDate(period.to)}` : `${formatDate(period.from)} to ${formatDate(period.to)}`;
+  const basisWord = basis === "sales" ? "Sales basis" : "Cash basis";
+  const margin = formatMargin(m.totals?.gross_margin_after_returns);
 
+  // A37 phase 2, the owner's ruling of 11 October 2026: the Overview is the first screen a
+  // seller sees, so it holds the answer and nothing that explains it. The definitions are in
+  // the glossary, and every line opens its records. Top to bottom: the title, one row of
+  // controls, the main figure, the statement, and what needs attention.
   return (
-    <section>
-      <header className="page-head">
-        {/* Named Overview, with this subtitle, from the owner's brief approved 10 October 2026. */}
-        <h1>Overview</h1>
-        <p>A clear picture of what your TikTok Shop has left you.</p>
-        {shop?.shop_name && <p className="muted">{shop.shop_name}</p>}
+    <section className="overview">
+      <header className="page-head page-head--row">
+        <div>
+          <h1>Overview</h1>
+          {shop?.shop_name && <p>{shop.shop_name}</p>}
+        </div>
+        <div className="page-head__actions">
+          <Link className="btn btn--quiet btn--small" href={`/shops/${shopId}/money/export`} data-testid="overview-export">Export</Link>
+        </div>
       </header>
 
       {/* Only `stale` raises the banner. `getting_old` starts six hours after a read, and the
           daily read leaves a shop in that state for most of every day, so a banner then would
           stop meaning anything (copy audit 8 October, finding 20). */}
       {status === "stale" && (
-        <div className="note note--warn" role="status">
-          <p>
-            {t.freshness?.last_synced_at
-              ? `MyShopEdge last brought these figures up to date ${formatDate(t.freshness.last_synced_at, { time: true })}, more than a day ago, so they may not be current.`
-              : "Your shop has not been brought up to date yet, so these figures are not complete."}
-          </p>
-        </div>
+        <p className="note note--warn" role="status">
+          {t.freshness?.last_synced_at
+            ? `Last updated ${formatDate(t.freshness.last_synced_at, { time: true })}, over a day ago.`
+            : "Not updated yet. Figures are incomplete."}
+        </p>
       )}
 
-      {/* The brief's controls: the period, the basis, the export and when the figures were
-          last brought up to date. The daily read cannot be started from here, so no refresh
-          is offered. */}
-      <nav className="switch" aria-label="Period">
-        {["today", "month", "last_month"].map((k) => (
-          <Link key={k} href={href({ ...withBasis, ...(k === "month" ? {} : { period: k }) })}
-                aria-current={periodKey === k ? "true" : undefined}>
-            {PERIOD_WORD[k]}
-          </Link>
-        ))}
-      </nav>
-      <nav className="switch" aria-label="Basis">
-        <Link href={href(withPeriod)} aria-current={basis === "sales" ? "true" : undefined}>Sales basis</Link>
-        <Link href={href({ ...withPeriod, basis: "cash" })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
-      </nav>
-      <p className="rows__sub" data-testid="overview-period">
-        {periodKey === "today" ? `Today, ${formatDate(period.to)}` : `${formatDate(period.from)} to ${formatDate(period.to)}`},{" "}
-        {basis === "sales" ? "counted on the day of each sale" : "counted on the day TikTok settled it"}.
-        {t.freshness?.last_synced_at ? ` Last updated ${formatDate(t.freshness.last_synced_at, { time: true })}.` : ""}{" "}
-        <Link href={`/shops/${shopId}/money/export`} data-testid="overview-export">Export</Link>
-      </p>
+      <div className="toolbar">
+        <nav className="switch switch--compact" aria-label="Period">
+          {["today", "month", "last_month"].map((k) => (
+            <Link key={k} href={href({ ...withBasis, ...(k === "month" ? {} : { period: k }) })}
+                  aria-current={periodKey === k ? "true" : undefined}>
+              {PERIOD_WORD[k]}
+            </Link>
+          ))}
+        </nav>
+        <nav className="switch switch--compact" aria-label="Basis">
+          <Link href={href(withPeriod)} aria-current={basis === "sales" ? "true" : undefined}>Sales basis</Link>
+          <Link href={href({ ...withPeriod, basis: "cash" })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
+        </nav>
+      </div>
 
-      <div className="stack">
-        <OrderUsageCard usage={t.order_usage} shopId={shopId} />
+      <OrderUsageCard usage={t.order_usage} shopId={shopId} />
 
-        {/* One primary answer, chosen by how much of the period has a cost (brief, section 11). */}
-        <div className="card hero" data-testid="overview-primary">
-          {m.kept ? (
-            <>
-              <p className="hero__label">
-                Gross profit after returns{" "}
-                <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
-              </p>
-              <p className="hero__value"><Figure amount={m.kept} /></p>
-              {formatMargin(m.totals?.gross_margin_after_returns) && (
-                <p className="hero__line" data-testid="overview-margin">Gross margin after returns {formatMargin(m.totals.gross_margin_after_returns)}</p>
-              )}
-              <p className="hero__line">{BEFORE_OVERHEADS}</p>
-              <p className="hero__line"><Link href={`/shops/${shopId}/products`}>View product performance</Link></p>
-            </>
-          ) : soFar ? (
-            <>
-              <p className="hero__label">
-                Gross profit so far{" "}
-                <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
-              </p>
-              <p className="hero__value"><Figure amount={soFar} /></p>
-              {coverageSentence(m.coverage) && <p className="hero__line" data-testid="overview-coverage">{coverageSentence(m.coverage)}</p>}
-              <p className="hero__line"><Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
-            </>
-          ) : (
-            <>
-              <p className="hero__label">
-                Net proceeds{" "}
-                <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
-              </p>
-              <p className="hero__value"><Figure amount={m.totals?.net_proceeds} /></p>
-              <p className="hero__line">What remains after TikTok Shop deductions, before product costs.</p>
-              {m.kept_reason !== "no_sales" && (
-                <p className="hero__line"><Link href={`/shops/${shopId}/setup/costs`}>Add product costs</Link></p>
-              )}
-            </>
-          )}
-        </div>
-
-        <h2>Where the money went</h2>
-        {m.sections.length === 0 ? (
-          <div className="card" data-testid="overview-empty">
-            <p className="muted">
-              {basis === "cash"
-                ? "MyShopEdge holds no money that TikTok settled in this period."
-                : "MyShopEdge holds no sales, fees, refunds or payouts for this period."}
+      {/* One primary answer, chosen by how much of the period has a cost (brief, section 11). */}
+      <div className="card hero" data-testid="overview-primary">
+        {m.kept ? (
+          <>
+            <p className="hero__label">
+              Gross profit after returns{" "}
+              <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
             </p>
-          </div>
+            <p className="hero__value"><Figure amount={m.kept} /></p>
+            <p className="hero__meta" data-testid="overview-period">
+              {margin && <span data-testid="overview-margin"><strong>{margin}</strong> margin</span>}
+              <span>{when}</span>
+              <span>{basisWord}</span>
+            </p>
+            <p className="hero__action"><Link href={`/shops/${shopId}/products`}>View product performance</Link></p>
+          </>
+        ) : soFar ? (
+          <>
+            <p className="hero__label">
+              Gross profit so far{" "}
+              <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
+            </p>
+            <p className="hero__value"><Figure amount={soFar} /></p>
+            {coverageSentence(m.coverage) && <p className="hero__line" data-testid="overview-coverage">{coverageSentence(m.coverage)}</p>}
+            <p className="hero__meta" data-testid="overview-period"><span>{when}</span><span>{basisWord}</span></p>
+            <p className="hero__action"><Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
+          </>
         ) : (
-          <MoneySections m={m} shopId={shopId} basis={basis} />
+          <>
+            <p className="hero__label">
+              Net proceeds{" "}
+              <span className={chipClass(confidenceTone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
+            </p>
+            <p className="hero__value"><Figure amount={m.totals?.net_proceeds} /></p>
+            <p className="hero__line">After TikTok deductions, before product costs.</p>
+            <p className="hero__meta" data-testid="overview-period"><span>{when}</span><span>{basisWord}</span></p>
+            {m.kept_reason !== "no_sales" && (
+              <p className="hero__action"><Link href={`/shops/${shopId}/setup/costs`}>Add product costs</Link></p>
+            )}
+          </>
         )}
+      </div>
 
-        <div className="card" data-testid="overview-attention">
-          <h2>What needs your attention</h2>
-          {attention.length === 0 ? (
-            <>
-              <h3>You are up to date</h3>
-              <p className="muted">There is nothing that needs your attention right now.</p>
-            </>
-          ) : (
-            <ul className="rows">
-              {attention.map((n) => (
-                <li key={n.type}>
-                  <span>
-                    {n.href
-                      ? <Link href={n.href}>{n.label ?? "Something needs your attention"}</Link>
-                      : (n.label ?? "Something needs your attention")}
-                    {n.amount_at_stake && (
-                      <span className="rows__sub"> <Figure amount={n.amount_at_stake} /> is affected.</span>
-                    )}
-                  </span>
-                  <span className={chipClass(SEVERITY_TONE[n.severity] ?? "quiet")}>
-                    {SEVERITY_WORD[n.severity] ?? n.severity}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+      <h2 className="overview__heading">Where the money went</h2>
+      {m.sections.length === 0 ? (
+        <div className="card" data-testid="overview-empty">
+          <p className="muted">Nothing recorded in this period.</p>
         </div>
+      ) : (
+        // What TikTok paid out is left to Reconcile, so the statement ends at gross profit.
+        <MoneySections m={m} shopId={shopId} basis={basis} omit={["payout"]} />
+      )}
+
+      <h2 className="overview__heading">What needs your attention</h2>
+      <div className="card" data-testid="overview-attention">
+        {attention.length === 0 ? (
+          <p className="overview__clear"><span aria-hidden="true">{"\u2713"}</span> You are up to date.</p>
+        ) : (
+          <ul className="rows">
+            {attention.map((n) => (
+              <li key={n.type}>
+                <span>
+                  {n.href
+                    ? <Link className="rowlink rowlink--quiet" href={n.href}>{n.label ?? "Something needs your attention"}</Link>
+                    : (n.label ?? "Something needs your attention")}
+                  {n.amount_at_stake && (
+                    <span className="rows__sub" style={{ display: "block" }}><Figure amount={n.amount_at_stake} /> affected</span>
+                  )}
+                </span>
+                <span className={chipClass(SEVERITY_TONE[n.severity] ?? "quiet")}>
+                  {SEVERITY_WORD[n.severity] ?? n.severity}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );

@@ -54,9 +54,9 @@ function describe(d) {
     case "partial":
       return [`${n.toLocaleString("en-GB")} found so far`, "warn"];
     case "failed":
-      return ["Could not be read", "critical"];
+      return ["Could not be read", "bad"];
     case "needs_reconnect":
-      return ["Reconnect needed", "critical"];
+      return ["Reconnect needed", "review"];
     default:
       return ["Waiting", "quiet"];
   }

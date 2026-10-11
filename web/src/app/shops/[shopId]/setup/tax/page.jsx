@@ -27,12 +27,11 @@ export default async function TaxProfilePage({ params }) {
     <section data-testid="tax-profile-screen">
       <header className="page-head">
         <h1>Business details</h1>
-        <p>This step is optional. It lets MyShopEdge show your VAT and tax dates.</p>
+        <p>Optional. Adds your VAT and tax dates.</p>
       </header>
       <TaxProfileForm shopId={shopId} initial={r.data} />
       <p className="footnote">
-        Sell outside TikTok as well? <Link href={`/shops/${shopId}/other-sales`}>Add those sales month by month</Link> so your progress towards the VAT registration threshold counts them.
-        These figures help you plan. They are not tax advice.
+        Sell elsewhere too? <Link href={`/shops/${shopId}/other-sales`}>Add other-channel sales</Link>. Not tax advice.
       </p>
     </section>
   );

@@ -72,21 +72,21 @@ export function AlertSettingsForm({ shopId, initial }) {
     <form onSubmit={save} className="card stack" data-testid="alert-settings-form">
       <div>
         <label htmlFor="low">Low stock warning (days of cover)</label>
-        <input id="low" data-testid="low-stock-days" inputMode="numeric" value={low} aria-describedby="low-help"
+        <input id="low" data-testid="low-stock-days" inputMode="numeric" placeholder="Days" value={low} aria-describedby="low-help"
                onChange={(e) => setLow(e.target.value)} />
-        <p className="rows__sub" id="low-help">A variant is marked low when it has fewer than this many days of stock left, and MyShopEdge sends you one notice each time it drops below.</p>
+        <p className="rows__sub" id="low-help">One notice when cover falls below this.</p>
       </div>
       <div>
         <label htmlFor="coming">Return check reminder (days)</label>
-        <input id="coming" data-testid="coming-back-days" inputMode="numeric" value={coming} aria-describedby="coming-help"
+        <input id="coming" data-testid="coming-back-days" inputMode="numeric" placeholder="Days" value={coming} aria-describedby="coming-help"
                onChange={(e) => setComing(e.target.value)} />
-        <p className="rows__sub" id="coming-help">MyShopEdge sends you one notice when a returned item has waited longer than this for your check, counted from the day MyShopEdge first read the return.</p>
+        <p className="rows__sub" id="coming-help">One notice when a return waits longer.</p>
       </div>
       <div>
         <label htmlFor="absorb">Stock rise to accept without asking (units)</label>
-        <input id="absorb" data-testid="absorption-tolerance" inputMode="numeric" value={absorb} aria-describedby="absorb-help"
+        <input id="absorb" data-testid="absorption-tolerance" inputMode="numeric" placeholder="Units" value={absorb} aria-describedby="absorb-help"
                onChange={(e) => setAbsorb(e.target.value)} />
-        <p className="rows__sub" id="absorb-help">A larger rise in TikTok&rsquo;s count that MyShopEdge cannot explain is raised as a discrepancy for you to check.</p>
+        <p className="rows__sub" id="absorb-help">A larger rise goes to Issues.</p>
       </div>
       <FormError failure={error} testId="alert-settings-error" />
       {saved && <p className="note" role="status" data-testid="alert-settings-saved">Your thresholds are saved.</p>}
@@ -212,18 +212,17 @@ export function OtherSalesForm({ shopId }) {
       </div>
       <div>
         <label htmlFor="os-channel">Channel</label>
-        <input id="os-channel" data-testid="other-sales-channel" maxLength={100} aria-describedby="os-channel-help"
+        <input id="os-channel" data-testid="other-sales-channel" maxLength={100} placeholder="Etsy, eBay, market stall"
                value={channel} onChange={(e) => setChannel(e.target.value)} />
-        <p className="rows__sub" id="os-channel-help">For example Etsy, eBay or a market stall.</p>
       </div>
       <div>
-        <label htmlFor="os-amount">Total sales for the month, before any fees (£)</label>
+        <label htmlFor="os-amount">Month&apos;s sales before fees (£)</label>
         <input id="os-amount" data-testid="other-sales-amount" inputMode="decimal" placeholder="1234.56"
                value={amount} onChange={(e) => setAmount(e.target.value)} />
       </div>
       <FormError failure={error} testId="other-sales-error" />
       {saved && <p className="note" role="status" data-testid="other-sales-saved">{saved}</p>}
-      <p className="rows__sub">Saving the same channel and month again replaces the earlier total.</p>
+      <p className="rows__sub">Saving a month again replaces it.</p>
       <p><button className="btn btn--primary" data-testid="save-other-sales" disabled={busy}>{busy ? "Saving" : "Save month"}</button></p>
     </form>
   );

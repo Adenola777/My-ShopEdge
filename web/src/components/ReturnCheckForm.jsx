@@ -167,7 +167,6 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
           {busy ? "Recording" : confirming && status === "unsellable" ? "Confirm the write-off" : "Record this check"}
         </button>
       </p>
-      <p className="footnote">A check is recorded once and cannot be changed.</p>
     </form>
   );
 }

@@ -214,10 +214,10 @@ const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
  */
 const ROW_STATUS = {
   matched: ["Matched", "good", "Ready to apply."],
-  needs_review: ["Needs review", "warn", "A different cost is already set. Choose the row to replace it."],
-  no_match: ["No match found", "strong", "No product in your shop has this code."],
-  duplicate: ["Duplicate", "quiet", "This code appears more than once in your file."],
-  invalid_cost: ["Invalid cost", "strong", "The amount or date in this row could not be read."],
+  needs_review: ["Needs your confirmation", "review", "A different cost is already set. Choose the row to replace it."],
+  no_match: ["No match found", "review", "No product in your shop has this code."],
+  duplicate: ["Duplicate", "review", "This code appears more than once in your file."],
+  invalid_cost: ["Invalid cost", "review", "The amount or date in this row could not be read."],
 };
 
 /**
@@ -335,9 +335,7 @@ export function UploadFlow({ shopId }) {
               <li><span>Effective date</span><span className="muted">Optional, such as 2026-08-01 or 01/08/2026</span></li>
             </ul>
             <p className="footnote">
-              The first row names the columns. The template fills in every product in your shop.
-              A product with no seller SKU carries TikTok&apos;s SKU ID; in Excel, format that
-              column as text before saving, or Excel shortens the ID.
+              Row 1 names the columns. In Excel, format SKU IDs as text.
             </p>
           </div>
           <label
@@ -354,7 +352,7 @@ export function UploadFlow({ shopId }) {
                    onChange={(e) => take(e.target.files?.[0])} disabled={busy} data-testid="cost-file" />
           </label>
           {busy && <p className="note" role="status" data-testid="upload-reading">Uploading and reading your file.</p>}
-          <p className="footnote">The file goes to MyShopEdge&apos;s private file store in the EU and is kept as the record behind your costs. MyShopEdge does not share it.</p>
+          <p className="footnote">Stored privately in the EU. Never shared.</p>
         </div>
       )}
       {upload && columns.length === 0 && (
@@ -725,8 +723,8 @@ export function ExportForm({ shopId, today, history = true }) {
         </select>
       </div>
       <p className="note">
-        This export covers {formatDate(range[0])} to {formatDate(range[1])} on the {basis} basis.
-        {kind === "month_summary" && " Its totals match your Overview figures for the same period and basis."}
+        {formatDate(range[0])} to {formatDate(range[1])}, {basis} basis.
+        {kind === "month_summary" && " Totals match your Overview."}
       </p>
       <FormError failure={error} />
       <p><button className="btn btn--primary btn--block" onClick={start} disabled={busy} data-testid="start-export">{busy ? "Starting" : "Build file"}</button></p>

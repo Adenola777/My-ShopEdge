@@ -21,7 +21,7 @@ function statusLine(sub) {
   if (!sub || !sub.plan) return null;
   const name = PLAN_NAMES[sub.plan] ?? sub.plan;
   if (sub.status === "trialing" && sub.trial_ends_at) {
-    return `You are on the ${name} plan's free trial, which ends on ${formatDate(sub.trial_ends_at)}.`;
+    return `${name} free trial, ends ${formatDate(sub.trial_ends_at)}.`;
   }
   if (sub.status === "active" && sub.current_period_end) {
     return sub.cancel_at_period_end
@@ -49,8 +49,7 @@ export async function UpgradePrompt({ feature, plan, back = "/shops", compact = 
       <Heading>{PROMPTS[feature] ?? `This comes with the ${name} plan.`}</Heading>
       {target ? (
         <p data-testid="upgrade-price">
-          {name} is {formatMoney(target.price)} a month and covers up to {target.order_limit.toLocaleString("en-GB")} orders a month.
-          VAT is not currently charged.
+          {formatMoney(target.price)} a month, up to {target.order_limit.toLocaleString("en-GB")} orders. No VAT.
         </p>
       ) : (
         <p>The {name} plan&apos;s price could not be loaded just now.</p>

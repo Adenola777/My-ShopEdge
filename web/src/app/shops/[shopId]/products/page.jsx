@@ -51,9 +51,9 @@ const SWITCH = [
 /** The brief's cost statuses (section 13), as the service serves them. @type {Record<string, [string, string]>} */
 const COST_STATUS = {
   complete: ["Complete", "good"],
-  cost_needed: ["Cost needed", "strong"],
-  partially_costed: ["Partially costed", "warn"],
-  needs_review: ["Needs review", "strong"],
+  cost_needed: ["Cost needed", "cost"],
+  partially_costed: ["Partially costed", "cost"],
+  needs_review: ["Needs review", "review"],
 };
 
 /** @type {Record<string, string>} */
@@ -99,7 +99,7 @@ export default async function ProductsPage({ params, searchParams }) {
     <section>
       <header className="page-head">
         <h1>Products</h1>
-        <p>See which products make money after TikTok fees, returns and product costs.</p>
+        <p>Profit by product, after fees, returns and costs.</p>
         <p className="muted" data-testid="products-measure">{RANKED_BY[measure] ?? "Ranked"}{dates}.</p>
       </header>
 

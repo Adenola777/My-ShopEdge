@@ -111,7 +111,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
       {discrepancies.length === 0 ? (
         <section className="state">
           <h2>{status === "open" ? "No open discrepancies." : "No resolved discrepancies yet."}</h2>
-          {status === "open" && <p>MyShopEdge has found nothing in your records that disagrees with TikTok.</p>}
+          {status === "open" && <p>Nothing disagrees with TikTok.</p>}
         </section>
       ) : (
         <div className="stack">
@@ -119,7 +119,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
             <article className="card" key={d.id}>
               <h2>
                 {DISCREPANCY_KIND[d.kind] ?? "A figure differs"}{" "}
-                <span className={chipClass(d.status === "open" ? "strong" : "quiet")}>
+                <span className={chipClass(d.status === "open" ? "review" : "quiet")}>
                   {d.status === "open" ? "Open" : (RESOLUTION[d.resolution ?? ""] ?? "Resolved")}
                 </span>
               </h2>
