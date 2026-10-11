@@ -368,6 +368,39 @@
       text-align: justify; hyphens: auto; -webkit-hyphens: auto;
     }
   }
+  /* 11 October 2026, the owner's closing design: one dark band, the only one on the page, with
+     the real Overview beside the promise, three facts that remove the risk, a seller's words
+     and one button. On a phone a slim bar keeps the button in reach between the hero and here. */
+  .final-cta { background: var(--navy); color: var(--white); text-align: left; padding: clamp(72px,11vh,120px) 0; }
+  .final-cta__grid { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: clamp(40px,6vw,88px); align-items: center; }
+  .final-cta__shot { display: flex; justify-content: center; }
+  .final-cta .closing-shot { margin: 0; max-width: 300px; transform: rotate(-3deg); box-shadow: 0 40px 80px -24px rgba(0,0,0,0.6), 0 6px 18px rgba(0,0,0,0.3); }
+  .final-cta h2 { color: var(--white); text-align: left; margin: 0 0 24px; max-width: 16ch; font-size: clamp(2rem,3.6vw,2.9rem); line-height: 1.12; }
+  .final-cta__ticks { list-style: none; margin: 0 0 28px; padding: 0; display: grid; gap: 12px; }
+  .final-cta__ticks li { display: flex; gap: 12px; align-items: flex-start; font-size: 1.05rem; line-height: 1.45; color: rgba(255,255,255,0.88); }
+  .final-cta__ticks svg { flex: none; width: 22px; height: 22px; margin-top: 1px; color: #FF8A4C; }
+  .quote { display: flex; gap: 16px; align-items: flex-start; margin: 0 0 30px; padding: 20px; border-radius: 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); max-width: 560px; }
+  .quote__photo { flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+  .quote blockquote { margin: 0 0 10px; }
+  .quote blockquote p { margin: 0; font-size: 1rem; line-height: 1.55; color: var(--white); }
+  .quote figcaption { font-size: 0.92rem; color: rgba(255,255,255,0.75); }
+  .quote figcaption strong { color: var(--white); font-weight: 600; }
+  .final-cta__btn.btn.large { font-size: 20px; padding: 18px 34px; }
+  .final-cta__note { margin: 16px 0 0; font-size: 0.95rem; color: rgba(255,255,255,0.75); }
+  .final-cta__note a { color: var(--white); font-weight: 600; margin-left: 6px; }
+  .sticky-cta { display: none; }
+  @media (max-width: 860px) {
+    .final-cta { padding: 56px 0 64px; }
+    .final-cta__grid { grid-template-columns: 1fr; gap: 36px; }
+    .final-cta__copy { order: -1; }
+    .final-cta .closing-shot { max-width: 220px; }
+    .final-cta__btn.btn.large { width: 100%; justify-content: center; }
+    .sticky-cta { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,0.96); box-shadow: 0 -6px 20px rgba(18,20,28,0.12); transform: translateY(110%); transition: transform .25s ease; }
+    .sticky-cta.is-on { transform: translateY(0); }
+    .sticky-cta[hidden] { display: none; }
+    .sticky-cta .btn { width: 100%; justify-content: center; font-size: 19px; padding: 14px 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .sticky-cta { transition: none; } }
 </style>
 </head>
 <body>
@@ -572,7 +605,7 @@
         <div class="trust-item"><h3>No orders, refunds or payments</h3><p>MyShopEdge never acts on your shop.</p></div>
         <div class="trust-item"><h3>Encrypted access</h3><p>Your TikTok access is stored encrypted.</p></div>
         <div class="trust-item"><h3>HTTPS everywhere</h3><p>Every connection is encrypted.</p></div>
-        <div class="trust-item"><h3>A UK registered company</h3><p>Inspirecraft Global Ltd, Companies House.</p></div>
+        <div class="trust-item"><h3>ICO registered</h3><p>Registered with the Information Commissioner&rsquo;s Office, ZB957501.</p></div>
         <div class="trust-item"><h3>Delete at any time</h3><p>Remove your account and data in Settings.</p></div>
       </div>
     </div>
@@ -581,17 +614,34 @@
 
 
 
-  <section class="final-cta">
-    <div class="wrap">
-      <img class="closing-shot" src="shots/hero-money.webp" width="720" height="1560" loading="lazy" alt="The Overview: gross profit after returns of &pound;3,387.95, a 52.7% margin, and where the money went">
-      <h2>Start free with Explorer.</h2>
-      <a class="btn large" href="https://app.myshopedge.inspirecraftglobal.com/start">
-        Start free
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </a>
-      <p class="final-note">No credit card required.</p>
+  <section class="final-cta" id="start" aria-labelledby="final-cta-title">
+    <div class="wrap final-cta__grid">
+      <div class="final-cta__shot">
+        <img class="closing-shot" src="shots/hero-money.webp" width="720" height="1560" loading="lazy" alt="The Overview: gross profit after returns of &pound;3,387.95, a 52.7% margin, and where the money went">
+      </div>
+      <div class="final-cta__copy">
+        <h2 id="final-cta-title">See what you keep from your next payout.</h2>
+        <ul class="final-cta__ticks">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Free on Explorer, with no credit card.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Read-only: nothing in your shop changes.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>1 TikTok Shop and up to 100 orders a month.</li>
+        </ul>
+        <figure class="quote">
+          <img class="quote__photo" src="art/testimonial-abeke.webp" width="192" height="192" loading="lazy" alt="Elizabeth Adediji">
+          <div>
+            <blockquote><p>&ldquo;I used to struggle to see what I was actually making after fees, refunds and product costs. MyShopEdge brings it all together and makes my numbers much easier to understand.&rdquo;</p></blockquote>
+            <figcaption><strong>Elizabeth Adediji</strong>, The Abeke Brand</figcaption>
+          </div>
+        </figure>
+        <a class="btn large final-cta__btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start free with Explorer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <p class="final-cta__note">Connect your shop on TikTok&rsquo;s own page. <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">See plans and pricing</a></p>
+      </div>
     </div>
   </section>
+
+  <div class="sticky-cta" id="sticky-cta" hidden>
+    <a class="btn final-cta__btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start free with Explorer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  </div>
 
   <footer>
     <div class="wrap">
@@ -647,6 +697,25 @@
   document.querySelectorAll(".mobile-menu__panel a").forEach(function (a) {
     a.addEventListener("click", function () { a.closest("details").removeAttribute("open"); });
   });
+  // On a phone, show the slim Start free bar once the hero's button has scrolled away, and hide
+  // it again while the closing section or the footer is on screen.
+  (function () {
+    var bar = document.getElementById("sticky-cta");
+    var hero = document.querySelector(".hero .btn");
+    var ends = [document.getElementById("start"), document.querySelector("footer")];
+    if (!bar || !hero || !("IntersectionObserver" in window)) return;
+    bar.hidden = false;
+    var heroGone = false, endSeen = {};
+    function update() {
+      var anyEnd = Object.keys(endSeen).some(function (k) { return endSeen[k]; });
+      bar.classList.toggle("is-on", heroGone && !anyEnd);
+      bar.setAttribute("aria-hidden", heroGone && !anyEnd ? "false" : "true");
+      bar.querySelector("a").tabIndex = heroGone && !anyEnd ? 0 : -1;
+    }
+    new IntersectionObserver(function (e) { heroGone = !e[0].isIntersecting && e[0].boundingClientRect.top < 0; update(); }).observe(hero);
+    ends.forEach(function (el, i) { if (el) new IntersectionObserver(function (e) { endSeen[i] = e[0].isIntersecting; update(); }).observe(el); });
+    update();
+  })();
 </script>
 </body>
 </html>

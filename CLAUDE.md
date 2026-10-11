@@ -63,6 +63,12 @@ These are standing instructions from the owner. They hold until he changes them.
    every reserve field, on the strength of a document rather than a call. None of these were
    careless. Each was a reasonable assumption that nobody checked.
 
+8. **Ask before anything that deploys.** Ruled on 11 October 2026. Vercel's Hobby plan allows
+   100 deployments a day, and every push to a branch with a pull request builds three
+   previews (`my-shop-edge`, `myshopedge-site`, `myshopedge-admin`), while every merge to
+   `main` builds production. Changes are therefore committed locally and gathered into a batch,
+   and nothing is pushed or merged until the owner approves that batch.
+
 ## The contract is the source of truth
 
 `api/openapi.yaml` holds 88 operations across 76 paths, counted on 10 October 2026, after the fifteen admin operations of A34 were added under `/admin/` and `getPayoutReview` was added for the pricing tiers (A35). Rule 1 of A13 says the service
