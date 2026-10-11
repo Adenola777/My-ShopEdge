@@ -1,20 +1,45 @@
 # MyShopEdge v0.3, work in progress
 
-Prepared 21 September 2026, revised 22 September 2026 at 22:00. This package closes the
-gaps found in the specification audit of the v0.1 drafts dated 20 September 2026, and
-carries every platform, integration and commercial decision taken since.
+Prepared 21 September 2026, revised 22 September 2026 at 22:00, and brought up to date on
+11 October 2026. This package closes the gaps found in the specification audit of the v0.1
+drafts dated 20 September 2026, and carries every platform, integration and commercial
+decision taken since.
+
+## Where things stand, 11 October 2026
+
+- **The app has a new look.** The owner set the visual system on 11 October (A37): Inter,
+  white surfaces, orange only for the primary action and the selected state, status chips
+  that carry an icon as well as a colour, and short wording. Every main screen was rebuilt to
+  it in four pull requests, 78 to 81, all merged to `main` that day. A37.5 to A37.9 record what
+  changed on each screen and how it was checked.
+- **Production has not yet picked up PR 81.** Vercel builds production from every merge to
+  `main`, and the team's Hobby plan allows 100 deployments a day. That limit was reached on
+  11 October, so the merge of PR 81 (`b7e3c50`) did not deploy. Production showed PR 80's build
+  (`ba406c3`) when last queried. It deploys once the limit resets, or at once on Vercel Pro.
+- **The TikTok Go Live resubmission is ready to send.** TikTok rejected the review on
+  7 October. The landing page was rewritten for it, and six screenshots are in
+  `design/tiktok_review_11_october/`. The reviewer signs in at
+  `https://reviewer.myshopedge.inspirecraftglobal.com/reviewer`, which answered 200 on
+  11 October. The reviewer's email and password are sensitive variables on Vercel, which
+  never shows them back, so the owner holds them.
+- **The demo shop is renamed.** It reads "My TikTok Shop" on the development branch since
+  11 October, where it read "Demo shop (sample data)". Staging and production hold no demo
+  shop. The demo site runs code from PR 47, so it does not show the A37 design; the owner
+  chose on 11 October to leave it so.
 
 ## What this repository holds
 
 | Folder | Contents |
 |---|---|
-| `A2` to `A18` | The rulings, one document per action |
-| `schema/` | The consolidated v0.2 schema and migrations 0001 to 0018 |
-| `api/` | `openapi.yaml`, 58 operations across 53 paths, 59 schemas |
+| `A2` to `A37` | The rulings, one document per action |
+| `schema/` | The consolidated v0.2 schema and migrations 0001 to 0035 |
+| `api/` | `openapi.yaml`, 88 operations across 76 paths, 85 schemas, counted 11 October 2026 |
 | `service/` | The Python service. FastAPI, psycopg 3, PyJWT |
 | `web/` | The Next.js front end, JavaScript with JSDoc |
 | `testdata/` | The payload generator, the ingest, and the seeded rows |
-| `design/` | The Figma change set that is written and not yet applied |
+| `design/` | The Figma change set, the wireframes, and the TikTok review screenshots of 11 October |
+| `admin/` | The admin site (A34), live on Vercel as `myshopedge-admin` |
+| `site/` | The landing page, Vercel project `myshopedge-site` |
 
 ## Progress by action
 
@@ -75,7 +100,9 @@ carries every platform, integration and commercial decision taken since.
 9. **Where TikTok and a seller's own document disagree, TikTok is taken as correct.**
 10. **Cost files are Excel and CSV only.** A15.1. Word and PDF carry no columns, so reading
     a cost from one means guessing, and a wrong cost is worse than a missing one.
-11. **The three prices are exclusive of VAT.** A15.6. Starter, Growth and Pro are £9.99,
+11. **The three prices are exclusive of VAT, and no VAT is charged.** A15.6. On 30 September
+    2026 the owner ruled that Inspirecraft Global Ltd is not VAT registered, so a seller pays
+    £9.99, £24.99 or £49.99 and nothing more. The rest of this item is kept as it was written. Starter, Growth and Pro are £9.99,
     £24.99 and £49.99 plus VAT. Stripe prices are immutable once created, so
     `tax_behavior: "exclusive"` had to be right first time. It was. The three prices were
     created in the live account on 23 September 2026 and each one reads back as GBP,
@@ -98,6 +125,13 @@ carries every platform, integration and commercial decision taken since.
     more. An ended plan reads but cannot change or export anything. A36 also records the
     owner's rulings on the brief's navigation, net sales, gross profit so far, colours and
     payout statuses, and the build order that follows.
+16. **The visual system**, ruled 11 October 2026 (A37). Inter for text and figures, no
+    gradient outside the logo, white page, navigation and cards, orange only for the primary
+    action, the selected state and key emphasis, and status chips with an icon as well as a
+    colour. Every amount is dark and a deduction carries its minus sign; red is kept for stock
+    written off and a failed payment, and a payout difference nobody has explained is amber.
+    Each TikTok fee keeps its own line. Explanations on the app's screens are short phrases,
+    which relaxes the house style for those screens only.
 
 ## Open items, by owner
 
@@ -110,14 +144,20 @@ carries every platform, integration and commercial decision taken since.
 | The literal column labels on a settlement export | **Closed 23 September.** Measured from a real payload. See A20 | A8 section 3.5 |
 | Which Neon project the product runs on | **Settled 23 September** | `super-mouse-64697125`, the direct Neon account. See below |
 | Applying migrations 0017 and 0018 | Adenola | Nothing blocks it now the project is settled |
-| Repository access for `Adenola777/My-ShopEdge` | Adenola | Every commit so far, none pushed |
+| Repository access for `Adenola777/My-ShopEdge` | **Closed.** Work is pushed and merged through pull requests | Nothing |
+| The TikTok Go Live resubmission | Adenola | Real sellers connecting through the app. The screenshots and reviewer link are ready, see above |
+| Vercel's Hobby limit of 100 deployments a day | Commercial | Production deploying PR 81 on 11 October. Pro removes the limit |
+| Whether `tiktok_payments` amounts are pounds or pence | Claude, after the sync of 12 October at 05:47 UTC | Unmatched payouts (A36 item 6) showing the right amount |
+| Postmark: a server, `POSTMARK_SERVER_TOKEN` on Render, and the domain's DNS records | Adenola | Notice emails |
+| The five R2 variables on `My-ShopEdge-1`, and `DATABASE_URL` with them on `My-ShopEdge-erase` | Adenola | Cost uploads, exports, and erasing closed accounts |
+| Whether the shops move to adenola.adegbesan@gmail.com | Adenola | Nothing technical |
 | Backup retention, capped at six hours on the current Neon plan | Commercial | Nothing yet |
 | Immutable storage for the invoice documents | Deferred, see A10.8 | Nothing yet |
 | A Vercel blob store named `myshopedge-seller-files`, provenance unknown | Identify or remove | Nothing yet |
 | Whether Vercel `lhr1` guarantees data at rest in London | Confirm before launch | Data protection alignment |
 | Where Stack Auth processes identity data | Confirm before launch | Data protection alignment. `api.stack-auth.com` is not a Neon host |
 | Whether single factor authentication is acceptable at launch | Commercial and risk | Nothing technical. A14 section 14.7 |
-| Where the Python service is hosted | Decision | `NEXT_PUBLIC_API_BASE_URL` on Vercel, and where `DATABASE_URL` lives |
+| Where the Python service is hosted | **Settled 24 September.** Render, Frankfurt, for the MVP, with a move to a UK host later | Nothing now |
 | Emergent AI's work in `Adenola777/MYSHOPEDGE` | Adenola | Approved for porting on 28 September. The copy step needs a permission the session's safety check refused. See `audit/EMERGENT_review_28_september.md` |
 
 ## The Vercel, GitHub and Neon wiring
@@ -183,24 +223,25 @@ service derives them with `urlsplit` rather than by appending to the base.
 | Golden datasets | 10 | 12 |
 | Screens ruled | 15 | 36 live, 38 defined, 2 cut by A15. See `SCREENS.md` |
 | Screens drawn in Figma | 0 | 18 |
-| Schema migrations | 0 | 19 |
-| API operations specified | 0 | 58 |
+| Schema migrations | 0 | 35, through 0035 |
+| API operations specified | 0 | 88 |
 
 ## Build status
 
-The specification is nearly complete. The application is not.
+The specification is nearly complete, and the application is built and running against real
+shops. The rows below were brought up to date on 11 October 2026; CLAUDE.md carries the detail.
 
 | Layer | State |
 |---|---|
 | Brand, terminology, screen specification, data model, API contract | Done |
-| Schema applied | Through 0024 on all three branches, 25 migrations each, fingerprints identical (24 September). 0024 closed the Neon Data API exposure that CLAUDE.md describes |
-| Backend | 55 of 56 contract paths and 60 of 61 operations on 29 September. See CLAUDE.md |
+| Schema applied | Through 0035 on all three branches, with 36 migrations recorded on each, queried on 11 October 2026. 0024 and 0029 closed the Neon Data API exposure that CLAUDE.md describes |
+| Backend | The contract holds 88 operations across 76 paths. See CLAUDE.md for what is served |
 | Authentication | Verified by a real sign-in on 24 September. Issuer and audience were read from that token and set on Render, and the first production account was created from it |
 | Billing | Screens built. The three products and prices were created in the live Stripe account on 23 September. See CLAUDE.md for the identifiers. Since 10 October each plan's features are enforced by the service (A35), and a running plan can be changed from the app |
-| TikTok integration | Authorisation is built (`app/connections.py`) and has never made a live call. Ingestion still reads local JSON files |
-| Front end | All 36 screens built on 29 September. S17 Start, Stack's sign-in pages, S1 Connect TikTok Shop and the TikTok return page were added on 24 September. Sign-in works on the live site. No shop is connected yet. See `SCREENS.md` |
-| Deployment | The front end is live on Vercel production. The Python service runs on Render as `My-ShopEdge-1` in Frankfurt, deploying `main` of this repository, since 24 September |
-| Tests | Five files run in CI: auth, contract conformance, 44 handler smoke cases that call every served route, the London business date, and the cost file rules |
+| TikTok integration | Three real shops on production, as CLAUDE.md records: IkonetU and My ShopEdge since 29 September, and LivaHome since 7 October. A daily cron job on Render reads orders, returns, finance and inventory, and a token refresh has reached TikTok |
+| Front end | All 36 screens built on 29 September, and rebuilt to the A37 visual system on 11 October 2026. axe-core found no accessibility fault on 27 shop screens at 1280 and 390 px after that work. See `SCREENS.md` and A37 |
+| Deployment | The front end is live on Vercel production at `app.myshopedge.inspirecraftglobal.com`. The Python service runs on Render as `My-ShopEdge-1` in Frankfurt, deploying `main`, since 24 September. The demo service `My-ShopEdge-demo` is kept awake by the `keep-demo-awake` workflow, whose run at 13:09 UTC on 11 October passed; its nine runs so far came hours apart, not every ten minutes |
+| Tests | CI runs nine service test files (auth, contract conformance, handler smoke cases, the London business date, cost files, tax set-aside, insights and trends, the TikTok client and the Data API guard) with ruff and pip-audit, and lint, the type check, an audit and a build for `web` and `admin` |
 
 ## Scope check
 
