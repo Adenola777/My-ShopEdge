@@ -1240,3 +1240,26 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 .locked-preview { position: relative; }
 .locked-preview__blur { filter: blur(3px); opacity: 0.55; pointer-events: none; user-select: none; }
 .order-usage h2 { font-size: 1rem; margin: 0 0 var(--space-1); color: var(--warn-700); }
+
+/* 11 October 2026, the navigation the owner approved. A visitor who is not signed in sees the
+   website's main links with Log in and Start free; a signed-in seller has the account menu.
+   A back link above a detail page carries a left arrow, so it reads as a way back. */
+.appbar__site { margin-left: auto; display: flex; align-items: center; gap: var(--space-4); }
+.appbar__sitelink { color: var(--ink-700); font-weight: 500; font-size: 0.9375rem; text-decoration: none; }
+.appbar__sitelink:hover, .appbar__sitelink[aria-current="page"] { color: var(--ink-900); }
+.appbar__sitelink[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--orange-600); padding-bottom: 2px; }
+.appbar__login { color: var(--ink-900); font-weight: 600; font-size: 0.9375rem; text-decoration: none; }
+.appbar__login:hover { color: var(--orange-600); }
+@media (max-width: 720px) { .appbar__sitelink { display: none; } .appbar__site { gap: var(--space-3); } }
+.acct { position: relative; }
+.acct summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; color: var(--ink-900); font-weight: 600; font-size: 0.9375rem; }
+.acct summary::-webkit-details-marker { display: none; }
+.acct summary:hover, .acct[open] summary { background: var(--ink-50); }
+.acct summary svg { width: 22px; height: 22px; }
+.acct__panel { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; background: #fff; border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px -12px rgba(17, 24, 32, 0.28), 0 0 0 1px rgba(17, 24, 32, 0.06); display: grid; z-index: 60; }
+.acct__panel a { padding: 10px 12px; border-radius: 8px; color: var(--ink-900); text-decoration: none; font-size: 0.9375rem; }
+.acct__panel a:hover { background: var(--ink-50); }
+.acct__panel .acct__out { border-top: 1px solid var(--ink-100); margin-top: 4px; border-radius: 0 0 8px 8px; }
+@media (max-width: 720px) { .acct__label { display: none; } }
+.crumb a { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600; }
+.crumb a::before { content: "\2190"; font-weight: 400; }

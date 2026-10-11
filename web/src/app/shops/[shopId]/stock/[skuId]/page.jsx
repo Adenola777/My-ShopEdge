@@ -60,7 +60,7 @@ export default async function MovementsPage({ params, searchParams }) {
   return (
     <section>
       <header className="page-head">
-        <p><Link href={`/shops/${shopId}/stock`}>Stock</Link></p>
+        <p className="crumb"><Link href={`/shops/${shopId}/stock`}>Stock</Link></p>
         <h1>{sku.product_title || "Untitled product"}</h1>
         <p>{variant}. Every change to this variant&rsquo;s count, newest first.</p>
       </header>

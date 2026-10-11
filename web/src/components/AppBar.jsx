@@ -18,6 +18,8 @@
  */
 
 import { api } from "@/lib/api";
+import { AccountMenu } from "@/components/AccountMenu";
+import { MarketingLinks } from "@/components/MarketingLinks";
 
 const TIME = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
@@ -38,8 +40,12 @@ function stamp(/** @type {string} */ iso) {
 }
 
 /**
- * @param {{ shopId?: string, shopsLink?: boolean }} props `shopsLink` puts a way back to the
- *   seller's shops in the bar on screens outside a shop, so no screen is a dead end.
+ * Since 11 October 2026 (the navigation the owner approved), a visitor who is not signed in
+ * sees the website's main links with Log in and Start free, and a signed-in seller has the
+ * account menu, which holds Your shops, the plan, pricing, help and Sign out.
+ *
+ * @param {{ shopId?: string, shopsLink?: boolean }} props `shopsLink` marks a signed-in
+ *   seller on a screen outside a shop, so the account menu is shown there too.
  */
 export async function AppBar({ shopId, shopsLink = false }) {
   let freshness = null;
@@ -84,13 +90,15 @@ export async function AppBar({ shopId, shopsLink = false }) {
               <span className="bell__label">Notifications</span>
               {unread ? <span className="bell__dot">{unread > 9 ? "9+" : unread}</span> : null}
             </a>
+            <AccountMenu shopId={shopId} />
           </div>
         )}
         {!shopId && shopsLink && (
           <div className="appbar__status">
-            <a className="appbar__link" href="/shops?all=1">Your shops</a>
+            <AccountMenu />
           </div>
         )}
+        {!shopId && !shopsLink && <MarketingLinks />}
       </div>
     </header>
   );

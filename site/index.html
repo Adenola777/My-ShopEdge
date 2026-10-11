@@ -401,35 +401,72 @@
     .sticky-cta .btn { width: 100%; justify-content: center; font-size: 19px; padding: 14px 20px; }
   }
   @media (prefers-reduced-motion: reduce) { .sticky-cta { transition: none; } }
+  /* 11 October 2026, the navigation the owner approved: Features, How it works, Pricing,
+     Resources and Security, then Log in and Start free. The bar slims after the first scroll,
+     marks the section being read, and a Back to top button appears on long scrolls. */
+  .nav { transition: box-shadow .2s ease; }
+  .nav-inner { transition: height .2s ease; }
+  .nav.is-slim .nav-inner { height: 72px; }
+  .nav.is-slim .logo-lockup img { height: 56px; }
+  .nav-links { gap: 28px; }
+  .nav-links a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--orange-solid); padding-bottom: 4px; }
+  .nav-drop { position: relative; }
+  .nav-drop summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 14.5px; font-weight: 500; color: var(--ink-soft); }
+  .nav-drop summary::-webkit-details-marker { display: none; }
+  .nav-drop summary svg { width: 16px; height: 16px; transition: transform .15s ease; }
+  .nav-drop[open] summary { color: var(--ink); }
+  .nav-drop[open] summary svg { transform: rotate(180deg); }
+  .nav-drop__panel { position: absolute; top: calc(100% + 14px); left: -16px; width: 300px; background: var(--white); border-radius: 14px; padding: 8px; box-shadow: 0 18px 44px -14px rgba(18,20,28,0.28), 0 0 0 1px rgba(18,20,28,0.06); display: grid; gap: 2px; z-index: 50; }
+  .nav-links .nav-drop__panel a { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; color: var(--ink); }
+  .nav-drop__panel a:hover { background: var(--paper-alt); }
+  .nav-drop__panel strong { font-size: 14.5px; font-weight: 600; }
+  .nav-drop__panel span { font-size: 13px; color: var(--ink-soft); font-weight: 400; }
+  .nav-login { font-size: 14.5px; font-weight: 600; color: var(--ink); text-decoration: none; padding: 8px 6px; }
+  .nav-login:hover { color: var(--orange-solid); }
+  .mobile-menu__panel .mobile-menu__login { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 14px; font-weight: 600; }
+  .nav-links a:focus-visible, .nav-drop summary:focus-visible, .nav-login:focus-visible, .to-top:focus-visible { outline: 2px solid var(--orange-solid); outline-offset: 3px; border-radius: 6px; }
+  .to-top { position: fixed; right: 20px; bottom: 24px; z-index: 55; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--white); color: var(--ink); box-shadow: 0 8px 24px -6px rgba(18,20,28,0.3), 0 0 0 1px rgba(18,20,28,0.06); opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; pointer-events: none; }
+  .to-top.is-on { opacity: 1; transform: none; pointer-events: auto; }
+  .to-top svg { width: 20px; height: 20px; }
+  @media (max-width: 860px) { .to-top { bottom: 92px; right: 14px; width: 42px; height: 42px; } .nav.is-slim .nav-inner { height: 64px; } .nav.is-slim .logo-lockup img { height: 40px; } }
+  @media (max-width: 420px) { .nav-actions .nav-login { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .nav, .nav-inner, .to-top { transition: none; } }
 </style>
 </head>
 <body>
 
-<section id="marketing" class="screen">
+<section id="marketing" class="screen"><span id="top"></span>
   <nav class="nav">
     <div class="wrap nav-inner">
       <div class="logo-lockup"><picture><source media="(max-width: 420px)" srcset="brand/mse-mark-colour.svg"><source media="(max-width: 520px)" srcset="brand/mse-logo-horizontal-notagline.svg"><img src="brand/mse-logo-horizontal.svg" alt="MyShopEdge, Know Your Numbers"></picture></div>
-      <div class="nav-links">
-        <a href="#problem">Why MyShopEdge</a>
-        <a href="#how">How it works</a>
-        <a href="#features">Features</a>
-        <a href="#trust">Security</a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="#features" data-spy="features">Features</a>
+        <a href="#how" data-spy="how">How it works</a>
         <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
-      </div>
+        <details class="nav-drop">
+          <summary>Resources <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="nav-drop__panel">
+            <a href="/tools/tiktok-shop-payout-explainer"><strong>Payout Explainer</strong><span>Work out why a payout is lower than sales.</span></a>
+            <a href="/faq/tiktok-shop-seller-finance"><strong>FAQ</strong><span>Answers on fees, payouts, profit and VAT.</span></a>
+          </div>
+        </details>
+        <a href="#trust" data-spy="trust">Security</a>
+      </nav>
       <details class="mobile-menu">
         <summary aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
         <div class="mobile-menu__panel">
-          <a href="#problem">Why MyShopEdge</a>
-          <a href="#how">How it works</a>
           <a href="#features">Features</a>
-          <a href="#trust">Security</a>
+          <a href="#how">How it works</a>
           <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
-          <a href="https://app.myshopedge.inspirecraftglobal.com/start">Sign in</a>
+          <a href="/tools/tiktok-shop-payout-explainer">Payout Explainer</a>
+          <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
+          <a href="#trust">Security</a>
+          <a class="mobile-menu__login" href="https://app.myshopedge.inspirecraftglobal.com/handler/sign-in">Log in</a>
         </div>
       </details>
       <div class="nav-actions">
-        <a class="btn-ghost" href="https://app.myshopedge.inspirecraftglobal.com/start">Sign in</a>
-        <a class="btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Get started</a>
+        <a class="nav-login" href="https://app.myshopedge.inspirecraftglobal.com/handler/sign-in">Log in</a>
+        <a class="btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start free</a>
       </div>
     </div>
   </nav>
@@ -639,6 +676,8 @@
     </div>
   </section>
 
+  <a class="to-top" id="to-top" href="#top" aria-label="Back to top" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></a>
+
   <div class="sticky-cta" id="sticky-cta" hidden>
     <a class="btn final-cta__btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start free with Explorer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </div>
@@ -654,11 +693,17 @@
         <div class="footer-nav">
           <div class="footer-col">
             <h4>Product</h4>
-            <a href="#how">How it works</a>
             <a href="#features">Features</a>
+            <a href="#how">How it works</a>
             <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
-            <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
+            <a href="#trust">Security</a>
+            <a href="https://app.myshopedge.inspirecraftglobal.com/start">Start free</a>
+            <a href="https://app.myshopedge.inspirecraftglobal.com/handler/sign-in">Log in</a>
+          </div>
+          <div class="footer-col">
+            <h4>Resources</h4>
             <a href="/tools/tiktok-shop-payout-explainer">Payout Explainer</a>
+            <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
           </div>
           <div class="footer-col">
             <h4>Legal</h4>
@@ -668,7 +713,6 @@
           </div>
           <div class="footer-col">
             <h4>Company</h4>
-            <a href="#trust">Security</a>
             <a href="mailto:support@inspirecraftglobal.com">Contact</a>
             <a href="mailto:info@inspirecraftglobal.com">info@inspirecraftglobal.com</a>
           </div>
@@ -715,6 +759,27 @@
     new IntersectionObserver(function (e) { heroGone = !e[0].isIntersecting && e[0].boundingClientRect.top < 0; update(); }).observe(hero);
     ends.forEach(function (el, i) { if (el) new IntersectionObserver(function (e) { endSeen[i] = e[0].isIntersecting; update(); }).observe(el); });
     update();
+  })();
+  // The top bar slims after the first scroll and marks the section being read; a Back to top
+  // button appears once the visitor is well down the page. Resources closes on a click outside.
+  (function () {
+    var nav = document.querySelector(".nav"), top = document.getElementById("to-top");
+    var links = Array.prototype.slice.call(document.querySelectorAll(".nav-links a[data-spy]"));
+    function onScroll() {
+      var y = window.scrollY;
+      nav.classList.toggle("is-slim", y > 24);
+      if (top) { top.hidden = false; top.classList.toggle("is-on", y > 1600); top.tabIndex = y > 1600 ? 0 : -1; }
+      var mark = y + 140, current = null;
+      links.forEach(function (a) { var el = document.getElementById(a.dataset.spy); if (el && el.offsetTop <= mark) current = a; });
+      links.forEach(function (a) { if (a === current) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+    document.addEventListener("click", function (e) {
+      document.querySelectorAll(".nav-drop[open]").forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute("open"); });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") document.querySelectorAll(".nav-drop[open], .mobile-menu[open]").forEach(function (d) { d.removeAttribute("open"); d.querySelector("summary").focus(); });
+    });
   })();
 </script>
 </body>

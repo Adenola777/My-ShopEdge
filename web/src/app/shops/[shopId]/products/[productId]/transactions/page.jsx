@@ -50,7 +50,7 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
     <section data-testid="product-transactions-screen">
       <header className="page-head">
         <p className="crumb">
-          <Link href={`/shops/${shopId}/products/${productId}`}>Back to product</Link>
+          <Link href={`/shops/${shopId}/products/${productId}`}>Product</Link>
         </p>
         <h1>Transactions for this product</h1>
         <p>

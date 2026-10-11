@@ -64,3 +64,8 @@ footer.bottom a { color: var(--ink-soft); }
 .result .neg { color: var(--bad); }
 .note { color: var(--ink-soft); font-size: 14px; }
 @media (max-width: 760px) { .tool { grid-template-columns: 1fr; } .result { position: static; } .field { grid-template-columns: 1fr 120px; } }
+
+/* 11 October 2026: the same main links as the landing page, with Log in beside Start free. */
+header.top nav a:hover { color: var(--ink); }
+header.top nav a.login { color: var(--ink); font-weight: 600; }
+header.top nav a.cta:hover { color: var(--white); background: var(--orange-solid); }
