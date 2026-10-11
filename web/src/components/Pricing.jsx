@@ -84,7 +84,7 @@ export function Pricing({ plans, defaultCycle, sub, email, signedIn, initialPlan
 
       <header className="page-head pricing__head">
         <h1>Plans and pricing</h1>
-        <p>Everyone can upload costs. Starter helps you understand profit. Growth lets you export and manage multiple shops. Pro gives agencies, accountants and high-volume sellers unlimited scale.</p>
+        <p>Every plan lets you add product costs. Starter adds margin and full payout detail. Growth adds exports and up to 3 shops. Pro adds unlimited orders and up to 10 shops.</p>
       </header>
 
       {current && <CurrentPlan plan={byslug[current]} sub={sub} live={live} manageHref={manageHref} />}
