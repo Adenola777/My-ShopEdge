@@ -48,7 +48,7 @@ export default async function StockPage({ params, searchParams }) {
   const base = `/shops/${shopId}/stock`;
 
   return (
-    <section>
+    <section className="overview">
       <header className="page-head">
         <h1>Stock</h1>
         <p>On hand, coming back and running low.</p>
@@ -58,23 +58,24 @@ export default async function StockPage({ params, searchParams }) {
       </header>
 
       {totals && (
-        <div className="card" data-testid="stock-totals">
-          <h2>Units in hand</h2>
-          <ul className="rows">
-            <li><span>Units in hand</span><strong className="money">{totals.on_shelf}</strong></li>
-            <li><span>Sold but not posted</span><strong className="money">{totals.sold_not_posted}</strong></li>
-            <li><span>Coming back</span><strong className="money">{totals.coming_back}</strong></li>
-            <li><span>Written off</span><strong className="money">{totals.written_off}</strong></li>
-          </ul>
+        // A37 phase 6: the four counts side by side in one card, as Reconcile's summary is.
+        <div className="card hero" data-testid="stock-totals">
+          <div className="stats stats--4">
+            <div><p className="stat__label">Units in hand</p><p className="stat__value">{totals.on_shelf}</p></div>
+            <div><p className="stat__label">Sold but not posted</p><p className="stat__value">{totals.sold_not_posted}</p></div>
+            <div><p className="stat__label">Coming back</p><p className="stat__value">{totals.coming_back}</p></div>
+            <div><p className="stat__label">Written off</p><p className="stat__value">{totals.written_off}</p></div>
+          </div>
           {totals.coming_back > 0 && (
-            <p className="card__foot"><Link href={`/shops/${shopId}/returns`} data-testid="returns-link">Check returns</Link></p>
+            <p className="hero__action"><Link href={`/shops/${shopId}/returns`} data-testid="returns-link">Check returns</Link></p>
           )}
         </div>
       )}
 
       {runsOut && runsOut.length > 0 && (
+        <>
+        <h2 className="overview__heading">What runs out first</h2>
         <div className="card" data-testid="stock-runs-out">
-          <h2>What runs out first</h2>
           <ul className="rows">
             {runsOut.map((/** @type {import("@/lib/api-types").components["schemas"]["StockPosition"]} */ s) => (
               <li key={s.sku_id}>
@@ -86,9 +87,12 @@ export default async function StockPage({ params, searchParams }) {
             ))}
           </ul>
         </div>
+        </>
       )}
 
-      <nav className="switch" aria-label="Show">
+      <h2 className="overview__heading">Every variant</h2>
+      <div className="toolbar">
+      <nav className="switch switch--compact" aria-label="Show">
         {FILTERS.map(([value, label]) => (
           <Link
             key={value || "all"}
@@ -99,16 +103,12 @@ export default async function StockPage({ params, searchParams }) {
           </Link>
         ))}
       </nav>
+      </div>
 
       {items.length === 0 ? (
-        <section className="state">
-          <h2>{state ? "No variants in this state." : "No stock recorded yet."}</h2>
-          <p>
-            {state
-              ? "Nothing matches this filter right now."
-              : "Stock appears here once the first sync brings in your products."}
-          </p>
-        </section>
+        <div className="card">
+          <p className="muted">{state ? "No variants in this state." : "Stock appears after the first read of your shop."}</p>
+        </div>
       ) : (
         <div className="card">
           <p className="rows__sub" style={{ marginTop: 0 }}>

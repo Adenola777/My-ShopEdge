@@ -90,8 +90,109 @@ Built and checked so far, against the local copy at 1280 and 390 px:
   eight. Section headings sit 48 px below what precedes them on a larger screen and 32 px on a
   phone, and stock written off is still red.
 
+## A37.6 Phase 3, Reconcile, built 11 October 2026
+
+On the owner's approval of the remaining phases the same day, Reconcile took the Overview's
+pattern. Measured against the local copy at 1280 px, before and after:
+
+| Screen | Words | Cards | Page height |
+|---|---|---|---|
+| Payouts | 240 to 115 | 18 to 2 | 5,423 to 1,832 px |
+| Explain this payout | 237 to 105 | 6 to 4 | 2,958 to 1,794 px |
+| Where the money went | 105 to 82 | 2 to 1 | 1,678 to 1,383 px |
+
+- **Payouts.** Paid out, Awaiting settlement and Net proceeds sit side by side in one card,
+  stacked on a phone. Needs review, Unmatched and Expected from TikTok appear only when they
+  hold something. Every payout is one row of a single list: its date, its statement date, its
+  status chip and its amount, with a difference shown in amber only when there is one. The
+  whole row is the link.
+- **Explain this payout.** The payout is the main figure, with its status, one short line on
+  what the status means, and when the statement was issued, paid and read. The statement is
+  one card of groups, each closed by its subtotal, and every TikTok fee keeps its own line. The
+  check against the orders states the difference once, in amber, where the page had shown it
+  twice and once in red. The orders and the invoice form are folded until clicked. An unpaid
+  statement's last line reads To be paid rather than Paid out.
+- **Where the money went.** The switches are the Overview's compact row and Export sits
+  beside the title. Expected payouts by week are now shown on Payouts alone, which already
+  showed the same weeks from the same call.
+- **Transactions and Issues.** A record's date, order and TikTok's field name sit on one quiet
+  line joined by a middle dot. Issues uses the compact switch and shorter wording.
+
+Checked with lint, the type check, the production build and screenshots at 1280 and 390 px. No
+page scrolls sideways. The local copy cannot reach TikTok, so Expected from TikTok was seen
+only in its unavailable state, and Needs review and Unmatched were not seen with data.
+
+## A37.7 Phase 4, Products, built 11 October 2026
+
+- **The table.** It showed nine columns and was clipped at 1280 px, cutting off Gross profit
+  after returns. It now has six: the product, with units sold and returned and any cost status
+  under its name; net sales; TikTok deductions; product cost; return impact; and gross profit
+  after returns with the margin under it. Measured at 1024, 1280 and 1440 px, the table fits
+  its card with no sideways scroll. Below 960 px, where it did not fit, each product is one row
+  with its gross profit and margin, and its page holds the rest.
+- **The costs card** is one line with small buttons: Upload costs, Type in and Template.
+- **The switch** reads Gross profit, Units and Returns; the line above it names the ranking in
+  full, so the switch fits a phone's row.
+- **A product's page.** Gross profit after returns comes first, with the margin, net proceeds
+  and a cost status chip when the cost is not complete. The period's figures and one unit's
+  figures are one table with a column for each, where they had been two cards of the same
+  lines; `getProduct` builds the per-unit lines from the period's lines one for one
+  (`service/app/products.py`), so they line up by position. Measured at 1280 px: 336 words to
+  170, and 2,999 px to 2,009 px.
+
+Checked with lint, the type check, the production build and screenshots at 390, 768, 900, 1024,
+1280 and 1440 px. No page scrolls sideways. The Starter view, which ranks by net proceeds, was
+not seen, because the local account is on Growth.
+
+## A37.8 Phase 5, cost entry, built 11 October 2026
+
+- **The upload's stepper.** Choose file, Match columns, Review and Done are named above the
+  flow. The stage in use is orange and marked `aria-current="step"`, and a finished stage
+  carries a tick. On a phone only the stage in use shows its name. The stage is worked out from
+  what the flow already holds, so nothing new is stored or sent.
+- **Choose file.** The drop area comes first. The template is a link under it, and what the
+  file needs is folded until clicked.
+- **Match columns.** The six choices sit two to a row on a larger screen, with a way back to
+  choose a different file.
+- **Review.** The table has four columns where it had six: the SKU sits under the TikTok
+  product and the effective date under the cost, and a matched row carries no sentence. On a
+  phone each row is a small block, so nothing scrolls sideways. A replace box is the standard
+  check box, where it had drawn as a large square. Back to columns returns to the choices.
+- **Typing costs in.** One card with the column names once at the top and a row per variant,
+  where each variant had been a card with its own three labels. On a phone the three fields
+  share a row with short labels, and each field's full name, with the product, is its
+  accessible name. The cost's hint reads 0.00, because 3.40 beside a current cost of £5.00 read
+  as a value already entered. Measured: 1,327 px at 1280 where it was 2,699, and 2,389 px at
+  390 where it was 4,019.
+
+Checked with lint, the type check, the production build, and a browser run at 1280 and 390 px
+against the local copy and a local stand-in for the R2 bucket: a CSV of seven rows reached
+Review with three matched, one needing confirmation, one with no match, one invalid cost and
+one duplicate, each shown with its status. Apply was not pressed, so the run saved nothing. A
+typed cost of "abc" showed its error, marked the field invalid and saved nothing. No page
+scrolls sideways.
+
+## A37.9 Phase 6, accessibility and wording, built 11 October 2026
+
+- **Accessibility, as measured.** axe-core 4.10.2 ran its WCAG 2.0 A and AA, WCAG 2.1 AA and
+  best-practice rules on 27 shop screens at 1280 and 390 px. It found one fault: Where the money
+  went went from its title to a third-level heading. The page now names the calculation at the
+  second level for a screen reader, and a second run found nothing on any screen. Pressing Tab
+  up to 60 times on Overview, Payouts, Explain this payout, Products, Type your costs, Returns
+  and Stock reached no control without a visible focus ring. axe-core does not judge everything
+  WCAG asks, so this is a check and not a certificate; no screen reader was used.
+- **Returns.** The checked returns are one list, a row each, where each had been a card of five
+  lines: 442 words to 349 and 5,716 px to 2,142 px at 1280. A return still to check keeps its
+  card, because the card holds its form.
+- **Stock.** The four counts sit side by side in one card, under a title that no longer repeats
+  Units in hand, and the filter is the compact switch.
+- **VAT and tax.** The reserve said twice that it is not tax advice; the page now says it only
+  when the service's own estimate, which says so, is not shown. The review date of the tax
+  dates is said once when every date was reviewed on the same day.
+
 ## A37.4 The phases still to come
 
-Each is its own pull request, shown to the owner before it merges: the Overview (phase 2), Reconcile
-and Explain this payout (phase 3), Products (phase 4), cost upload (phase 5), and accessibility
-and wording (phase 6). Phase 2 waits on the waterfall answer in A37.1.
+Each is shown to the owner before it merges: the Overview (phase 2), Reconcile and Explain this
+payout (phase 3), Products (phase 4), cost upload (phase 5), and accessibility and wording
+(phase 6). Phase 2 merged in PR 79. Phases 3 to 6 were built on 11 October 2026 (A37.6 to A37.9)
+and are one pull request with a commit for each, because the session works on one branch.

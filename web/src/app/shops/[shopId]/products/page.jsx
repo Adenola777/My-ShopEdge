@@ -25,6 +25,14 @@
  * margin and cost status, each served by `listProducts`. Starter's table stops at net
  * proceeds. A product whose cost status is not complete links to its page to add the cost.
  *
+ * **A37 phase 4, 11 October 2026.** The table showed nine columns and was clipped at 1280 px,
+ * with Gross profit after returns, the column that matters, cut off, and on a phone two
+ * figures showed before the rest scrolled out of sight. On a larger screen the table now
+ * has six columns: units sold and returned, and the cost status, sit under the product's
+ * name, and the margin sits under its gross profit. On a phone each product is one row with
+ * its gross profit and margin, and its page holds the rest. Every figure is still the
+ * service's; only where each sits has changed.
+ *
  * **Starter ranks by net proceeds** (the pricing ruling of 10 October 2026). The service
  * answers the default ranking with `measure` net_proceeds and no profit on any row, so the
  * first switch reads Net proceeds, each row shows its net proceeds, and the page carries the
@@ -41,9 +49,10 @@ import { NOT_ON_PLAN } from "@/lib/upgrade";
 
 export const metadata = { title: "Products" };
 
-/** The switch on the sheet, in A8's words. */
+/** The switch on the sheet, in A8's words. Since A37 phase 4 the first reads Gross profit,
+ * which fits a phone's row; the line above the switch names it in full. */
 const SWITCH = [
-  ["kept", "Gross profit after returns"],
+  ["kept", "Gross profit"],
   ["units", "Units"],
   ["returns", "Returns"],
 ];
@@ -95,62 +104,72 @@ export default async function ProductsPage({ params, searchParams }) {
   const ranked = products.filter((p) => p.cost_known || measure !== "kept");
   const uncosted = measure === "kept" ? products.filter((p) => !p.cost_known) : [];
 
+  const rows = [...ranked, ...uncosted];
+  /** The row's main figure: gross profit after returns, or net proceeds on Starter. @param {ProductRow} p */
+  const main = (p) => starter
+    ? <Figure amount={p.net_proceeds} />
+    : <Figure amount={p.kept} reason={p.kept_reason} />;
+  /** Units sold and returned, in a few words. @param {ProductRow} p */
+  const units = (p) => `${p.units} sold${p.returns_units ? ` \u00b7 ${p.returns_units} returned` : ""}`;
+  /** The cost status chip, a link to the product when its cost is not complete. @param {ProductRow} p */
+  const status = (p) => {
+    const [word, tone] = COST_STATUS[p.cost_status ?? ""] ?? [null, "quiet"];
+    if (!word || starter || p.cost_status === "complete") return null;
+    return <Link className={chipClass(tone)} href={`${base}/${p.product_id}`}>{word}</Link>;
+  };
+
   return (
-    <section>
+    <section className="overview">
       <header className="page-head">
         <h1>Products</h1>
-        <p>Profit by product, after fees, returns and costs.</p>
-        <p className="muted" data-testid="products-measure">{RANKED_BY[measure] ?? "Ranked"}{dates}.</p>
+        <p data-testid="products-measure">{RANKED_BY[measure] ?? "Ranked"}{dates}</p>
       </header>
 
-      <nav className="switch" aria-label="Rank by">
-        {SWITCH_SHOWN.map(([value, label]) => (
-          <Link key={value} href={value === "kept" ? base : `${base}?measure=${value}`}
-                aria-current={measure === value || (starter && value === "kept" && measure === "net_proceeds") ? "true" : undefined}>
-            {label}
-          </Link>
-        ))}
-      </nav>
+      <div className="toolbar">
+        <nav className="switch switch--compact" aria-label="Rank by">
+          {SWITCH_SHOWN.map(([value, label]) => (
+            <Link key={value} href={value === "kept" ? base : `${base}?measure=${value}`}
+                  aria-current={measure === value || (starter && value === "kept" && measure === "net_proceeds") ? "true" : undefined}>
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </div>
 
       {/* Added 30 September 2026: the owner found no way from Products to upload a cost
-          file. Costs are what turn sales into gross profit, so the way in sits on this page. */}
-      <div className="card card--action" data-testid="products-coverage">
-        <div>
-          <h2>{coverage ? "Cost coverage" : "Product costs"}</h2>
-          <p className="card__why">
-            {/* A36: the brief's cost coverage card, from the service's coverage by sales value. */}
-            {!coverage
-              ? "Gross profit needs what each product costs you. Upload an Excel or CSV file, or type costs in one by one."
-              : coverageSentence(coverage) ?? "Every product sold in this period has a cost."}
-          </p>
+          file. Costs are what turn sales into gross profit, so the way in sits on this page.
+          Since A37 phase 4 it is one line with small buttons. */}
+      <div className="card products__costs" data-testid="products-coverage">
+        <p className="products__coverage">
+          {/* A36: the brief's cost coverage card, from the service's coverage by sales value. */}
+          {!coverage
+            ? "Add what each product costs you to see gross profit."
+            : coverageSentence(coverage) ?? <><span className="overview__clear"><span aria-hidden="true">{"\u2713"}</span></span>Every product sold has a cost.</>}
           {coverage && coverage.products_missing > 0 && (
-            <p><Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
+            <> <Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></>
           )}
-        </div>
-        <div className="card--action__buttons">
-          <Link className="btn btn--primary" href={`/shops/${shopId}/setup/costs/upload`}>Upload a cost file</Link>
-          <Link className="btn btn--quiet" href={`/shops/${shopId}/setup/costs/manual`}>Type costs in</Link>
+        </p>
+        <div className="products__buttons">
+          <Link className="btn btn--primary btn--small" href={`/shops/${shopId}/setup/costs/upload`}>Upload costs</Link>
+          <Link className="btn btn--quiet btn--small" href={`/shops/${shopId}/setup/costs/manual`}>Type in</Link>
           {/* A36 step 7: the brief's template download, filled with the shop's variants. */}
-          <a className="btn btn--quiet" href={`/shops/${shopId}/setup/costs/template`} data-testid="products-template">Download cost template</a>
+          <a className="btn btn--quiet btn--small" href={`/shops/${shopId}/setup/costs/template`} data-testid="products-template">Template</a>
         </div>
       </div>
 
       {products.length === 0 ? (
-        <section className="state">
-          <h2>No products sold in this period yet.</h2>
-          <p>Once orders come through, every product you sell appears here, ranked.</p>
-        </section>
+        <div className="card overview__more">
+          <p className="muted">No products sold in this period yet.</p>
+        </div>
       ) : (
-        <div className="card">
-          {/* The brief's product table (section 13). Every figure is the service's. A
-              product without a full cost shows its cost status and no profit figure. */}
-          {!starter && <p className="rows__sub scroll-hint">Scroll the table sideways to see every column.</p>}
-          <div className={starter ? "table-scroll" : "table-scroll table-scroll--sticky"}>
+        <div className="card overview__more">
+          {/* The brief's product table (section 13), on a larger screen. Every figure is the
+              service's. A product without a full cost shows its cost status and no profit. */}
+          <div className="products__table">
             <table data-testid="products-table">
               <thead>
                 <tr>
                   <th>Product</th>
-                  <th className="num">Units sold</th>
                   <th className="num">Net sales</th>
                   <th className="num">TikTok deductions</th>
                   {starter ? (
@@ -160,48 +179,61 @@ export default async function ProductsPage({ params, searchParams }) {
                       <th className="num">Product cost</th>
                       <th className="num">Return impact</th>
                       <th className="num">Gross profit after returns</th>
-                      <th className="num">Gross margin</th>
-                      <th>Cost status</th>
                     </>
                   )}
                 </tr>
               </thead>
               <tbody>
-                {[...ranked, ...uncosted].map((p) => {
-                  const [word, tone] = COST_STATUS[p.cost_status ?? ""] ?? [null, "quiet"];
-                  return (
-                    <tr key={p.product_id} data-testid="product-row">
-                      <td>
-                        <Link className="rowlink" href={`${base}/${p.product_id}`}>{p.title || "Untitled product"}</Link>
-                        {p.returns_units ? <div className="rows__sub">{p.returns_units} returned</div> : null}
-                      </td>
-                      <td className="num">{p.units}</td>
-                      <td className="num"><Figure amount={p.net_sales} /></td>
-                      <td className="num"><Figure amount={p.tiktok_deductions} /></td>
-                      {starter ? (
-                        <td className="num"><Figure amount={p.net_proceeds} /></td>
-                      ) : (
-                        <>
-                          <td className="num"><Figure amount={p.product_cost} reason="Not every variant sold has a cost price." /></td>
-                          <td className="num"><Figure amount={p.return_impact} /></td>
-                          <td className="num"><Figure amount={p.kept} reason={p.kept_reason} /></td>
-                          <td className="num">{formatMargin(p.gross_margin_after_returns) ?? <span className="muted">Not known</span>}</td>
-                          <td>
-                            {word ? (
-                              p.cost_status === "complete"
-                                ? <span className={chipClass(tone)}>{word}</span>
-                                : <Link className={chipClass(tone)} href={`${base}/${p.product_id}`}>{word}</Link>
-                            ) : null}
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  );
-                })}
+                {rows.map((p) => (
+                  <tr key={p.product_id} data-testid="product-row">
+                    <td>
+                      <Link className="rowlink" href={`${base}/${p.product_id}`}>{p.title || "Untitled product"}</Link>
+                      <span className="rows__sub products__sub">{units(p)} {status(p)}</span>
+                    </td>
+                    <td className="num"><Figure amount={p.net_sales} /></td>
+                    <td className="num"><Figure amount={p.tiktok_deductions} /></td>
+                    {starter ? (
+                      <td className="num products__main">{main(p)}</td>
+                    ) : (
+                      <>
+                        <td className="num"><Figure amount={p.product_cost} reason="Not every variant sold has a cost price." /></td>
+                        <td className="num"><Figure amount={p.return_impact} /></td>
+                        <td className="num products__main">
+                          {main(p)}
+                          {formatMargin(p.gross_margin_after_returns) && (
+                            <span className="rows__sub products__sub">{formatMargin(p.gross_margin_after_returns)} margin</span>
+                          )}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-          <ul className="rows">
+
+          {/* On a phone, one row per product with its main figure. Its page holds the rest. */}
+          <ul className="rows payouts products__list" data-testid="products-list">
+            {rows.map((p) => (
+              <li key={p.product_id}>
+                <Link className="payouts__row" href={`${base}/${p.product_id}`}>
+                  <span className="payouts__when">
+                    {p.title || "Untitled product"}
+                    <span className="rows__sub">{units(p)}</span>
+                  </span>
+                  <span className="products__figure">
+                    {main(p)}
+                    {!starter && formatMargin(p.gross_margin_after_returns) && (
+                      <span className="rows__sub">{formatMargin(p.gross_margin_after_returns)} margin</span>
+                    )}
+                    {status(p)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          <ul className="rows products__totals">
             {total && measure === "kept" && (
               <li className="rows__total">
                 <span>{unattributed ? "Total across products" : "Total gross profit after returns"}</span>
@@ -228,17 +260,17 @@ export default async function ProductsPage({ params, searchParams }) {
             <p className="rows__sub" style={{ marginTop: "var(--space-2)" }}>
               {others.count} more {others.count === 1 ? "product came" : "products came"} to{" "}
               <Figure amount={others.amount} />{others.count === 1 ? "." : " between them."}
-              {total && measure === "kept" ? " The total above includes them." : ""}
+              {total && measure === "kept" ? " Included in the total." : ""}
             </p>
           )}
         </div>
       )}
 
-      {starter && <p className="footnote" data-testid="products-not-on-plan">{NOT_ON_PLAN}</p>}
+      {starter && <p className="footnote overview__note" data-testid="products-not-on-plan">{NOT_ON_PLAN}</p>}
       {measure === "kept" && (
-        <p className="footnote">
+        <p className="footnote overview__note">
           {BEFORE_OVERHEADS}
-          {unattributed ? " The total for the shop is the figure Where the money went shows for the same period." : ""}
+          {unattributed ? " The shop total matches Where the money went." : ""}
         </p>
       )}
     </section>

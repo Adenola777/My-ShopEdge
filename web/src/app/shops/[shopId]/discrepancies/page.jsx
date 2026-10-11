@@ -83,15 +83,15 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
   const base = `/shops/${shopId}/discrepancies`;
 
   return (
-    <section>
+    <section className="overview">
       <header className="page-head">
         {/* Reconcile's Issues tab since 10 October 2026 (A36 step 5). Each issue is still a
             discrepancy: a figure where MyShopEdge and TikTok disagree. */}
         <h1>Issues</h1>
         <p>
           {open_count === 0
-            ? "No discrepancy is open right now."
-            : `${open_count} ${open_count === 1 ? "discrepancy is" : "discrepancies are"} open. While one is open, MyShopEdge uses the value shown under "MyShopEdge is using".`}
+            ? "Figures where MyShopEdge and TikTok disagree."
+            : `${open_count} open. Until resolved, the value under "MyShopEdge is using" counts.`}
         </p>
       </header>
 
@@ -101,18 +101,21 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
         </div>
       )}
 
-      <nav className="switch" aria-label="Show">
+      <div className="toolbar">
+      <nav className="switch switch--compact" aria-label="Show">
         <Link href={`${base}?status=open`} aria-current={status === "open" ? "true" : undefined}>Open</Link>
         <Link href={`${base}?status=resolved`} aria-current={status === "resolved" ? "true" : undefined}>
           Resolved
         </Link>
       </nav>
+      </div>
 
       {discrepancies.length === 0 ? (
-        <section className="state">
-          <h2>{status === "open" ? "No open discrepancies." : "No resolved discrepancies yet."}</h2>
-          {status === "open" && <p>Nothing disagrees with TikTok.</p>}
-        </section>
+        <div className="card">
+          <p className={status === "open" ? "overview__clear" : "muted"}>
+            {status === "open" ? <><span aria-hidden="true">{"\u2713"}</span> Nothing disagrees with TikTok.</> : "Nothing resolved yet."}
+          </p>
+        </div>
       ) : (
         <div className="stack">
           {discrepancies.map((d) => (
@@ -130,10 +133,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
 
               {d.kind === "unmapped_fee" ? (
                 <>
-                  <p>
-                    TikTok charged a fee MyShopEdge does not recognise. Your figures include it in
-                    full, under TikTok&rsquo;s own name.
-                  </p>
+                  <p className="card__why">A fee MyShopEdge does not recognise, counted in full under TikTok&rsquo;s name.</p>
                   <ul className="rows">
                     <li><span>TikTok calls it</span><strong>{d.tiktok_value ?? "Nothing recorded"}</strong></li>
                   </ul>
@@ -152,10 +152,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
 
               {d.status === "open" && (
                 <>
-                  <h3 className="card__sub">Effect</h3>
-                  <p className="rows__sub" style={{ marginTop: 0 }}>
-                    Resolving this records your decision and does not change any total.
-                  </p>
+                  <p className="rows__sub" style={{ margin: "var(--space-3) 0 0" }}>Resolving records your decision. No total changes.</p>
                   <ResolveActions shopId={shopId} id={d.id} correctable={Boolean(d.correctable)}
                                   explainOnly={d.kind === "unmapped_fee"} />
                 </>

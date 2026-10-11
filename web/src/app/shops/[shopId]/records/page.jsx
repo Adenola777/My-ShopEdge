@@ -53,47 +53,41 @@ export default async function RecordsPage({ params, searchParams }) {
   const forFigure = Object.keys(filters).some((k) => k !== "basis" && k !== "from" && k !== "to");
 
   return (
-    <section>
+    <section className="overview">
       <header className="page-head">
-        <p><Link href={`/shops/${shopId}/money`}>Where the money went</Link></p>
+        <p className="crumb"><Link href={`/shops/${shopId}/money`}>Where the money went</Link></p>
         <h1>{heading}</h1>
         <p>
           {filters.from && filters.to
             ? `${formatDate(filters.from)} to ${formatDate(filters.to)} \u00b7 `
             : ""}
           {filters.basis === "cash" ? "Cash basis" : "Sales basis"}
-          {forFigure ? " \u00b7 The records behind this figure" : ""}
+          {forFigure ? " \u00b7 Records behind this figure" : ""}
         </p>
       </header>
 
       {page.entries.length === 0 ? (
-        <section className="state">
-          {forFigure ? (
-            <>
-              <h2>No records make up this figure.</h2>
-              <p>Nothing was recorded against it in this period, which is why it reads as zero.</p>
-            </>
-          ) : (
-            <h2>No records match these filters.</h2>
-          )}
-        </section>
+        <div className="card">
+          <p className="muted">{forFigure ? "Nothing recorded against this figure in this period." : "No records match these filters."}</p>
+        </div>
       ) : (
+        // A37 phase 3: each record is its name and amount, with its date and references on one
+        // quiet line under it, joined by a middle dot. TikTok's own field name stays, because an
+        // accountant matches it to the statement.
         <div className="card">
           <ul className="rows">
             {page.entries.map((e) => (
               <li key={e.id}>
                 <span>
-                  <strong>{e.label ?? "Record"}</strong>
-                  <div className="rows__sub">
-                    {formatDate(e.basis_day)}
-                    {e.tiktok_order_id
-                      ? `. TikTok order ${e.tiktok_order_id}`
-                      : e.tiktok_invoice_number
-                        ? `. TikTok invoice ${e.tiktok_invoice_number}`
-                        : ""}
-                    {e.tiktok_fee_type ? `. TikTok calls it ${e.tiktok_fee_type}` : ""}
-                    {e.reason ? `. ${e.reason}` : ""}
-                  </div>
+                  {e.label ?? "Record"}
+                  <span className="rows__sub" style={{ display: "block" }}>
+                    {[
+                      formatDate(e.basis_day),
+                      e.tiktok_order_id ? `Order ${e.tiktok_order_id}` : e.tiktok_invoice_number ? `Invoice ${e.tiktok_invoice_number}` : null,
+                      e.tiktok_fee_type,
+                      e.reason,
+                    ].filter(Boolean).join(" \u00b7 ")}
+                  </span>
                 </span>
                 <Figure amount={e.amount} />
               </li>

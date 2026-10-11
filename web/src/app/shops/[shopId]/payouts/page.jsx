@@ -56,51 +56,58 @@ export default async function PayoutsPage({ params, searchParams }) {
   /** @type {ShopMoney | null} */
   const sm = today?.ok ? today.data?.shop_money ?? null : null;
 
+  const unmatched = result.data.unmatched ?? [];
+
+  // A37 phase 3, 11 October 2026: the Overview's pattern. What TikTok has paid and still owes
+  // in one card of three figures, anything that needs a look, and then every payout as one row
+  // of a single list, where each payout had been a card of its own.
   return (
-    <section data-testid="payouts-screen">
+    <section className="overview" data-testid="payouts-screen">
       <header className="page-head">
         <h1>Reconcile</h1>
         <p>Payouts matched to statements.</p>
       </header>
 
-      <div className="stack">
-        {sm ? <PaidAndOwed sm={sm} /> : null}
+      {sm ? <PaidAndOwed sm={sm} /> : null}
 
-        {review?.ok && review.data ? <NeedsReview data={review.data} shopId={shopId} /> : null}
+      {review?.ok && review.data && review.data.total_needing_review > 0 ? <NeedsReview data={review.data} shopId={shopId} /> : null}
 
-        {expected ? <AwaitingSettlement result={expected} /> : null}
+      {unmatched.length > 0 && <Unmatched payouts={unmatched} />}
 
-        {(result.data.unmatched ?? []).length > 0 && <Unmatched payouts={result.data.unmatched ?? []} />}
+      {expected ? <AwaitingSettlement result={expected} shopId={shopId} /> : null}
 
-        <h2>Payouts</h2>
+      <h2 className="overview__heading">Payouts</h2>
+      <div className="card" data-testid="payouts-list">
         {rows.length === 0 ? (
-          <div className="card"><p className="muted">TikTok has not issued a statement for this shop yet.</p></div>
+          <p className="muted">No statement from TikTok yet.</p>
         ) : (
-          rows.map((s) => (
-            <Link key={s.id} href={`/shops/${shopId}/payouts/${s.id}`} className="card rowlink" data-testid="payout-row">
-              <ul className="rows">
-                <li>
-                  <span>{s.paid_at ? `Paid ${formatDate(s.paid_at)}` : "Not paid yet"}</span>
-                  <StatusChip status={s.reconcile_status} />
+          <ul className="rows payouts">
+            {rows.map((s) => {
+              const off = s.difference && s.difference.amount_minor !== 0;
+              return (
+                <li key={s.id} data-testid="payout-row">
+                  <Link className="payouts__row" href={`/shops/${shopId}/payouts/${s.id}`}>
+                    <span className="payouts__when">
+                      {s.paid_at ? `Paid ${formatDate(s.paid_at)}` : "Not paid yet"}
+                      <span className="rows__sub">
+                        Statement {formatDate(s.statement_time)}
+                        {off ? <>{", difference "}<Figure amount={s.difference} review /></> : null}
+                      </span>
+                    </span>
+                    <span className="payouts__figures">
+                      <StatusChip status={s.reconcile_status} />
+                      <Figure amount={s.payable_amount} />
+                    </span>
+                  </Link>
                 </li>
-                <li className="rows__total"><span>Payout amount</span><Figure amount={s.payable_amount} /></li>
-                <li>
-                  <span>Linked statement</span>
-                  <span>{formatDate(s.statement_time)}, <Figure amount={s.statement_amount} /></span>
-                </li>
-                <li>
-                  <span>Difference</span>
-                  <Figure amount={s.difference} reason="The difference was not worked out for this payout." review />
-                </li>
-              </ul>
-              <p className="card__foot">Explain this payout</p>
-            </Link>
-          ))
+              );
+            })}
+          </ul>
         )}
       </div>
 
       {next && (
-        <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts?${new URLSearchParams({ cursor: next })}`}>Older payouts</Link></p>
+        <p className="overview__more"><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts?${new URLSearchParams({ cursor: next })}`}>Older payouts</Link></p>
       )}
     </section>
   );
@@ -114,49 +121,48 @@ export default async function PayoutsPage({ params, searchParams }) {
  */
 function Unmatched({ payouts }) {
   return (
-    <div className="card" data-testid="payouts-unmatched">
-      <h2>Unmatched</h2>
-      <p className="card__why">
-        TikTok lists {payouts.length === 1 ? "this payout" : "these payouts"}, but no statement
-        MyShopEdge has read names {payouts.length === 1 ? "it" : "them"}, so the orders behind{" "}
-        {payouts.length === 1 ? "it" : "them"} cannot be shown. Each daily read checks again.
-      </p>
-      <ul className="rows">
-        {payouts.map((u) => (
-          <li key={u.tiktok_payment_id} data-testid="unmatched-row">
-            <span>
-              {u.paid_at ? `Paid ${formatDate(u.paid_at)}` : u.created_at ? `Created ${formatDate(u.created_at)}` : "Date not given"}
-              {`, reference ${u.tiktok_payment_id}`}
-            </span>
-            <span><StatusChip status="unmatched" /> <Figure amount={u.amount} /></span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <h2 className="overview__heading">Unmatched</h2>
+      <div className="card" data-testid="payouts-unmatched">
+        <p className="card__why">Paid by TikTok, on no statement yet. Checked again each day.</p>
+        <ul className="rows">
+          {payouts.map((u) => (
+            <li key={u.tiktok_payment_id} data-testid="unmatched-row">
+              <span>
+                {u.paid_at ? `Paid ${formatDate(u.paid_at)}` : u.created_at ? `Created ${formatDate(u.created_at)}` : "Date not given"}
+                <span className="rows__sub" style={{ display: "block" }}>Reference {u.tiktok_payment_id}</span>
+              </span>
+              <span className="payouts__figures"><StatusChip status="unmatched" /> <Figure amount={u.amount} /></span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
   );
 }
 
 /**
  * What TikTok has paid and what it still owes, from Today's `shop_money`, which the service
- * computes. It was the Shop Money card on Overview.
+ * computes. It was the Shop Money card on Overview. Since A37 phase 3 the three figures sit
+ * side by side, and the sum that ties them sits under them.
  *
  * @param {{ sm: ShopMoney }} props
  */
 function PaidAndOwed({ sm }) {
   const awaiting = sm.awaiting_breakdown ?? [];
+  const postage = sm.return_postage && sm.return_postage.amount_minor !== 0 ? sm.return_postage : null;
   return (
-    <div className="card" data-testid="paid-and-owed">
-      <h2>Paid and still to come</h2>
-      <p className="card__why">Paid to you, and still owed.</p>
-      <ul className="rows">
-        <li><span>Net proceeds, all time</span><Figure amount={sm.generated} /></li>
-        {sm.return_postage && sm.return_postage.amount_minor !== 0 && (
-          <li><span>Return shipping TikTok deducted</span><Figure amount={sm.return_postage} /></li>
-        )}
-        <li><span>Paid out</span><Figure amount={sm.paid_out} /></li>
-        <li><span>Awaiting settlement</span><Figure amount={sm.awaiting} /></li>
-      </ul>
-      <p className="rows__sub">Paid out + awaiting = net proceeds less return shipping.</p>
+    <div className="card hero" data-testid="paid-and-owed">
+      <div className="stats">
+        <div><p className="stat__label">Paid out</p><p className="stat__value"><Figure amount={sm.paid_out} /></p></div>
+        <div><p className="stat__label">Awaiting settlement</p><p className="stat__value"><Figure amount={sm.awaiting} /></p></div>
+        <div><p className="stat__label">Net proceeds</p><p className="stat__value"><Figure amount={sm.generated} /></p></div>
+      </div>
+      <p className="hero__meta">
+        <span>All time</span>
+        <span>Paid out + awaiting = net proceeds{postage ? " less return shipping" : ""}</span>
+        {postage && <span>Return shipping <Figure amount={postage} /></span>}
+      </p>
       {awaiting.length > 0 && (
         <details className="disclose">
           <summary>What is awaiting settlement</summary>
@@ -178,77 +184,76 @@ function PaidAndOwed({ sm }) {
 
 /**
  * Orders TikTok has not yet put on a statement, by the week TikTok expects to pay them. This is
- * normal timing, so the status is Awaiting settlement and never a fault.
+ * normal timing, so the status is Awaiting settlement and never a fault. When TikTok does not
+ * answer, one quiet line says so, since the figures above are unaffected.
  *
- * @param {{ result: import("@/lib/api").ApiResult }} props
+ * Since A37 phase 3 this is the one place the weeks are shown; Where the money went showed
+ * them too until then.
+ *
+ * @param {{ result: import("@/lib/api").ApiResult, shopId: string }} props
  */
-function AwaitingSettlement({ result }) {
+function AwaitingSettlement({ result, shopId }) {
   if (!result.ok || !result.data) {
     return (
-      <div className="card" data-testid="awaiting-settlement">
-        <h2>Awaiting settlement</h2>
-        <p className="card__why">TikTok is not answering. Try again shortly.</p>
-      </div>
+      <p className="rows__sub overview__note" data-testid="awaiting-settlement">
+        {result.status === 409
+          ? <>Expected payouts need the shop connected. <Link href={`/shops/${shopId}/connection-problem`}>Reconnect your shop</Link></>
+          : "Expected payout dates are not available from TikTok just now."}
+      </p>
     );
   }
   /** @type {import("@/lib/api-types").components["schemas"]["ExpectedPayouts"]} */
   const p = result.data;
   if (p.weeks.length === 0) return null;
   return (
-    <div className="card" data-testid="awaiting-settlement">
-      <h2>Awaiting settlement</h2>
-      <p className="card__why">
-        TikTok has not put these orders on a statement yet. This is normal timing. Each amount is
-        TikTok&apos;s own estimate and can change before TikTok settles.
-      </p>
-      <ul className="rows">
-        {p.weeks.map((w) => (
-          <li key={w.week_starting}>
-            <span>
-              Expected week of {formatDate(w.week_starting)}
-              {w.orders > 0 ? `, ${w.orders} ${w.orders === 1 ? "order" : "orders"}` : ""}{" "}
-              <StatusChip status="awaiting_settlement" />
-            </span>
-            <Figure amount={w.amount} />
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <h2 className="overview__heading">Expected from TikTok</h2>
+      <div className="card" data-testid="awaiting-settlement">
+        <p className="card__why">Not on a statement yet. TikTok&apos;s estimates, so they can change.</p>
+        <ul className="rows">
+          {p.weeks.map((w) => (
+            <li key={w.week_starting}>
+              <span>
+                Week of {formatDate(w.week_starting)}
+                {w.orders > 0 && <span className="rows__sub" style={{ display: "block" }}>{w.orders} {w.orders === 1 ? "order" : "orders"}</span>}
+              </span>
+              <span className="payouts__figures"><StatusChip status="awaiting_settlement" /> <Figure amount={w.amount} /></span>
+            </li>
+          ))}
+          <li className="rows__total"><span>Total expected</span><Figure amount={p.total} /></li>
+        </ul>
+      </div>
+    </>
   );
 }
 
 /**
  * Pro's review list. Each statement links to its own page, where the difference is explained.
+ * Nothing is shown when every statement adds up, because Payouts' chips already say so.
  *
  * @param {{ data: { items: { settlement: import("@/lib/api-types").components["schemas"]["Settlement"], orders_settled: number, unexplained: import("@/lib/api-types").components["schemas"]["Money"] }[], total_needing_review: number }, shopId: string }} props
  */
 function NeedsReview({ data, shopId }) {
-  if (data.total_needing_review === 0) {
-    return (
-      <div className="card" data-testid="payout-review-clear">
-        <h2>Needs review</h2>
-        <p className="muted">Every statement adds up to the orders behind it.</p>
-      </div>
-    );
-  }
   return (
-    <div className="card" data-testid="payout-review">
-      <h2>Needs review</h2>
-      <p className="card__why">
-        {data.total_needing_review === 1
-          ? "One statement does not add up to the orders behind it."
-          : `${data.total_needing_review} statements do not add up to the orders behind them. The largest difference is first.`}
-      </p>
-      <ul className="rows">
-        {data.items.map((i) => (
-          <li key={i.settlement.id}>
-            <Link className="rowlink rowlink--quiet" href={`/shops/${shopId}/payouts/${i.settlement.id}`}>
-              {formatDate(i.settlement.statement_time)}
-            </Link>
-            <Figure amount={{ ...i.unexplained, amount_minor: Math.abs(i.unexplained.amount_minor) }} unsigned />
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <h2 className="overview__heading">Needs review</h2>
+      <div className="card" data-testid="payout-review">
+        <p className="card__why">
+          {data.total_needing_review === 1
+            ? "One statement differs from its orders."
+            : `${data.total_needing_review} statements differ from their orders. Largest first.`}
+        </p>
+        <ul className="rows">
+          {data.items.map((i) => (
+            <li key={i.settlement.id}>
+              <Link className="rowlink rowlink--quiet" href={`/shops/${shopId}/payouts/${i.settlement.id}`}>
+                Statement {formatDate(i.settlement.statement_time)}
+              </Link>
+              <Figure amount={{ ...i.unexplained, amount_minor: Math.abs(i.unexplained.amount_minor) }} unsigned review />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
   );
 }
