@@ -323,7 +323,10 @@
      and the app's own screenshots stay beside the words as the proof. */
   .feature-art { margin: 0 0 40px; }
   .feature-art--spaced { margin-top: 56px; }
-  .feature-art--closing { margin: 0 auto 48px; max-width: 1080px; }
+  /* The hero shows the owner's laptop and phone picture, cropped to the devices; the closing
+     section shows the real Overview, so the page ends on the screen a seller will see. */
+  .hero-devices { position: relative; z-index: 1; width: 100%; max-width: 640px; height: auto; display: block; border-radius: 18px; animation: rise .7s cubic-bezier(.22,.9,.32,1) both; }
+  .closing-shot { display: block; width: 100%; max-width: 280px; height: auto; margin: 0 auto 44px; border-radius: 18px; box-shadow: 0 30px 60px -20px rgba(18,20,28,0.22), 0 4px 14px rgba(18,20,28,0.06); }
   .feature-art img { width: 100%; height: auto; display: block; border-radius: 18px; box-shadow: 0 2px 10px rgba(18,20,28,0.06); }
   @media (max-width: 860px) { .feature-art { margin-bottom: 28px; } .feature-art--spaced { margin-top: 36px; } .feature-art img { border-radius: 12px; } }
   #features .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -387,7 +390,7 @@
       </div>
       <div class="hero-visual-wrap">
         <div class="hero-glow" aria-hidden="true"></div>
-        <img class="hero-shot" src="shots/hero-money.webp" width="720" height="1560" alt="The Overview: gross profit after returns of &pound;3,387.95, a 52.7% margin, and where the money went">
+        <img class="hero-devices" src="art/hero-devices.webp" width="956" height="645" alt="MyShopEdge on a laptop and a phone">
       </div>
     </div>
   </header>
@@ -549,7 +552,7 @@
 
   <section class="final-cta">
     <div class="wrap">
-      <figure class="feature-art feature-art--closing"><img src="art/laptop-phone.webp" width="1618" height="971" loading="lazy" alt="MyShopEdge on a laptop and a phone, with the headline Know your numbers"></figure>
+      <img class="closing-shot" src="shots/hero-money.webp" width="720" height="1560" loading="lazy" alt="The Overview: gross profit after returns of &pound;3,387.95, a 52.7% margin, and where the money went">
       <h2>Start free with Explorer.</h2>
       <a class="btn large" href="https://app.myshopedge.inspirecraftglobal.com/start">
         Start free
