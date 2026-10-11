@@ -24,6 +24,7 @@ import { formatMoney } from "@/lib/api";
  *   className?: string,
  *   unsigned?: boolean,
  *   alert?: boolean,
+ *   review?: boolean,
  * }} props
  *
  * `unsigned` shows the amount without its ledger sign, for money whose direction its label
@@ -33,8 +34,12 @@ import { formatMoney } from "@/lib/api";
  * `alert` shows the amount in red. Since 10 October 2026 (A36.2 item 3, the owner's ruling) a
  * deduction is dark text with its minus sign, and red is kept for write-offs, failed payments
  * and differences nobody has explained, which the caller marks with `alert`.
+ *
+ * `review` shows the amount in amber. Since A37 (11 October 2026, the owner's approval) a
+ * difference nobody has explained is amber, matching its Needs review label, because it is
+ * not yet a confirmed loss. Red is kept for stock written off and a failed payment.
  */
-export function Figure({ amount, reason, className = "", unsigned = false, alert = false }) {
+export function Figure({ amount, reason, className = "", unsigned = false, alert = false, review = false }) {
   if (amount == null) {
     const why = reason || "Not known";
     return (
@@ -47,8 +52,9 @@ export function Figure({ amount, reason, className = "", unsigned = false, alert
 
   const shown = unsigned ? { ...amount, amount_minor: Math.abs(amount.amount_minor) } : amount;
   const red = alert && amount.amount_minor !== 0;
+  const amber = review && !red && amount.amount_minor !== 0;
   return (
-    <span className={`money ${red ? "money--alert" : ""} ${className}`}>
+    <span className={`money ${red ? "money--alert" : ""}${amber ? "money--review" : ""} ${className}`}>
       {formatMoney(shown)}
     </span>
   );

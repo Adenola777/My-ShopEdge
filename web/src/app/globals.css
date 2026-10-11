@@ -442,6 +442,8 @@ a:hover { color: var(--orange-700); }
 /* A deduction keeps its minus sign in the ordinary dark figure colour. Red is for a
    write-off, a failed payment or a difference nobody has explained (A36.2 item 3). */
 .money--alert { color: var(--bad-600); }
+/* A37: an unexplained difference, amber like its Needs review label. #8A5A00 is 6.1 : 1 on white. */
+.money--review { color: var(--warn-700); }
 .money--unknown { color: var(--ink-500); font-weight: 500; }
 
 /* --- surfaces -------------------------------------------------------------------- */
@@ -709,10 +711,14 @@ tbody tr:last-child td { border-bottom: 0; }
    on a larger screen. */
 .page-head--row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
 .page-head__actions { display: flex; align-items: center; gap: var(--space-3); font-size: 0.875rem; }
-.toolbar { display: grid; gap: var(--space-2); margin-bottom: var(--space-5); }
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-5); }
 .toolbar .switch { margin: 0; }
-@media (min-width: 64rem) {
-  .toolbar { grid-template-columns: 3fr 2fr; gap: var(--space-3); }
+/* A compact switch sizes to its words rather than filling the row (A37 phase 2). On a phone
+   it fills the row and keeps a 44 px target. */
+.switch--compact { flex: 1 1 100%; }
+@media (min-width: 40rem) {
+  .switch--compact { flex: none; display: inline-flex; }
+  .switch--compact a { flex: none; min-height: 36px; padding: 0 var(--space-4); font-size: 0.875rem; white-space: nowrap; }
 }
 
 /* The hero: a white panel, set apart by its size, its 16 px corners and its figure, the
@@ -725,8 +731,32 @@ tbody tr:last-child td { border-bottom: 0; }
 /* #334155 on the tint is 9.4 : 1; the #64748B used until A37 was 4.34 : 1, below AA. */
 .hero__line { color: var(--ink-700); font-size: 0.9375rem; margin: 0; }
 .hero__line strong { color: var(--navy-900); }
-.hero__meta { max-width: none; color: var(--ink-700); font-size: 0.875rem; margin: var(--space-3) 0 0; padding-top: var(--space-3); border-top: 1px solid var(--ink-100); }
-.hero__action { margin: var(--space-4) 0 0; }
+.hero__meta { max-width: none; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); color: var(--ink-700); font-size: 0.9375rem; margin: var(--space-2) 0 0; }
+.hero__meta strong { color: var(--navy-900); font-weight: 650; }
+.hero__action { margin: var(--space-5) 0 0; font-weight: 600; }
+.hero__action a { text-decoration: none; }
+.hero__action a::after { content: " \2192"; }
+.hero__action a:hover { text-decoration: underline; }
+
+/* The Overview, A37 phase 2: generous space between its four parts. */
+.overview > .hero, .overview > .card { margin-bottom: 0; }
+.content .overview .overview__heading { font-size: 1rem; font-weight: 650; color: var(--navy-900); margin: var(--section-gap) 0 var(--space-3); }
+.overview__clear { margin: 0; color: var(--ink-700); }
+.overview__clear span { color: var(--good-600); font-weight: 700; margin-right: var(--space-1); }
+
+/* The statement: the whole calculation in one card, each section a group with a small label
+   and closed by its subtotal (A37 phase 2). */
+.statement { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.statement__group { padding: var(--space-3) 0; }
+.statement__group + .statement__group { border-top: 1px solid var(--line); }
+.statement__label { font-size: 0.875rem; font-weight: 600; color: var(--ink-500); margin: 0 0 var(--space-1); letter-spacing: 0.01em; }
+.statement .rows li { border-bottom: 0; padding: 7px 0; }
+.statement .rows .rowlink--quiet { color: var(--ink-700); font-weight: 450; }
+.statement .rows .money { font-weight: 500; color: var(--ink-900); }
+.statement .rows .money--alert { color: var(--bad-600); }
+.statement .rows .money--review { color: var(--warn-700); }
+.statement .rows__total { margin-top: var(--space-1); border-top: 1px solid var(--ink-100) !important; padding-top: 10px !important; }
+.statement .rows__total .money, .statement .rows__total span { font-weight: 650; color: var(--navy-900); }
 
 /* The side panel a waterfall line opens (A37 phase 2). A native dialog: on a larger screen it
    slides in from the right at 440 px; on a phone it fills the screen. */

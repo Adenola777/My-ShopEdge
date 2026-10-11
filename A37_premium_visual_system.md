@@ -72,9 +72,23 @@ Built and checked so far, against the local copy at 1280 and 390 px:
   August 2026, sales basis), and links to the full Transactions page. The line stays a link,
   so a new tab or a browser without JavaScript reaches the same records.
 
-**Not yet built, waiting on the owner:** grouping TikTok's fee lines into the brief's Platform
-commission, Affiliate commission, Shipping and fulfilment, and Promotions and adjustments, and
-the colour rule for figures.
+**The owner's rulings later the same day:**
+
+- **Each TikTok fee stays on its own line.** The brief's four groups are not used, so the
+  breakdown is never merged. Transaction fee and the shipping and packaging the seller pays keep
+  their own lines too.
+- **Figure colours, approved.** Every amount is dark, additions and deductions alike, and a
+  deduction carries its minus sign. No figure is ever green. Red is kept for stock written off
+  and a failed payment. A payout difference nobody has explained is amber (`money--review`,
+  `#8A5A00`, 6.1 : 1 on white), matching its Needs review label.
+- **The Overview is the premium first screen, with its explanations moved off it.** It holds
+  the title and shop, Export, one row of compact period and basis switches, the main figure with
+  its margin, period and basis and one action, the calculation as one statement in a single card
+  (a small label per section, each closed by its subtotal, and no card per section), and what
+  needs attention. What TikTok paid out is left to Reconcile. The definitions are in the
+  glossary. Measured at 1280 px: 99 words, against about 140 before, and three cards, against
+  eight. Section headings sit 48 px below what precedes them on a larger screen and 32 px on a
+  phone, and stock written off is still red.
 
 ## A37.4 The phases still to come
 
