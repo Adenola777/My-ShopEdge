@@ -15,6 +15,10 @@
  * On Pro, since 10 October 2026, the statements that need review come first, from
  * getPayoutReview: those whose orders do not add up to them, the largest difference first.
  * Other plans see the list alone, because getPayoutReview answers them with a 403.
+ *
+ * Since 11 October 2026 (A36 item 6), a payout TikTok lists that no statement names is shown
+ * as Unmatched above the list, from the first page's `unmatched`. Nothing is shown when every
+ * payout has its statement.
  */
 
 import Link from "next/link";
@@ -66,6 +70,8 @@ export default async function PayoutsPage({ params, searchParams }) {
 
         {expected ? <AwaitingSettlement result={expected} /> : null}
 
+        {(result.data.unmatched ?? []).length > 0 && <Unmatched payouts={result.data.unmatched ?? []} />}
+
         <h2>Payouts</h2>
         {rows.length === 0 ? (
           <div className="card"><p className="muted">TikTok has not issued a statement for this shop yet.</p></div>
@@ -97,6 +103,36 @@ export default async function PayoutsPage({ params, searchParams }) {
         <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts?${new URLSearchParams({ cursor: next })}`}>Older payouts</Link></p>
       )}
     </section>
+  );
+}
+
+/**
+ * Payouts TikTok lists with no statement naming them (A36.2 answer 2). There is no statement
+ * to explain them, so they open nothing.
+ *
+ * @param {{ payouts: NonNullable<import("@/lib/api-types").operations["listSettlements"]["responses"]["200"]["content"]["application/json"]["unmatched"]> }} props
+ */
+function Unmatched({ payouts }) {
+  return (
+    <div className="card" data-testid="payouts-unmatched">
+      <h2>Unmatched</h2>
+      <p className="card__why">
+        TikTok lists {payouts.length === 1 ? "this payout" : "these payouts"}, but no statement
+        MyShopEdge has read names {payouts.length === 1 ? "it" : "them"}, so the orders behind{" "}
+        {payouts.length === 1 ? "it" : "them"} cannot be shown. Each daily read checks again.
+      </p>
+      <ul className="rows">
+        {payouts.map((u) => (
+          <li key={u.tiktok_payment_id} data-testid="unmatched-row">
+            <span>
+              {u.paid_at ? `Paid ${formatDate(u.paid_at)}` : u.created_at ? `Created ${formatDate(u.created_at)}` : "Date not given"}
+              {`, reference ${u.tiktok_payment_id}`}
+            </span>
+            <span><StatusChip status="unmatched" /> <Figure amount={u.amount} /></span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

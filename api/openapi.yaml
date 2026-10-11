@@ -2586,6 +2586,37 @@ paths:
                       type: array
                       items:
                         $ref: '#/components/schemas/Settlement'
+                    unmatched:
+                      type: array
+                      description: Payouts TikTok lists that no statement names, the Unmatched
+                        status of A36.2 answer 2, newest first and at most 100. Served on the
+                        first page only, and empty on later pages. Read from TikTok's Get Payments
+                        since 11 October 2026 (A11.5 as amended, A36 item 6, migration 0035).
+                      items:
+                        type: object
+                        required:
+                        - tiktok_payment_id
+                        - amount
+                        properties:
+                          tiktok_payment_id:
+                            type: string
+                          status:
+                            type:
+                            - string
+                            - 'null'
+                            description: TikTok's own status for the payout, such as PAID.
+                          amount:
+                            $ref: '#/components/schemas/Money'
+                          created_at:
+                            type:
+                            - string
+                            - 'null'
+                            format: date-time
+                          paid_at:
+                            type:
+                            - string
+                            - 'null'
+                            format: date-time
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':

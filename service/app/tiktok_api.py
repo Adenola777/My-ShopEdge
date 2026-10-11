@@ -53,11 +53,16 @@ SORT_FIELDS = {
     "/finance/202309/statements": {"statement_time"},
     "/finance/202501/statements/{id}/statement_transactions": {"order_create_time"},
     "/finance/202507/orders/unsettled": {"order_create_time"},
+    "/finance/202309/payments": {"create_time"},
     "/order/202309/orders/search": {"create_time", "update_time"},
     "/return_refund/202309/returns/search": {"create_time", "update_time"},
 }
 
 STATEMENTS_PATH = "/finance/202309/statements"                                  # A11.4, A17.2
+# Read since 11 October 2026 for one purpose only, a payout with no statement (A11.5 as
+# amended, A36 item 6). From TikTok's Get Payments page, pasted by the owner that day:
+# sort_field create_time only, page_size 1 to 100, create_time_ge and create_time_lt.
+PAYMENTS_PATH = "/finance/202309/payments"
 STATEMENT_TXNS_PATH = "/finance/202501/statements/{id}/statement_transactions"  # A17.1
 ORDER_CALC_PATH = "/finance/202501/orders/{id}/statement_transactions"           # A11.2, A17.2
 ORDER_SEARCH_PATH = "/order/202309/orders/search"                                # A11.4

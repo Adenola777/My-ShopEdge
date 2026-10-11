@@ -404,3 +404,45 @@ Checked on 11 October 2026:
   showed the explanation, with no page scrolling sideways.
 
 **0034 was applied on 11 October 2026**, with the owner's authority, to development, staging and production, each in one transaction with its record and checksum. Queried afterwards on all three, the table belongs to `mse_migrator` with row level security forced, and `mse_app` may insert and delete.
+
+## A36.14 Item 6 built: Unmatched payouts, 11 October 2026
+
+The owner ruled on 10 October 2026 that Unmatched is a payout with no statement behind it
+(A36.2 answer 2). MyShopEdge read payouts only inside statements, so it never held one without a
+statement. On 11 October 2026 the owner amended A11.5, so that TikTok's Get Payments may be read
+for that one purpose, and pasted the response example from TikTok's page. Bank reconciliation
+stays out of scope.
+
+- Migration 0035 adds `tiktok_payments`: TikTok's payout id, status, amount, settlement and
+  reserve amounts, currency, and when it was created and paid. Row level security follows the
+  shop's account. The masked bank account TikTok returns is not stored.
+- The daily sync reads the payouts at the end of the finance read, over the same window as the
+  statements, and keeps each once. A refusal from TikTok, or a missing table before 0035, is
+  noted on the run and never fails the finance read.
+- A payout is Unmatched when no statement of the shop carries its id as `payment_id`.
+  `listSettlements` serves them on its first page as `unmatched`, newest first, at most 100.
+- The Payouts page shows them above the list, under Unmatched, with their reference, date and
+  amount. They open nothing, because there is no statement to explain them.
+
+**Unverified:**
+- That the amounts are in pounds rather than pence. The example's "100" could be either. They
+  are read in major units, as the statements' amounts are. The first real payout compared with
+  its own statement settles it.
+- How TikTok fills `status` beyond the example's PAID. It is shown as TikTok gives it.
+
+Checked on 11 October 2026:
+- The smoke test covers one Unmatched payout on the first page and none on a later page.
+- `testdata/tiktok_sync_check.py` passed 50 of 50 on both datasets, five more checks than
+  before. Its fake TikTok answers Get Payments in the pasted example's shape, with one payout
+  per paid statement and one no statement names. Each payout was kept once across two runs,
+  only the extra one was Unmatched, each matched payout read as its own statement's amount,
+  and no bank account column exists.
+- Without 0035 the finance read completed, with the note "payments not kept: migration 0035 is
+  not applied".
+- On a synced local database the Payouts list served the one Unmatched payout, £12.34, and an
+  empty list once the table was removed. `mse_app` saw the shop's 3 payouts as the shop's
+  account, and none as another account or with none.
+- In a browser at 390 and 1280 pixels wide, the Payouts page showed the Unmatched card with no
+  page scrolling sideways.
+
+**0035 is applied to no Neon branch.**

@@ -30,6 +30,7 @@ from datetime import date, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
+import psycopg
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
@@ -91,9 +92,45 @@ class Settlement(BaseModel):
     difference: Money | None = None
 
 
+class UnmatchedPayout(BaseModel):
+    """A payout TikTok lists with no statement naming it (A36.2 answer 2, A36 item 6)."""
+    tiktok_payment_id: str
+    status: str | None = None
+    amount: Money
+    created_at: datetime | None = None
+    paid_at: datetime | None = None
+
+
 class SettlementPage(BaseModel):
     settlements: list[Settlement]
     next_cursor: str | None = None
+    # On the first page only, newest first. Empty when every payout has its statement.
+    unmatched: list[UnmatchedPayout] = []
+
+
+# A payout is Unmatched when no statement of the shop carries its id as payment_id. Read from
+# `tiktok_payments` (migration 0035), which the daily sync fills from TikTok's Get Payments.
+UNMATCHED_SQL = """
+select p.tiktok_payment_id, p.status, p.amount_minor, p.currency, p.created_at, p.paid_at
+  from tiktok_payments p
+ where p.shop_id = %s
+   and not exists (select 1 from settlements s
+                    where s.shop_id = p.shop_id and s.tiktok_payment_id = p.tiktok_payment_id)
+ order by p.created_at desc nulls last, p.tiktok_payment_id
+ limit 100
+"""
+
+
+def unmatched_payouts(conn, shop_id: UUID) -> list[UnmatchedPayout]:
+    """Before migration 0035 the table is missing, so the query runs in a savepoint and no
+    payout is Unmatched."""
+    try:
+        with conn.transaction():
+            rows = conn.execute(UNMATCHED_SQL, (str(shop_id),)).fetchall()
+    except psycopg.errors.UndefinedTable:
+        return []
+    return [UnmatchedPayout(tiktok_payment_id=r[0], status=r[1], amount=money(int(r[2]), r[3]),
+                            created_at=r[4], paid_at=r[5]) for r in rows]
 
 
 class SettlementComponents(BaseModel):
@@ -165,10 +202,10 @@ STATEMENT_FEES = tuple(
 #                        data failed or is more than a day old, so its state may have moved.
 #   awaiting_settlement  Orders TikTok has not yet put on a statement. No statement carries it;
 #                        the Payouts screen shows TikTok's expected payouts under this status.
-#   unmatched            A payout with no statement behind it. MyShopEdge reads payouts only as
-#                        part of statements, so nothing it holds can be unmatched yet. The
-#                        status is in the contract so the screen has a word for it when TikTok's
-#                        list of payments is read.
+#   unmatched            A payout with no statement behind it. Since 11 October 2026 the sync
+#                        reads TikTok's own list of payouts (A11.5 as amended, migration 0035),
+#                        and the first page of listSettlements serves each payout no statement
+#                        names in `unmatched` (A36 item 6).
 #
 # A paid statement is final, so a late read never turns it into sync_delayed. Normal timing is
 # never an error: a statement waiting for payment is pending_payment, not needs_review.
@@ -278,6 +315,7 @@ def list_settlements(
         cols = [d.name for d in cur.description]
         rows = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
         stale, _ = finance_read(conn, shop_id)
+        unmatched = unmatched_payouts(conn, shop_id) if cursor is None else []
     for r in rows:
         r["reconcile_status"] = payout_status(r["payment_status"], int(r["unexplained_minor"]), stale)
 
@@ -288,7 +326,7 @@ def list_settlements(
         next_cursor = encode_cursor(last["statement_time"], last["id"])
 
     return SettlementPage(
-        settlements=[_settlement(r) for r in rows], next_cursor=next_cursor
+        settlements=[_settlement(r) for r in rows], next_cursor=next_cursor, unmatched=unmatched
     )
 
 
