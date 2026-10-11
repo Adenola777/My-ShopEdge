@@ -57,10 +57,12 @@
   --ink-50:  #f1f5f9;
   --white:   #ffffff;
 
-  /* The warm surfaces, 11 October 2026. */
-  --page: #fffaf7;
-  --rail: #fff5f0;
-  --line: #f0e4dc;
+  /* The surfaces. The owner ruled a warm tint on 11 October 2026 and the same day asked for
+     the page to be white instead (A37.1 item 5), so the page is pure white, the rail a
+     neutral off-white, and borders a neutral grey with no pink in them. */
+  --page: #ffffff;
+  --rail: #f7f7f8;
+  --line: #e5e7eb;
 
   /* The three data families, A7.10. Fees are blue in fee order, the seller's costs plum. */
   --data-navy:   #10263d;
@@ -777,7 +779,7 @@ tbody tr:last-child td { border-bottom: 0; }
   border: 1px solid transparent;
   transition: background-color var(--ease), color var(--ease);
 }
-.switch a:hover { color: var(--orange-700); background: var(--page); }
+.switch a:hover { color: var(--orange-700); background: var(--rail); }
 .switch a[aria-current="true"] { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-300); font-weight: 650; }
 
 .muted { color: var(--ink-500); }
