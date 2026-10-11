@@ -54,6 +54,28 @@ copy of the sample shop, at 1280 and 390 px, in Chromium:
 - every gap between cards on eighteen screens is 24 px, a heading sits 8 to 12 px above the card
   it names, and no page scrolls sideways.
 
+## A37.5 Phase 2, the Overview, started 11 October 2026
+
+The owner ruled the same day that **return costs stay** in the waterfall, after gross profit,
+so Gross profit after returns remains the Overview's main figure when costs are complete.
+
+Built and checked so far, against the local copy at 1280 and 390 px:
+
+- The title carries Export beside it, and the period and basis switches sit on one row on a
+  larger screen. The update time is in the top bar and on the main card, and not repeated.
+- The main card shows its amount, what it means, its cost coverage, its period, its basis and
+  its last update, and one action as a button: View product performance, Review missing costs
+  or Add product costs.
+- Every waterfall line opens its records in a side panel (a native dialog: focus stays in it,
+  Escape closes it, focus returns to the line). The panel shows the first twenty records and
+  the total, which equalled the line on the line tested (Platform commission, -£427.80, 1 to 23
+  August 2026, sales basis), and links to the full Transactions page. The line stays a link,
+  so a new tab or a browser without JavaScript reaches the same records.
+
+**Not yet built, waiting on the owner:** grouping TikTok's fee lines into the brief's Platform
+commission, Affiliate commission, Shipping and fulfilment, and Promotions and adjustments, and
+the colour rule for figures.
+
 ## A37.4 The phases still to come
 
 Each is its own pull request, shown to the owner before it merges: the Overview (phase 2), Reconcile

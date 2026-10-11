@@ -705,6 +705,16 @@ tbody tr:last-child td { border-bottom: 0; }
 .content :not(.stack, .pair, .plan-cards) > :not(h1, h2, h3) + .card { margin-top: var(--space-5); }
 .pair { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; }
 
+/* A37 phase 2: a page title with its actions beside it, and the page's controls on one row
+   on a larger screen. */
+.page-head--row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
+.page-head__actions { display: flex; align-items: center; gap: var(--space-3); font-size: 0.875rem; }
+.toolbar { display: grid; gap: var(--space-2); margin-bottom: var(--space-5); }
+.toolbar .switch { margin: 0; }
+@media (min-width: 64rem) {
+  .toolbar { grid-template-columns: 3fr 2fr; gap: var(--space-3); }
+}
+
 /* The hero: a white panel, set apart by its size, its 16 px corners and its figure, the
    largest on the page. It had an orange tint until the owner asked for white (A37.1 item 5). */
 .hero { position: relative; overflow: hidden; background: var(--white); border-color: var(--line); border-radius: var(--radius-lg); padding: var(--hero-pad); }
@@ -714,6 +724,42 @@ tbody tr:last-child td { border-bottom: 0; }
 .hero__value .money { color: var(--navy-figure); font-weight: 700; }
 /* #334155 on the tint is 9.4 : 1; the #64748B used until A37 was 4.34 : 1, below AA. */
 .hero__line { color: var(--ink-700); font-size: 0.9375rem; margin: 0; }
+.hero__line strong { color: var(--navy-900); }
+.hero__meta { max-width: none; color: var(--ink-700); font-size: 0.875rem; margin: var(--space-3) 0 0; padding-top: var(--space-3); border-top: 1px solid var(--ink-100); }
+.hero__action { margin: var(--space-4) 0 0; }
+
+/* The side panel a waterfall line opens (A37 phase 2). A native dialog: on a larger screen it
+   slides in from the right at 440 px; on a phone it fills the screen. */
+.drawer {
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  width: min(440px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: var(--white);
+  box-shadow: -8px 0 32px rgb(17 24 32 / 12%);
+  color: var(--ink-900);
+}
+.drawer[open] { animation: drawer-in 200ms ease-out; }
+.drawer::backdrop { background: rgb(17 24 32 / 28%); }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer__panel { padding: var(--space-5); min-height: 100%; }
+.drawer__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.drawer__head h2 { margin: 0; font-size: 1.125rem; }
+.drawer__close {
+  flex: none; width: 44px; height: 44px; margin: -10px -10px 0 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius); background: transparent; color: var(--ink-700); cursor: pointer;
+}
+.drawer__close:hover { background: var(--orange-50); color: var(--orange-700); }
+.drawer__close svg { width: 20px; height: 20px; }
+.drawer__foot { margin: var(--space-5) 0 0; }
+@media (max-width: 40rem) {
+  .drawer { width: 100vw; }
+  .drawer__panel { padding: var(--space-4); }
+}
 .stat__value { font-size: 1.5rem; font-weight: 700; color: var(--navy-figure); margin: 0; line-height: 1.2; }
 .stat__value .money { font-weight: 700; }
 .stat__label { color: var(--ink-500); margin: 0; font-size: 0.875rem; }

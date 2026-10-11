@@ -163,14 +163,27 @@ export default async function TodayPage({ params, searchParams }) {
   const withPeriod = periodKey === "month" ? {} : { period: periodKey };
   const soFar = m.totals?.gross_profit_so_far;
   const attention = t.needs_you;
+  const updated = t.freshness?.last_synced_at ? formatDate(t.freshness.last_synced_at, { time: true }) : null;
+  // Every primary total carries its period, basis and last update (A37 phase 2).
+  const meta = (
+    <p className="hero__meta" data-testid="overview-period">
+      {periodKey === "today" ? `Today, ${formatDate(period.to)}` : `${formatDate(period.from)} to ${formatDate(period.to)}`}
+      {" \u00b7 "}{basis === "sales" ? "Sales basis, by sale date" : "Cash basis, by settlement date"}
+      {updated ? ` \u00b7 Updated ${updated}` : ""}
+    </p>
+  );
 
   return (
     <section>
-      <header className="page-head">
-        {/* Named Overview, with this subtitle, from the owner's brief approved 10 October 2026. */}
-        <h1>Overview</h1>
-        <p>What your TikTok Shop has left you.</p>
-        {shop?.shop_name && <p className="muted">{shop.shop_name}</p>}
+      {/* A37 phase 2: the title with the export and the last update beside it. */}
+      <header className="page-head page-head--row">
+        <div>
+          <h1>Overview</h1>
+          <p>What your TikTok Shop has left you{shop?.shop_name ? ` \u00b7 ${shop.shop_name}` : ""}</p>
+        </div>
+        <div className="page-head__actions">
+          <Link className="btn btn--quiet btn--small" href={`/shops/${shopId}/money/export`} data-testid="overview-export">Export</Link>
+        </div>
       </header>
 
       {/* Only `stale` raises the banner. `getting_old` starts six hours after a read, and the
@@ -189,24 +202,20 @@ export default async function TodayPage({ params, searchParams }) {
       {/* The brief's controls: the period, the basis, the export and when the figures were
           last brought up to date. The daily read cannot be started from here, so no refresh
           is offered. */}
-      <nav className="switch" aria-label="Period">
-        {["today", "month", "last_month"].map((k) => (
-          <Link key={k} href={href({ ...withBasis, ...(k === "month" ? {} : { period: k }) })}
-                aria-current={periodKey === k ? "true" : undefined}>
-            {PERIOD_WORD[k]}
-          </Link>
-        ))}
-      </nav>
-      <nav className="switch" aria-label="Basis">
-        <Link href={href(withPeriod)} aria-current={basis === "sales" ? "true" : undefined}>Sales basis</Link>
-        <Link href={href({ ...withPeriod, basis: "cash" })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
-      </nav>
-      <p className="rows__sub" data-testid="overview-period">
-        {periodKey === "today" ? `Today, ${formatDate(period.to)}` : `${formatDate(period.from)} to ${formatDate(period.to)}`}
-        {" \u00b7 "}{basis === "sales" ? "by sale date" : "by settlement date"}
-        {t.freshness?.last_synced_at ? ` \u00b7 Updated ${formatDate(t.freshness.last_synced_at, { time: true })}` : ""}{" \u00b7 "}
-        <Link href={`/shops/${shopId}/money/export`} data-testid="overview-export">Export</Link>
-      </p>
+      <div className="toolbar">
+        <nav className="switch" aria-label="Period">
+          {["today", "month", "last_month"].map((k) => (
+            <Link key={k} href={href({ ...withBasis, ...(k === "month" ? {} : { period: k }) })}
+                  aria-current={periodKey === k ? "true" : undefined}>
+              {PERIOD_WORD[k]}
+            </Link>
+          ))}
+        </nav>
+        <nav className="switch" aria-label="Basis">
+          <Link href={href(withPeriod)} aria-current={basis === "sales" ? "true" : undefined}>Sales basis</Link>
+          <Link href={href({ ...withPeriod, basis: "cash" })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
+        </nav>
+      </div>
 
       <div className="stack">
         <OrderUsageCard usage={t.order_usage} shopId={shopId} />
@@ -221,10 +230,12 @@ export default async function TodayPage({ params, searchParams }) {
               </p>
               <p className="hero__value"><Figure amount={m.kept} /></p>
               {formatMargin(m.totals?.gross_margin_after_returns) && (
-                <p className="hero__line" data-testid="overview-margin">Gross margin after returns {formatMargin(m.totals.gross_margin_after_returns)}</p>
+                <p className="hero__line" data-testid="overview-margin">Gross margin after returns <strong>{formatMargin(m.totals.gross_margin_after_returns)}</strong></p>
               )}
-              <p className="hero__line">{BEFORE_OVERHEADS}</p>
-              <p className="hero__line"><Link href={`/shops/${shopId}/products`}>View product performance</Link></p>
+              <p className="hero__line">After TikTok deductions, product costs and returns. {BEFORE_OVERHEADS}</p>
+              <p className="hero__line">Cost coverage: every product sold has a cost.</p>
+              {meta}
+              <p className="hero__action"><Link className="btn btn--quiet btn--small" href={`/shops/${shopId}/products`}>View product performance</Link></p>
             </>
           ) : soFar ? (
             <>
@@ -234,7 +245,8 @@ export default async function TodayPage({ params, searchParams }) {
               </p>
               <p className="hero__value"><Figure amount={soFar} /></p>
               {coverageSentence(m.coverage) && <p className="hero__line" data-testid="overview-coverage">{coverageSentence(m.coverage)}</p>}
-              <p className="hero__line"><Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
+              {meta}
+              <p className="hero__action"><Link className="btn btn--primary btn--small" href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></p>
             </>
           ) : (
             <>
@@ -244,8 +256,9 @@ export default async function TodayPage({ params, searchParams }) {
               </p>
               <p className="hero__value"><Figure amount={m.totals?.net_proceeds} /></p>
               <p className="hero__line">What remains after TikTok Shop deductions, before product costs.</p>
+              {meta}
               {m.kept_reason !== "no_sales" && (
-                <p className="hero__line"><Link href={`/shops/${shopId}/setup/costs`}>Add product costs</Link></p>
+                <p className="hero__action"><Link className="btn btn--primary btn--small" href={`/shops/${shopId}/setup/costs`}>Add product costs</Link></p>
               )}
             </>
           )}
