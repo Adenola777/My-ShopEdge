@@ -6,6 +6,15 @@
 <link rel="icon" href="brand/mse-favicon.svg" type="image/svg+xml">
 <title>MyShopEdge: see what you keep from every TikTok Shop sale</title>
 <meta name="description" content="MyShopEdge puts a UK TikTok Shop seller's sales, fees, refunds, returns and payouts in one clear picture, with gross profit by product once costs are added.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://myshopedge.inspirecraftglobal.com/">
+<meta property="og:title" content="MyShopEdge: see what you keep from every TikTok Shop sale">
+<meta property="og:description" content="Sales, fees, refunds and payouts in one clear picture, for UK TikTok Shop sellers.">
+<meta property="og:image" content="https://myshopedge.inspirecraftglobal.com/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MyShopEdge on a laptop and a phone, with the headline Know your numbers">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -319,21 +328,27 @@
   }
   /* Product costs follows the pattern of every other feature: words beside the screenshots. */
   #features .feature-row { padding: 0; }
-  /* 11 October 2026: the owner's illustrations open a section, wide, with the logo cropped off,
-     and the app's own screenshots stay beside the words as the proof. */
-  .feature-art { margin: 0 0 40px; }
-  .feature-art--spaced { margin-top: 56px; }
+  /* 11 October 2026: the owner's illustrations sit under a section's words, cropped to the
+     picture alone, so each section has one heading; the app's screenshots stay as the proof. */
+  .copy-art { display: block; width: 100%; max-width: 460px; height: auto; margin: 28px 0 0; border-radius: 16px; box-shadow: 0 2px 10px rgba(18,20,28,0.06); }
   /* The hero shows the owner's laptop and phone picture, cropped to the devices; the closing
      section shows the real Overview, so the page ends on the screen a seller will see. */
   .hero-devices { position: relative; z-index: 1; width: 100%; max-width: 640px; height: auto; display: block; border-radius: 18px; animation: rise .7s cubic-bezier(.22,.9,.32,1) both; }
   .closing-shot { display: block; width: 100%; max-width: 280px; height: auto; margin: 0 auto 44px; border-radius: 18px; box-shadow: 0 30px 60px -20px rgba(18,20,28,0.22), 0 4px 14px rgba(18,20,28,0.06); }
-  .feature-art img { width: 100%; height: auto; display: block; border-radius: 18px; box-shadow: 0 2px 10px rgba(18,20,28,0.06); }
-  @media (max-width: 860px) { .feature-art { margin-bottom: 28px; } .feature-art--spaced { margin-top: 36px; } .feature-art img { border-radius: 12px; } }
+  /* The hero gives the laptop and phone more room, and the phone screenshots are a little
+     smaller, so the page is shorter. */
+  .hero-grid { grid-template-columns: 1fr 1fr; }
+  .hero-visual-wrap { padding: 0; }
+  .hero { overflow-x: clip; }
+  .feature-visual { padding: 24px; }
+  .feature-visual img { max-width: 280px; }
+  #features .shot-pair { max-width: 520px; justify-self: center; }
+  @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } .copy-art { max-width: none; margin-top: 22px; border-radius: 12px; } }
   #features .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   /* Justified text on a larger screen, where lines are long enough to justify cleanly. A phone
      keeps ragged text, because justifying a short line opens wide gaps. */
   @media (min-width: 861px) {
-    .section-head p, .feature-copy p, .step-card p, .problem-note, .hero-lead, .trust-head p {
+    .section-head p, .step-card p, .trust-head p {
       text-align: justify; hyphens: auto; -webkit-hyphens: auto;
     }
   }
@@ -402,7 +417,6 @@
         <h2>TikTok pays you in pieces.</h2>
         <p>Fees, discounts, refunds and adjustments all come out before your payout.</p>
       </div>
-      <figure class="feature-art"><img src="art/money-goes.webp" width="1500" height="600" loading="lazy" alt="Illustration: a sale divides into refunds, platform fees and shipping"></figure>
       <div class="problem-grid">
         <div class="pain-list">
           <div class="pain-row"><span class="what">Gross sales</span><span class="amount">&pound;62.00</span></div>
@@ -419,6 +433,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             MyShopEdge shows you every line.
           </p>
+          <img class="copy-art" src="art/money-goes.webp" width="820" height="650" loading="lazy" alt="Illustration: a sale divides into refunds, platform fees and shipping">
         </div>
       </div>
     </div>
@@ -441,13 +456,13 @@
 
   <section class="band alt" id="features">
     <div class="wrap">
-      <figure class="feature-art"><img src="art/product-costs.webp" width="1500" height="600" loading="lazy" alt="Illustration: what goes into the cost of one product"></figure>
       <div class="feature-row">
         <div class="feature-copy">
           <div class="feature-tag">Product costs</div>
           <h3>Know which products make you money.</h3>
           <p>Upload an Excel or CSV file, or type costs in. MyShopEdge matches them to your sales, fees and returns.</p>
           <p class="feature-sub">Costs are optional. Missing costs are always flagged.</p>
+          <img class="copy-art" src="art/product-costs.webp" width="850" height="560" loading="lazy" alt="Illustration: what goes into the cost of one product">
         </div>
         <div class="shot-pair">
           <img src="shots/costs-choice.webp" width="720" height="1560" alt="Do you have your product costs, with Excel or CSV, type them in, or skip for now">
@@ -459,22 +474,22 @@
 
   <section class="band">
     <div class="wrap">
-      <figure class="feature-art"><img src="art/true-profit.webp" width="1500" height="600" loading="lazy" alt="Illustration: revenue on one side, refunds, platform fees and shipping on the other, and the profit left"></figure>
       <div class="feature-row">
         <div class="feature-copy">
           <div class="feature-tag">Money</div>
           <h3>Every fee, named.</h3>
           <p>Commission, shipping, promotions and refunds, each on its own line. Open any line to see the orders behind it.</p>
+          <img class="copy-art" src="art/true-profit.webp" width="900" height="520" loading="lazy" alt="Illustration: revenue on one side, refunds, platform fees and shipping on the other, and the profit left">
         </div>
-        <div class="feature-visual"><img src="shots/money-fees.webp" width="720" height="1560" alt="Each TikTok fee on its own line, down to net proceeds and gross profit"></div>
+        <div class="feature-visual"><img src="shots/money-fees-top.webp" width="720" height="1000" alt="Each TikTok fee on its own line, down to net proceeds"></div>
       </div>
 
-      <figure class="feature-art feature-art--spaced"><img src="art/reconcile.webp" width="1500" height="600" loading="lazy" alt="Illustration: sales, returns and charges checked against each other to reach final totals"></figure>
       <div class="feature-row reverse">
         <div class="feature-copy">
           <div class="feature-tag">Reconcile</div>
           <h3>See what TikTok still owes you.</h3>
           <p>Shop Money sets your net proceeds against what TikTok has paid out, and shows what it still owes you.</p>
+          <img class="copy-art" src="art/reconcile.webp" width="850" height="410" loading="lazy" alt="Illustration: sales, returns and charges checked against each other to reach final totals">
         </div>
         <div class="feature-visual"><img src="shots/overview.webp" width="720" height="1558" alt="The Overview, with gross profit after returns and the Shop Money card showing net proceeds and what has been paid out"></div>
       </div>
