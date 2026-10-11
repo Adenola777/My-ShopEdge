@@ -15,6 +15,11 @@
  * anything. The Returns card needs a product's return rate, which the contract does not
  * carry. None of these is drawn empty.
  *
+ * **A37 phase 4, 11 October 2026.** The main figure comes first, and the period's figures and
+ * one unit's figures are one table with a column for each, where they had been two cards of
+ * the same lines. `getProduct` builds `per_unit` from the period's sections line for line
+ * (products.py), so the two line up by position. The explanations are shortened (A37.1 item 9).
+ *
  * A cost is set per variant through `putSkuCost` (S21). The stock count appears only for a
  * product with a single variant, which is what the service serves (products.py says why).
  */
@@ -27,15 +32,14 @@ import { Figure } from "@/components/Figure";
 import { LineLabel } from "@/components/LineLabel";
 import { BEFORE_OVERHEADS, STOCK_STATE, chipClass, formatMargin } from "@/lib/terms";
 
-export const metadata = { title: "Product" };
-
-/** The brief's cost statuses, in words. @type {Record<string, string>} */
-const COST_WORD = {
-  complete: "complete",
-  cost_needed: "cost needed",
-  partially_costed: "partially costed",
-  needs_review: "needs review",
+/** The brief's cost statuses as chips, shown beside the main figure unless complete. @type {Record<string, [string, string]>} */
+const COST_CHIP = {
+  cost_needed: ["Cost needed", "cost"],
+  partially_costed: ["Partially costed", "cost"],
+  needs_review: ["Needs review", "review"],
 };
+
+export const metadata = { title: "Product" };
 
 /**
  * @param {{
@@ -70,149 +74,119 @@ export default async function ProductDetailPage({ params, searchParams }) {
   const sections = /** @type {any[]} */ (d.sections);
   const period = /** @type {{ from?: string, to?: string, basis?: string } | undefined} */ (d.period);
   const periodWords = period?.from && period?.to
-    ? `from ${formatDate(period.from)} to ${formatDate(period.to)}`
-    : "in this period";
+    ? `${formatDate(period.from)} to ${formatDate(period.to)}`
+    : "This period";
   const recordsQuery = new URLSearchParams({
     ...(period?.from ? { from: period.from } : {}),
     ...(period?.to ? { to: period.to } : {}),
     ...(period?.basis ? { basis: period.basis } : {}),
   }).toString();
+  const transactionsHref = `/shops/${shopId}/products/${productId}/transactions${recordsQuery ? `?${recordsQuery}` : ""}`;
+  const [costWord, costTone] = COST_CHIP[p.cost_status ?? ""] ?? [null, "quiet"];
+  const margin = formatMargin(p.gross_margin_after_returns);
+
   return (
-    <section>
+    <section className="overview">
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/products`}>Products</Link></p>
         <h1>{p.title || "Untitled product"}</h1>
         <p>
-          {p.units} {p.units === 1 ? "unit" : "units"} sold {periodWords}
-          {stock ? `. Stock on hand is ${stock.on_shelf}. ` : ". "}
-          {stock && <span className={chipClass(stateTone)}>{stateLabel}</span>}
+          {p.units} sold {"\u00b7"} {periodWords}
+          {stock ? <> {"\u00b7"} {stock.on_shelf} in stock <span className={chipClass(stateTone)}>{stateLabel}</span></> : null}
         </p>
       </header>
 
-      <div className="stack">
-        <div className="card">
-          <h2>One unit, pound by pound</h2>
-          <p className="card__why">Where the money from one sale of this product goes.</p>
-          {perUnit.sections.length === 0 ? (
-            <p className="muted">Nothing sold in this period, so there is no unit to break down.</p>
-          ) : (
-            <>
-            <ul className="rows" data-testid="per-unit">
-              {perUnit.sections.flatMap((s) => [
-                ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
-                  <li key={`${s.key}-${l.category}-${i}`}>
-                    <span><LineLabel line={l} /></span>
-                    <Figure amount={l.amount} alert={l.category === "stock_written_off"} />
-                  </li>
-                )),
-                <li key={`${s.key}-total`} className="rows__total">
-                  <span>{s.subtotal_label ?? "Subtotal"}</span>
-                  <Figure amount={s.subtotal} />
-                </li>,
-              ])}
-            </ul>
-            <p className="rows__sub">
-              Each figure is this period&rsquo;s total divided by {perUnit.units}{" "}
-              {perUnit.units === 1 ? "unit" : "units"} and rounded to the penny, so a line can
-              differ by a penny from the sum above it.
-            </p>
-            </>
-          )}
-        </div>
-
-        <div className="card hero">
-          <p className="hero__label">Gross profit after returns, all {p.units} {p.units === 1 ? "unit" : "units"}</p>
-          <p className="hero__value"><Figure amount={p.kept} reason={p.kept_reason} /></p>
-          {formatMargin(p.gross_margin_after_returns) && (
-            <p className="hero__line" data-testid="product-margin">Gross margin after returns {formatMargin(p.gross_margin_after_returns)} of net sales.</p>
-          )}
-          <p className="hero__line">{p.kept ? BEFORE_OVERHEADS : p.kept_reason}</p>
-          {/* A36 step 6: net proceeds and the cost status sit with the headline, as the
-              brief's product detail lists them. */}
-          <p className="hero__line" data-testid="product-net-proceeds">
-            Net proceeds <Figure amount={p.net_proceeds} />
-            {p.cost_status && COST_WORD[p.cost_status] ? `. Cost status: ${COST_WORD[p.cost_status]}.` : "."}
-          </p>
-        </div>
-
-        <div className="card">
-          <h2>{period?.from && period?.to ? `${formatDate(period.from)} to ${formatDate(period.to)}` : "This period"}</h2>
-          <p className="card__why">Every sale of this product, and what came off it.</p>
-          {sections.length === 0 && (
-            <p className="muted">MyShopEdge holds no sales of this product for these dates.</p>
-          )}
-          <ul className="rows">
-            {sections.flatMap((s) => [
-              ...s.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
-                <li key={`${s.key}-${l.category}-${i}`}>
-                  <span><LineLabel line={l} /></span>
-                  <Figure amount={l.amount} alert={l.category === "stock_written_off"} />
-                </li>
-              )),
-              <li key={`${s.key}-total`} className="rows__total">
-                <span>{s.subtotal_label ?? "Subtotal"}</span>
-                <Figure amount={s.subtotal} />
-              </li>,
-            ])}
-          </ul>
-        </div>
-
-        {p.cost_status === "needs_review" && (
-          <div className="note note--warn" data-testid="cost-needs-review">
-            <p>
-              Your latest cost file has a different cost for this product than the one already set,
-              and it was not applied, so nothing has changed. Upload the file again to keep or
-              replace the cost, or set the cost below.{" "}
-              <Link href={`/shops/${shopId}/setup/costs/upload`}>Upload costs</Link>
-            </p>
-          </div>
-        )}
-
-        <div className="card" id="edit-cost">
-          <h2>Edit product cost</h2>
-          <p className="card__why">
-            What one unit costs you. It drives every profit figure here. Each unit is costed at
-            the cost in force on the day it sold, so choose the first day the cost applies to.
-            To cost earlier sales that have no cost, choose a date on or before the first of
-            them. A cost already set from a later date still applies from that date.
-          </p>
-          <ul className="rows">
-            {(d.skus ?? []).map((s) => (
-              <li key={s.sku_id} style={{ flexWrap: "wrap" }}>
-                <span>
-                  <Link className="rowlink" href={`/shops/${shopId}/stock/${s.sku_id}`}>
-                    {s.variant_label || s.seller_sku || "Variant"}
-                  </Link>
-                  <div className="rows__sub">
-                    {s.seller_sku ?? "This variant has no seller SKU."}
-                  </div>
-                </span>
-                <Figure amount={s.cost} reason="Not provided" />
-                {s.sku_id && (
-                  <div style={{ flexBasis: "100%" }}>
-                    <CostForm shopId={shopId} skuId={s.sku_id}
-                              variantName={s.variant_label || s.seller_sku || p.title || undefined}
-                              currency={s.cost?.currency ?? p.gross_sales.currency ?? "GBP"} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="card hero">
+        <p className="hero__label">
+          Gross profit after returns{" "}
+          {costWord && <span className={chipClass(costTone)}>{costWord}</span>}
+        </p>
+        <p className="hero__value"><Figure amount={p.kept} reason={p.kept_reason} /></p>
+        {!p.kept && p.kept_reason && <p className="hero__line">{p.kept_reason}</p>}
+        <p className="hero__meta">
+          {margin && <span data-testid="product-margin"><strong>{margin}</strong> margin</span>}
+          {/* A36 step 6: net proceeds sits with the headline, as the brief's product detail lists it. */}
+          <span data-testid="product-net-proceeds">Net proceeds <Figure amount={p.net_proceeds} /></span>
+          <span>All {p.units} {p.units === 1 ? "unit" : "units"}</span>
+        </p>
+        <p className="hero__action"><Link data-testid="product-transactions-link" href={transactionsHref}>See the orders behind these figures</Link></p>
       </div>
 
-      <p className="footnote">
-        TikTok reports its deductions per order, not per product. Where an order held more than
-        one product, its deductions are shared across them in proportion, and the shares add up
-        to the order exactly.
-      </p>
+      <h2 className="overview__heading">Where the money went</h2>
+      <div className="card statement">
+        {sections.length === 0 ? (
+          <p className="muted">No sales of this product in this period.</p>
+        ) : (
+          <table className="unit-table" data-testid="per-unit">
+            <thead>
+              <tr><th><span className="visually-hidden">Line</span></th><th className="num">Total</th><th className="num">Per unit</th></tr>
+            </thead>
+            {sections.map((sec, si) => {
+              const unit = perUnit.sections[si];
+              return (
+                <tbody key={sec.key}>
+                  {sec.lines.map((/** @type {any} */ l, /** @type {number} */ i) => (
+                    <tr key={`${sec.key}-${l.category}-${i}`}>
+                      <td><LineLabel line={l} /></td>
+                      <td className="num"><Figure amount={l.amount} alert={l.category === "stock_written_off"} /></td>
+                      <td className="num">{unit?.lines[i] ? <Figure amount={unit.lines[i].amount} alert={l.category === "stock_written_off"} /> : null}</td>
+                    </tr>
+                  ))}
+                  <tr className="unit-table__total">
+                    <td>{sec.subtotal_label ?? "Subtotal"}</td>
+                    <td className="num"><Figure amount={sec.subtotal} /></td>
+                    <td className="num">{unit ? <Figure amount={unit.subtotal} /> : null}</td>
+                  </tr>
+                </tbody>
+              );
+            })}
+          </table>
+        )}
+      </div>
+      {sections.length > 0 && (
+        <p className="footnote overview__note">
+          Per unit is the total over {perUnit.units} {perUnit.units === 1 ? "unit" : "units"}, rounded to the penny.
+          Deductions TikTok reports per order are shared across its products in proportion.
+          {p.kept ? ` ${BEFORE_OVERHEADS}` : ""}
+        </p>
+      )}
 
-      {/* The link to S16 is Emergent AI's, brought across on 28 September 2026. */}
-      <p className="card__foot">
-        <Link data-testid="product-transactions-link" href={`/shops/${shopId}/products/${productId}/transactions${recordsQuery ? `?${recordsQuery}` : ""}`}>
-          See the orders and records behind these figures
-        </Link>
-      </p>
+      {p.cost_status === "needs_review" && (
+        <div className="note note--warn overview__more" data-testid="cost-needs-review">
+          <p>
+            Your latest cost file disagrees with the cost set here, so it was not applied. Upload
+            it again or set the cost below.{" "}
+            <Link href={`/shops/${shopId}/setup/costs/upload`}>Upload costs</Link>
+          </p>
+        </div>
+      )}
+
+      <h2 className="overview__heading" id="edit-cost">Product cost</h2>
+      <div className="card">
+        <p className="card__why">Cost of one unit. Applies to units sold from the date chosen, until a later cost takes over.</p>
+        <ul className="rows">
+          {(d.skus ?? []).map((s) => (
+            <li key={s.sku_id} style={{ flexWrap: "wrap" }}>
+              <span>
+                <Link className="rowlink" href={`/shops/${shopId}/stock/${s.sku_id}`}>
+                  {s.variant_label || s.seller_sku || "Variant"}
+                </Link>
+                <span className="rows__sub" style={{ display: "block" }}>
+                  {s.seller_sku ?? "No seller SKU"}
+                </span>
+              </span>
+              <Figure amount={s.cost} reason="Not provided" />
+              {s.sku_id && (
+                <div style={{ flexBasis: "100%" }}>
+                  <CostForm shopId={shopId} skuId={s.sku_id}
+                            variantName={s.variant_label || s.seller_sku || p.title || undefined}
+                            currency={s.cost?.currency ?? p.gross_sales.currency ?? "GBP"} />
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

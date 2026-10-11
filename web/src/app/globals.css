@@ -776,6 +776,46 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .payouts__row { transition: none; } }
 
+/* Products, A37 phase 4. The costs card is one line with small buttons. The table has six
+   columns on a larger screen and fits without scrolling; on a phone the table gives way to a
+   list of rows, one per product, each opening its page. */
+.products__costs { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.products__coverage { margin: 0; color: var(--ink-700); font-size: 0.9375rem; }
+.products__coverage .overview__clear { margin-right: var(--space-1); }
+.products__buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.products__table table { width: 100%; table-layout: auto; }
+.products__table th { white-space: normal; vertical-align: bottom; font-size: 0.8125rem; line-height: 1.3; }
+.products__table td { vertical-align: top; }
+.products__table td.num { white-space: nowrap; }
+.products__sub { display: block; margin-top: 2px; font-weight: 400; }
+.products__sub .chip { margin-left: var(--space-1); vertical-align: middle; }
+.products__main .money { font-weight: 650; color: var(--navy-900); }
+.products__figure { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; text-align: right; }
+.products__figure .money { font-weight: 650; }
+.products__list { display: none; }
+@media (min-width: 60.01rem) { .products__totals li { padding-left: var(--space-3); padding-right: var(--space-3); } }
+@media (max-width: 60rem) {
+  .products__table { display: none; }
+  .products__list { display: block; }
+}
+@media (max-width: 40rem) {
+  .products__buttons { width: 100%; }
+  .products__buttons .btn { flex: 1 1 auto; }
+}
+
+/* A product's figures, A37 phase 4: the period's total and one unit's share side by side, each
+   section closed by its subtotal. */
+.unit-table { width: 100%; }
+.unit-table th, .unit-table td { border-bottom: 0; padding: 7px 0; }
+.unit-table th { font-size: 0.8125rem; color: var(--ink-500); padding-top: var(--space-3); }
+.unit-table th.num, .unit-table td.num { width: 8.5rem; }
+.unit-table td { color: var(--ink-700); }
+.unit-table td .money { color: var(--ink-900); font-weight: 500; }
+.unit-table td .money--alert { color: var(--bad-600); }
+.unit-table__total td { border-top: 1px solid var(--ink-100); padding-top: 10px; padding-bottom: var(--space-3); color: var(--navy-900); font-weight: 650; }
+.unit-table__total td .money { font-weight: 650; color: var(--navy-900); }
+@media (max-width: 40rem) { .unit-table th.num, .unit-table td.num { width: 5.5rem; } .unit-table { font-size: 0.875rem; } }
+
 /* The statement: the whole calculation in one card, each section a group with a small label
    and closed by its subtotal (A37 phase 2). */
 .statement { padding-top: var(--space-2); padding-bottom: var(--space-2); }

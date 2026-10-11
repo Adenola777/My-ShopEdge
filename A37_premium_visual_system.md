@@ -122,6 +122,28 @@ Checked with lint, the type check, the production build and screenshots at 1280 
 page scrolls sideways. The local copy cannot reach TikTok, so Expected from TikTok was seen
 only in its unavailable state, and Needs review and Unmatched were not seen with data.
 
+## A37.7 Phase 4, Products, built 11 October 2026
+
+- **The table.** It showed nine columns and was clipped at 1280 px, cutting off Gross profit
+  after returns. It now has six: the product, with units sold and returned and any cost status
+  under its name; net sales; TikTok deductions; product cost; return impact; and gross profit
+  after returns with the margin under it. Measured at 1024, 1280 and 1440 px, the table fits
+  its card with no sideways scroll. Below 960 px, where it did not fit, each product is one row
+  with its gross profit and margin, and its page holds the rest.
+- **The costs card** is one line with small buttons: Upload costs, Type in and Template.
+- **The switch** reads Gross profit, Units and Returns; the line above it names the ranking in
+  full, so the switch fits a phone's row.
+- **A product's page.** Gross profit after returns comes first, with the margin, net proceeds
+  and a cost status chip when the cost is not complete. The period's figures and one unit's
+  figures are one table with a column for each, where they had been two cards of the same
+  lines; `getProduct` builds the per-unit lines from the period's lines one for one
+  (`service/app/products.py`), so they line up by position. Measured at 1280 px: 336 words to
+  170, and 2,999 px to 2,009 px.
+
+Checked with lint, the type check, the production build and screenshots at 390, 768, 900, 1024,
+1280 and 1440 px. No page scrolls sideways. The Starter view, which ranks by net proceeds, was
+not seen, because the local account is on Growth.
+
 ## A37.4 The phases still to come
 
 Each is its own pull request, shown to the owner before it merges: the Overview (phase 2), Reconcile
