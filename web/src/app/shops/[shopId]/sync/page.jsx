@@ -63,12 +63,9 @@ export default async function SyncPage({ params, searchParams }) {
           </ul>
           <p className="card__why">First results appear when ready.</p>
         </div>
-        {status === "none" && (
-          <p className="card__why">We are preparing your shop figures while you choose your plan.</p>
-        )}
         <p>
           <Link className="btn btn--primary btn--block" href={afterSync(shopId, status)} data-testid="sync-continue">
-            {status === "none" ? "Choose your plan" : "See my first results"}
+            See my first results
           </Link>
         </p>
         <details>

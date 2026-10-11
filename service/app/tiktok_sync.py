@@ -808,7 +808,6 @@ OVERLAP_DAYS = 3
 
 
 def window(conn, shop_id: str, now: datetime) -> tuple[datetime, datetime, str]:
-    from datetime import timedelta
 
     last = conn.execute(
         "select max((cursor->>'until')::timestamptz) from sync_runs "
@@ -818,24 +817,17 @@ def window(conn, shop_id: str, now: datetime) -> tuple[datetime, datetime, str]:
     return last - timedelta(days=OVERLAP_DAYS), now, "incremental"
 
 
-# A shop whose account never starts a trial is read for thirty days from its connection, then
-# no more (A36, the owner's ruling of 10 October 2026). An ended plan is not read again.
-UNACTIVATED_READ_DAYS = 30
+# Until A38 a shop whose account never started a trial was read for thirty days from its
+# connection, then no more (A36). Since 11 October 2026 such an account is on Explorer, the free
+# plan, and is read like any other. An ended plan is still not read again.
 
 
 def may_sync(account_id, shop_id, now: datetime) -> bool:
-    """Whether the account's state allows reading this shop from TikTok (A36)."""
-    from .db import get_subscription_row, tenant
+    """Whether the account's state allows reading this shop from TikTok (A36, A38)."""
+    from .db import get_subscription_row
     from .entitlements import access_for_row
 
-    access = access_for_row(get_subscription_row(account_id))
-    if access == "full":
-        return True
-    if access == "read_only":
-        return False
-    with tenant(account_id) as conn:
-        row = conn.execute("select created_at from shops where id = %s", (str(shop_id),)).fetchone()
-    return row is not None and now - row[0] <= timedelta(days=UNACTIVATED_READ_DAYS)
+    return access_for_row(get_subscription_row(account_id)) != "read_only"
 
 
 def run_due(transport=None, now: datetime | None = None) -> list[dict[str, Any]]:

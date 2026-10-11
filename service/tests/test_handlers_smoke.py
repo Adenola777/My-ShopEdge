@@ -128,9 +128,28 @@ def plans():
     r = client.get("/v1/billing/plans")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:200]}")
     body = r.json()
-    _assert(len(body["plans"]) == 3, f"expected 3 plans, got {len(body['plans'])}")
-    _assert([p["slug"] for p in body["plans"]] == ["starter", "growth", "pro"])
-check("GET /v1/billing/plans lists three plans in order", plans)
+    # A38, 11 October 2026: four plans, Explorer free, Annual prepaid the default cycle.
+    _assert([p["slug"] for p in body["plans"]] == ["explorer", "starter", "growth", "pro"], body)
+    _assert(body["default_cycle"] == "annual", body["default_cycle"])
+    by = {p["slug"]: p for p in body["plans"]}
+    _assert(by["explorer"]["free"] and by["explorer"]["prices"] == [], by["explorer"])
+    _assert(by["growth"]["highlight"] and not by["starter"]["highlight"])
+    _assert((by["explorer"]["shop_limit"], by["growth"]["shop_limit"], by["pro"]["shop_limit"]) == (1, 3, 10))
+    _assert(by["pro"]["order_limit"] is None and by["pro"]["history_days"] is None, by["pro"])
+    want = {"starter": (19000, 1583, 1725, 1900), "growth": (39000, 3250, 3542, 3900),
+            "pro": (79000, 6583, 7208, 7900)}
+    for slug, (annual, per_month, annual_monthly, monthly) in want.items():
+        pr = {c["cycle"]: c for c in by[slug]["prices"]}
+        _assert([c["cycle"] for c in by[slug]["prices"]] == ["annual", "annual_monthly", "monthly"])
+        _assert(pr["annual"]["charge"]["amount_minor"] == annual and pr["annual"]["per_month"]["amount_minor"] == per_month, pr)
+        _assert(pr["annual_monthly"]["charge"]["amount_minor"] == annual_monthly and pr["annual_monthly"]["payments"] == 12, pr)
+        _assert(pr["monthly"]["charge"]["amount_minor"] == monthly, pr)
+        # No price exists in Stripe until the owner approves them (A38.3).
+        _assert(not any(c["available"] for c in by[slug]["prices"]), pr)
+    # What is not built is never listed as included.
+    _assert("Client workspaces" in by["pro"]["coming_soon"]
+            and "Client workspaces" not in by["pro"]["features"], by["pro"])
+check("GET /v1/billing/plans lists the four plans of A38 with three cycles each", plans)
 
 
 # --- a request the service cannot read answers as a problem whose detail is a sentence
@@ -476,6 +495,7 @@ def _today(products_rows, needs, usage_rows=()):
         ("left join order_settlements os", Result(SHOP_MONEY_COLS, SHOP_MONEY_ROWS)),
         ("seller_check_status = 'pending'", needs),
         ("from order_quota", Result(USAGE_COLS, list(usage_rows))),
+        ("from orders o join shops s", Result(["count"], [(0,)])),
     ])
     r = client.get(f"/v1/shops/{SHOP}/today")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
@@ -572,17 +592,22 @@ check("GET today raises refresh, scope and sync failures at their ruled severiti
 
 def today_order_usage():
     # A16.3. No subscription serves null; a live period serves the account's count and state.
-    _assert(_today([DESK], _needs())["order_usage"] is None, "no subscription, no usage")
+    # A38: no subscription is Explorer, counted over the London calendar month.
+    u = _today([DESK], _needs())["order_usage"]
+    _assert(u["plan"] == "explorer" and u["order_limit"] == 100 and u["state"] == "below", u)
     now = datetime.now(timezone.utc)
     start, end = now - timedelta(days=10), now + timedelta(days=20)
-    b = _today([DESK], _needs(), [("starter", "trialing", start, end, 80)])
+    # A38's limits: Starter 500, Growth 1,000, Pro unlimited and so never counted.
+    b = _today([DESK], _needs(), [("starter", "trialing", start, end, 400)])
     u = b["order_usage"]
-    _assert(u["state"] == "approaching" and u["order_count"] == 80 and u["order_limit"] == 100, u)
+    _assert(u["state"] == "approaching" and u["order_count"] == 400 and u["order_limit"] == 500, u)
     _assert(u["plan_name"] == "Starter" and u["larger_plan"]["slug"] == "growth"
-            and u["larger_plan"]["order_limit"] == 500, u)
-    u = _today([DESK], _needs(), [("pro", "active", start, end, 2000)])["order_usage"]
-    _assert(u["state"] == "passed" and u["larger_plan"] is None, u)
-    u = _today([DESK], _needs(), [("growth", "active", start, end, 399)])["order_usage"]
+            and u["larger_plan"]["order_limit"] == 1000, u)
+    u = _today([DESK], _needs(), [("growth", "active", start, end, 1000)])["order_usage"]
+    _assert(u["state"] == "passed" and u["larger_plan"]["slug"] == "pro"
+            and u["larger_plan"]["order_limit"] is None, u)
+    _assert(_today([DESK], _needs(), [("pro", "active", start, end, 5000)])["order_usage"] is None)
+    u = _today([DESK], _needs(), [("growth", "active", start, end, 799)])["order_usage"]
     _assert(u["state"] == "below", u)
     # A period that has ended, or a plan that is not live, serves nothing.
     old = _today([DESK], _needs(), [("growth", "active", start - timedelta(days=40),
@@ -643,7 +668,7 @@ def authorize_issues_a_link():
 
     @contextlib.contextmanager
     def fake(_account_id):
-        yield Recorder([])
+        yield Recorder([("connection_status <> 'disconnected'", Result(["tiktok_shop_id", "connection_status"], []))])
     connections.tenant = fake
 
     r = client.post("/v1/connections/tiktok/authorize", json={"return_to": "/connect/done"})
@@ -661,6 +686,35 @@ def authorize_issues_a_link():
     _assert(written["digest"] == hashlib.sha256(b["state"].encode()).hexdigest())
     _assert(written["account"] == str(ACCOUNT.id), "the state is bound to this account")
 check("POST authorize issues a seller link and stores only the digest", authorize_issues_a_link)
+
+
+def authorize_respects_shop_limit():
+    """A38: the plan's shop limit refuses a new connection, but not a reconnection."""
+    os.environ["TIKTOK_SERVICE_ID"] = "7688277529379407633"
+    saved = _db.get_subscription_row
+
+    def tenant_with(rows):
+        @contextlib.contextmanager
+        def fake(_account_id):
+            yield Conn([("connection_status <> 'disconnected'", Result(["tiktok_shop_id", "connection_status"], rows)),
+                        ("insert into tiktok_auth_state", Result([], []))])
+        return fake
+    try:
+        _db.get_subscription_row = lambda _a: None  # Explorer, one shop
+        connections.tenant = tenant_with([("7494930319769175829", "connected")])
+        r = client.post("/v1/connections/tiktok/authorize", json={})
+        _assert(r.status_code == 403 and r.json()["code"] == "shop_limit_reached"
+                and r.json()["shop_limit"] == 1, r.text)
+        connections.tenant = tenant_with([("7494930319769175829", "needs_reconnect")])
+        r = client.post("/v1/connections/tiktok/authorize", json={})
+        _assert(r.status_code == 201, r.text)
+        _db.get_subscription_row = lambda _a: {"plan_slug": "growth", "status": "active"}  # three shops
+        connections.tenant = tenant_with([("a", "connected"), ("b", "connected")])
+        r = client.post("/v1/connections/tiktok/authorize", json={})
+        _assert(r.status_code == 201, r.text)
+    finally:
+        _db.get_subscription_row = saved
+check("POST authorize refuses a shop beyond the plan's limit but not a reconnection", authorize_respects_shop_limit)
 
 
 def callback_refuses_unknown_state():
@@ -1556,7 +1610,7 @@ def trial_once():
     def client_with(open_subs):
         return NS(subscriptions=Subs(open_subs), customers=Customers())
 
-    os.environ["STRIPE_PRICE_STARTER"] = "price_test"
+    os.environ["STRIPE_PRICE_STARTER_ANNUAL"] = "price_test"
     saved = (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
              billing._apply_stripe_subscription)
     billing.db.create_subscription_row = lambda *a: None
@@ -1609,7 +1663,7 @@ def stripe_refusal_logged():
     handler.emit = records.append
     log = logging.getLogger("myshopedge.billing")
     log.addHandler(handler)
-    os.environ["STRIPE_PRICE_STARTER"] = "price_test"
+    os.environ["STRIPE_PRICE_STARTER_ANNUAL"] = "price_test"
     saved = (billing._stripe, billing.db.get_subscription_row)
     billing._stripe = lambda: NS(customers=Customers())
     billing.db.get_subscription_row = lambda _a: None
@@ -1658,7 +1712,7 @@ def real_stripe_objects_read():
         def search(self, params): return NS(data=[])
         def create(self, params, options=None): return NS(id="cus_real")
 
-    os.environ["STRIPE_PRICE_STARTER"] = "price_test"
+    os.environ["STRIPE_PRICE_STARTER_ANNUAL"] = "price_test"
     saved = (billing._stripe, billing.db.get_subscription_row, billing.db.create_subscription_row,
              billing.db.apply_subscription_event)
     billing._stripe = lambda: NS(subscriptions=Subs(), customers=Customers())
@@ -2155,72 +2209,67 @@ def plan_gates():
     from app import entitlements
     saved = _db.get_subscription_row
     try:
-        # Starter: the gated routes answer 403 plan_upgrade_required and name the plan.
-        _db.get_subscription_row = lambda _a: _plan_row("starter")
+        # Explorer, which an account with no plan is on (A38): costs and gross profit are
+        # open, and the rest names the plan that holds it.
+        _db.get_subscription_row = lambda _a: None
         for method, path, plan in (
-            ("get", f"/v1/shops/{SHOP}/records", "growth"),
-            ("get", f"/v1/shops/{SHOP}/costs", "growth"),
-            ("get", f"/v1/shops/{SHOP}/cost-uploads", "growth"),
-            ("put", f"/v1/shops/{SHOP}/skus/{SKU}/cost", "growth"),
+            ("get", f"/v1/shops/{SHOP}/records", "starter"),
+            ("get", f"/v1/shops/{SHOP}/settlements/{UUID(int=7)}", "starter"),
             ("post", f"/v1/shops/{SHOP}/exports", "growth"),
-            ("get", f"/v1/shops/{SHOP}/products/{PRODUCT}", "growth"),
+            ("get", f"/v1/shops/{SHOP}/tax/vat", "growth"),
             ("get", f"/v1/shops/{SHOP}/money?basis=cash", "growth"),
-            ("get", f"/v1/shops/{SHOP}/today?basis=cash", "growth"),
-            ("get", f"/v1/shops/{SHOP}/trends?measure=kept", "growth"),
             ("get", f"/v1/shops/{SHOP}/exports", "pro"),
             ("get", f"/v1/shops/{SHOP}/export-schedules", "pro"),
             ("get", f"/v1/shops/{SHOP}/payout-review", "pro"),
         ):
-            r = getattr(client, method)(path, json={} if method in ("put", "post") else None) \
-                if method in ("put", "post") else client.get(path)
+            r = client.post(path, json={}) if method == "post" else client.get(path)
             b = r.json()
             _assert(r.status_code == 403 and b["code"] == "plan_upgrade_required"
                     and b["required_plan"] == plan, f"{method} {path}: {r.status_code} {r.text[:200]}")
-        # Growth holds costs and exports but not scheduled exports or the review list.
+        _assert(entitlements.features_for(ACCOUNT.id) == {"costs", "profit"})
+        # Starter adds margin, the orders behind a figure and the payout explanation.
+        _db.get_subscription_row = lambda _a: _plan_row("starter")
+        _assert(entitlements.features_for(ACCOUNT.id)
+                == {"costs", "profit", "margin", "drilldown", "payout_detail"})
+        r = client.post(f"/v1/shops/{SHOP}/exports", json={})
+        _assert(r.status_code == 403 and r.json()["required_plan"] == "growth", r.text)
+        # Growth holds exports and the VAT tracker but not scheduled exports.
         _db.get_subscription_row = lambda _a: _plan_row("growth", "active")
-        _assert(entitlements.features_for(ACCOUNT.id) == entitlements.GROWTH)
+        _assert({"exports", "vat", "basis"} <= entitlements.features_for(ACCOUNT.id))
         r = client.get(f"/v1/shops/{SHOP}/export-schedules")
         _assert(r.status_code == 403 and r.json()["required_plan"] == "pro", r.text)
-        # Pro holds everything. No live plan holds everything too, as the owner ruled.
         _db.get_subscription_row = lambda _a: _plan_row("pro")
         _assert(entitlements.features_for(ACCOUNT.id) == entitlements.ALL)
-        # A36: no plan holds nothing, and an ended plan keeps its reading features only.
+        # An unconfirmed row is Explorer; an ended plan keeps its reading features only.
         for row in (None, _plan_row("starter", "incomplete")):
-            _assert(entitlements.features_for_row(row) == frozenset(), row)
+            _assert(entitlements.features_for_row(row) == entitlements.BY_PLAN["explorer"], row)
         _assert(entitlements.features_for_row(_plan_row("pro", "canceled"))
                 == entitlements.ALL - entitlements.EXPORTING)
-        _assert(entitlements.features_for_row(_plan_row("starter", "past_due")) == frozenset())
+        _assert(entitlements.plan_for_row(_plan_row("pro", "canceled")) == "explorer")
     finally:
         _db.get_subscription_row = saved
 check("Each plan's routes answer 403 plan_upgrade_required for what the plan lacks", plan_gates)
 
 
-def starter_money_shows_no_profit():
+def explorer_money_shows_profit_without_margin():
     saved = _db.get_subscription_row
-    _db.get_subscription_row = lambda _a: _plan_row("starter")
+    _db.get_subscription_row = lambda _a: None
     try:
         _money([DESK])
         b = client.get(f"/v1/shops/{SHOP}/money").json()
         t = b["totals"]
-        _assert(t["net_proceeds"]["amount_minor"] == 51176, t)
-        _assert(t.get("gross_profit") is None and t.get("gross_profit_after_returns") is None
-                and t.get("cost_of_goods_sold") is None and t.get("gross_margin_after_returns") is None, t)
-        _assert(b["kept"] is None and b["kept_reason"] == "not_on_plan", b)
-        sec = {s["key"]: s for s in b["sections"]}
-        # The seller's return postage is real money and stays, under its section total; the
-        # stock written off is a product cost and goes.
-        _assert([l["category"] for l in sec["return_costs"]["lines"]] == ["return_shipping"], sec["return_costs"])
-        _assert(sec["return_costs"]["subtotal_label"] == "Total return costs", sec["return_costs"])
-        _assert("your_costs" not in sec, "no cost of goods line")
-        _assert(b["confidence"] == "estimated", b["confidence"])
+        # A38: everyone can add costs and see gross profit; the margin is Starter's.
+        _assert(t["gross_profit_after_returns"]["amount_minor"] == 35426, t)
+        _assert(t.get("gross_margin_after_returns") is None, t)
+        _assert(b["kept"]["amount_minor"] == 35426 and b["kept_reason"] is None, b)
     finally:
         _db.get_subscription_row = saved
-check("Starter's Money stops at net proceeds and says why, never showing a profit", starter_money_shows_no_profit)
+check("Explorer's Money shows gross profit and withholds the margin", explorer_money_shows_profit_without_margin)
 
 
-def starter_products_rank_by_net_proceeds():
+def explorer_products_show_profit_without_margin():
     saved = _db.get_subscription_row
-    _db.get_subscription_row = lambda _a: _plan_row("starter")
+    _db.get_subscription_row = lambda _a: None
     try:
         loose = Result(["category","tiktok_fee_type","amount_minor","currency"], [])
         products.tenant = with_conn(products, [
@@ -2228,17 +2277,15 @@ def starter_products_rank_by_net_proceeds():
             ("with scoped as", Result(PRODUCT_COLS, [NOCOST, DESK])),
         ])
         b = client.get(f"/v1/shops/{SHOP}/products").json()
-        _assert(b["measure"] == "net_proceeds", b["measure"])
-        _assert([p["title"] for p in b["products"]] == ["Computer Desk 120cm", "No cost yet"], b["products"])
-        for p in b["products"]:
-            _assert(p["kept"] is None and p["gross_margin_after_returns"] is None
-                    and p["kept_reason"] == products.NOT_ON_PLAN, p)
-        _assert(b["total"]["amount_minor"] == 24300, b["total"])
-        b = client.get(f"/v1/shops/{SHOP}/products?measure=units").json()
-        _assert(b["total"]["amount_minor"] == 24300 and b["shop_total"]["amount_minor"] == 24300, b)
+        _assert(b["measure"] == "kept", b["measure"])
+        desk = next(p for p in b["products"] if p["title"] == "Computer Desk 120cm")
+        _assert(desk["kept"] is not None and desk["gross_margin_after_returns"] is None, desk)
+        nocost = next(p for p in b["products"] if p["title"] == "No cost yet")
+        # A missing cost is never shown as a zero (A38 rule 11).
+        _assert(nocost["kept"] is None and nocost["product_cost"] is None, nocost)
     finally:
         _db.get_subscription_row = saved
-check("Starter's products rank by net proceeds and carry the Growth sentence, not a profit", starter_products_rank_by_net_proceeds)
+check("Explorer's products show gross profit, never a zero for a missing cost, and no margin", explorer_products_show_profit_without_margin)
 
 
 def plan_change():
@@ -2265,21 +2312,30 @@ def plan_change():
     def apply(**kw):
         state["row"] = dict(state["row"], plan_slug=kw["plan_slug"])
 
-    os.environ.update(STRIPE_PRICE_STARTER="price_starter_t", STRIPE_PRICE_GROWTH="price_growth_t",
-                      STRIPE_PRICE_PRO="price_pro_t")
+    # The price sold before A38 is still recognised as its plan; a change uses the A38 price.
+    os.environ.update(STRIPE_PRICE_STARTER="price_starter_t", STRIPE_PRICE_GROWTH_ANNUAL="price_growth_t",
+                      STRIPE_PRICE_PRO_ANNUAL="price_pro_t")
     saved = (billing._stripe, _db.get_subscription_row, billing.db.apply_subscription_event)
     billing._stripe = lambda: NS(subscriptions=Subs())
     _db.get_subscription_row = lambda _a: state["row"]
     billing.db.apply_subscription_event = apply
     try:
         b = client.get("/v1/billing/subscription").json()
-        _assert(b["features"] == [], b)
+        _assert(b["features"] == sorted(["costs", "drilldown", "margin", "payout_detail", "profit"]), b)
+        _assert(b["effective_plan"] == "starter" and b["shop_limit"] == 1, b)
+        _assert(billing._slug_for_subscription(billing._plain(real_sub())) == "starter",
+                "the price sold before A38 still names its plan")
         r = client.patch("/v1/billing/subscription", json={"plan": "growth"})
         _assert(r.status_code == 200 and r.json()["plan"] == "growth", r.text)
-        _assert(sorted(r.json()["features"]) == sorted(["basis", "costs", "drilldown", "exports", "profit"]), r.json())
+        _assert({"exports", "vat", "basis"} <= set(r.json()["features"]), r.json())
+        _assert(r.json()["shop_limit"] == 3, r.json())
         up = calls[-1]
         _assert(up[0] == "update" and up[2]["items"] == [{"id": "si_1", "price": "price_growth_t"}]
-                and up[2]["metadata"] == {"plan": "growth"} and "cancel_at_period_end" not in up[2], up)
+                and up[2]["metadata"] == {"plan": "growth", "cycle": "annual"} and "cancel_at_period_end" not in up[2], up)
+        # A cycle with no price configured changes nothing and says checkout is not open.
+        n = len(calls)
+        r = client.patch("/v1/billing/subscription", json={"plan": "pro", "cycle": "monthly"})
+        _assert(r.status_code == 503 and r.json()["code"] == "plan_unavailable", r.text)
         # The price decides the plan, even against metadata that says otherwise.
         _assert(billing._slug_for_subscription(
             billing._plain(real_sub(price="price_pro_t", metadata={"plan": "starter"}))) == "pro")
@@ -2297,33 +2353,23 @@ check("updateSubscription moves a running plan by its price, and the plan then d
 # --- account state decides shop access (A36, the owner's ruling of 10 October 2026)
 def shop_access_by_state():
     from app import entitlements
-    saved_override = app.dependency_overrides.pop(shops.require_shop)
-    saved_row, saved_tenant = _db.get_subscription_row, shops.tenant
-    shops.tenant = with_conn(shops, [("select id from shops", Result(["id"], [(SHOP,)]))])
-    try:
-        # No trial: only the onboarding routes answer.
-        _db.get_subscription_row = lambda _a: None
-        r = client.get(f"/v1/shops/{SHOP}/today")
-        _assert(r.status_code == 403 and r.json()["code"] == "trial_required", r.text)
-        r = client.get(f"/v1/shops/{SHOP}/settlements")
-        _assert(r.status_code == 403 and r.json()["code"] == "trial_required", r.text)
-        for method, path in (("GET", "/sync"), ("DELETE", "/connection"), ("GET", "/alert-settings")):
-            entitlements.shop_access(None, method, f"/v1/shops/{SHOP}{path}")  # does not raise
-        # An ended plan reads, but writes and exports are refused.
-        ended = _plan_row("growth", "canceled")
-        entitlements.shop_access(ended, "GET", f"/v1/shops/{SHOP}/money")
-        for method, path in (("PUT", f"/skus/{SKU}/cost"), ("POST", "/exports"), ("GET", "/exports")):
-            try:
-                entitlements.shop_access(ended, method, f"/v1/shops/{SHOP}{path}")
-                raise AssertionError(f"{method} {path} allowed on an ended plan")
-            except Exception as exc:  # noqa: BLE001
-                _assert(getattr(exc, "code", "") == "plan_ended", f"{method} {path}: {exc}")
-        # A live plan passes straight through.
-        entitlements.shop_access(_plan_row("starter"), "POST", f"/v1/shops/{SHOP}/exports")
-    finally:
-        app.dependency_overrides[shops.require_shop] = saved_override
-        _db.get_subscription_row, shops.tenant = saved_row, saved_tenant
-check("A shop with no trial answers only onboarding routes, and an ended plan reads only", shop_access_by_state)
+    # A38: an account with no plan is on Explorer and reads and writes like any plan; its
+    # features are checked by each route.
+    for method, path in (("GET", "/today"), ("GET", "/settlements"), ("PUT", f"/skus/{SKU}/cost"),
+                         ("POST", "/cost-uploads")):
+        entitlements.shop_access(None, method, f"/v1/shops/{SHOP}{path}")  # does not raise
+    # An ended plan reads, but writes and exports are refused.
+    ended = _plan_row("growth", "canceled")
+    entitlements.shop_access(ended, "GET", f"/v1/shops/{SHOP}/money")
+    entitlements.shop_access(ended, "DELETE", f"/v1/shops/{SHOP}/connection")
+    for method, path in (("PUT", f"/skus/{SKU}/cost"), ("POST", "/exports"), ("GET", "/exports")):
+        try:
+            entitlements.shop_access(ended, method, f"/v1/shops/{SHOP}{path}")
+            raise AssertionError(f"{method} {path} allowed on an ended plan")
+        except Exception as exc:  # noqa: BLE001
+            _assert(getattr(exc, "code", "") == "plan_ended", f"{method} {path}: {exc}")
+    entitlements.shop_access(_plan_row("starter"), "POST", f"/v1/shops/{SHOP}/exports")
+check("Explorer and a live plan pass the account check, and an ended plan reads only", shop_access_by_state)
 
 
 def stripe_webhook_reads_current_state():
@@ -2357,23 +2403,19 @@ check("The Stripe webhook writes the subscription as Stripe holds it now, not th
 
 
 def sync_follows_account_state():
-    from datetime import timedelta
     from app import tiktok_sync
-    now = NOW
-    saved_row, saved_tenant = _db.get_subscription_row, _db.tenant
+    saved_row = _db.get_subscription_row
     try:
         _db.get_subscription_row = lambda _a: _plan_row("starter")
-        _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, now) is True)
+        _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, NOW) is True)
         _db.get_subscription_row = lambda _a: _plan_row("starter", "canceled")
-        _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, now) is False)
+        _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, NOW) is False)
+        # A38: Explorer is read like any plan, with no thirty-day cut-off.
         _db.get_subscription_row = lambda _a: None
-        for days, expected in ((29, True), (30, True), (31, False)):
-            _db.tenant = with_conn(_db, [("select created_at from shops",
-                                          Result(["created_at"], [(now - timedelta(days=days),)]))])
-            _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, now) is expected, (days, expected))
+        _assert(tiktok_sync.may_sync(ACCOUNT.id, SHOP, NOW) is True)
     finally:
-        _db.get_subscription_row, _db.tenant = saved_row, saved_tenant
-check("A shop with no trial is read for thirty days from connection, and an ended plan not at all", sync_follows_account_state)
+        _db.get_subscription_row = saved_row
+check("Explorer and a live plan are read from TikTok, and an ended plan not at all", sync_follows_account_state)
 
 
 def coverage_and_profit_so_far():

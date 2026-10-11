@@ -367,8 +367,8 @@ def get_today(
     month_start = today.replace(day=1)
 
     with tenant(account.id) as conn:
-        day = calculate(conn, shop_id, today, today, basis, profit=profit)
-        month = calculate(conn, shop_id, month_start, today, basis, profit=profit)
+        day = calculate(conn, shop_id, today, today, basis, profit=profit, margin="margin" in plan)
+        month = calculate(conn, shop_id, month_start, today, basis, profit=profit, margin="margin" in plan)
 
         cur = conn.execute(SHOP_MONEY_SQL, {"shop": str(shop_id),
                                             "np": list(NET_PROCEEDS_CATEGORIES)})

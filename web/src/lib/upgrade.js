@@ -2,43 +2,51 @@
  * What an upgrade prompt says, by the feature the plan lacks. The service names the feature
  * and the plan in its `plan_upgrade_required` answer; this file only holds the words.
  *
- * The sentences for costs, profit, exports, basis, scheduled exports and the payout review are
- * the owner's, from "MyShopEdge Final Pricing Packaging and Code Command" (10 October 2026),
- * word for word. That document gives none for the transactions behind a figure or for export
- * history, so those two were written here in the same form.
+ * Rewritten 11 October 2026 to the owner's pricing and checkout specification (A38), whose
+ * prompts lead with what the seller gets, list what the plan includes, state the monthly price
+ * with "Cancel anytime", and offer "Upgrade to <plan>" beside "Maybe later". The two prompts
+ * the specification words are used as written: exports (Growth) and gross margin (Starter).
+ * The others follow the same form.
  */
 
-/** @type {Record<string, string>} */
-export const PROMPTS = {
-  costs:
-    "Unlock product profit with Growth. Add costs, see gross profit and margin by product, and identify which products actually make money.",
-  profit: "Gross profit needs product costs. Upgrade to Growth to upload costs and see product margin.",
-  exports:
-    "Export reconciled figures with Growth. Create Excel or CSV month summaries, ledgers and transaction files.",
-  basis:
-    "Choose how you review activity with Growth. Compare sales-date activity with settlement-date activity.",
-  drilldown:
-    "See the transactions behind each figure with Growth. Open a product or a line to see the orders and deductions that make it up.",
-  scheduled_exports:
-    "Automate your reporting with Pro. Schedule weekly or monthly exports and receive a notification when your file is ready.",
-  export_history:
-    "Keep your export history with Pro. Find the files you made before and build them again.",
-  priority_review:
-    "Keep routine reconciliation under control with Pro. Prioritise payout exceptions and schedule your regular exports.",
+/** What each paid plan adds, as its prompt lists it. @type {Record<string, string[]>} */
+export const INCLUDES = {
+  starter: ["Gross margin by product", "Cost coverage and missing-cost alerts",
+    "Return and write-off profit treatment", "Full payout explanations"],
+  growth: ["Product profit report", "Full reconciliation details", "Accountant-ready CSV/XLSX",
+    "VAT-friendly export structure"],
+  pro: ["Up to 10 TikTok Shops", "Unlimited orders", "Scheduled exports and export history",
+    "Statements that need review, listed first"],
 };
 
-/** The sentence Starter shows wherever profit would be, from the same document. */
-export const NOT_ON_PLAN = "Add product costs with Growth to see gross profit and margin by product.";
+/** @type {Record<string, { title: string, lead?: string }>} */
+export const PROMPTS = {
+  margin: { title: "See gross margin by product" },
+  drilldown: { title: "See the orders behind each figure" },
+  payout_detail: { title: "See the full payout explanation", lead: "You can already see each payout's amount and status." },
+  exports: { title: "Export product profit", lead: "Your product profit report is ready to build." },
+  vat: { title: "Track the VAT threshold", lead: "Growth tracks your rolling 12-month sales against the VAT registration threshold." },
+  basis: { title: "Compare sales and cash basis" },
+  scheduled_exports: { title: "Schedule your exports" },
+  export_history: { title: "Keep your export history" },
+  priority_review: { title: "See the statements that need review first" },
+  costs: { title: "Add product costs" },
+  profit: { title: "See gross profit by product" },
+};
+
+/** The service's sentence where profit cannot be shown (`products.NOT_ON_PLAN`). */
+export const NOT_ON_PLAN = "Add product costs to see gross profit by product. Gross margin is available on Starter.";
 
 /** @type {Record<string, string>} */
-export const PLAN_NAMES = { starter: "Starter", growth: "Growth", pro: "Pro" };
+export const PLAN_NAMES = { explorer: "Explorer", starter: "Starter", growth: "Growth", pro: "Pro" };
 
 /**
- * The address that changes the plan, returning to `back` afterwards or on "Not now".
+ * The address that opens the plan's cart on Plans and pricing. `back` is kept for the links
+ * written before A38 and is not used by the cart.
  *
  * @param {string} plan
- * @param {string} back
+ * @param {string} [_back]
  */
-export function changePlanHref(plan, back) {
-  return `/billing/change?${new URLSearchParams({ plan, back }).toString()}`;
+export function changePlanHref(plan, _back) {
+  return `/pricing?${new URLSearchParams({ plan }).toString()}`;
 }

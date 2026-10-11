@@ -380,7 +380,8 @@ def get_payout_review(
 
 
 @router.get(
-    "/shops/{shopId}/settlements/{settlementId}", response_model=SettlementDetail
+    "/shops/{shopId}/settlements/{settlementId}", response_model=SettlementDetail,
+    dependencies=[Depends(require_feature("payout_detail"))],
 )
 def get_settlement(
     account: Annotated[Account, Depends(require_account)],

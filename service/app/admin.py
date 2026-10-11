@@ -50,7 +50,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import auth, billing, db, exports, notice_email
 from .account_deletion import CancelOut, DeletionAcknowledgement, cancel_closing, close_account
-from .plans import PLAN_ORDER, PLANS
+from .plans import PAID, PLANS
 from .problems import Problem
 
 log = logging.getLogger("myshopedge.admin")
@@ -324,7 +324,7 @@ def get_admin_figures(admin: AdminDep) -> AdminFigures:
     rows = _rows("select * from admin_accounts()")
     months = Counter(r["created_at"].astimezone(LONDON).strftime("%Y-%m") for r in rows)
     plans = []
-    for slug in PLAN_ORDER:
+    for slug in PAID:
         mine = [r for r in rows if r["plan_slug"] == slug]
         paying = sum(r["plan_status"] == "active" for r in mine)
         plans.append(PlanFigure(
@@ -332,7 +332,9 @@ def get_admin_figures(admin: AdminDep) -> AdminFigures:
             trialing=sum(r["plan_status"] == "trialing" for r in mine),
             paying=paying,
             past_due=sum(r["plan_status"] == "past_due" for r in mine),
-            list_revenue_minor=paying * PLANS[slug].price_minor,
+            # A38: the monthly list price. A plan sold at an annual or older price is valued
+            # at this list price too, because Stripe is the record of money taken.
+            list_revenue_minor=paying * PLANS[slug].prices["monthly"].charge_minor,
         ))
     return AdminFigures(
         currency="GBP",

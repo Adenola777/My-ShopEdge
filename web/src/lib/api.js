@@ -77,6 +77,7 @@ export async function api(path, init = {}) {
 /**
  * @typedef {Object} PlansPayload
  * @property {number} trial_days
+ * @property {"annual" | "annual_monthly" | "monthly"} default_cycle
  * @property {Schemas["Plan"][]} plans
  */
 

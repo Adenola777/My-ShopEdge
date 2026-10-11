@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from . import db
 from .auth import Account, require_account
 from .money import Money, money
-from .plans import PLAN_ORDER, PLANS, TRIAL_DAYS
+from .plans import CYCLES, DEFAULT_CYCLE, PAID, PLAN_ORDER, PLANS, TRIAL_DAYS
 from .problems import Problem
 
 logger = logging.getLogger("myshopedge.billing")
@@ -54,24 +54,52 @@ def _stripe() -> stripe.StripeClient:
     return stripe.StripeClient(key)
 
 
+Cycle = Literal["annual", "annual_monthly", "monthly"]
+PaidPlan = Literal["starter", "growth", "pro"]
+
+
+class CyclePriceOut(BaseModel):
+    """One billing cycle's price. `charge` is one payment, `per_month` the monthly figure a
+    card shows, `payments` the payments a term holds. `available` is False while the cycle's
+    Stripe price identifier is unset, which is every cycle until the owner approves the
+    prices (A38.3), so the cart can say checkout is not open and charge nothing."""
+    cycle: Cycle
+    charge: Money
+    per_month: Money
+    payments: int
+    interval: Literal["year", "month"]
+    available: bool
+
+
 class PlanOut(BaseModel):
-    slug: str
+    slug: Literal["explorer", "starter", "growth", "pro"]
     name: str
-    strapline: str
-    price: Money
-    order_limit: int
-    history_months: int
+    audience: str
+    shop_limit: int
+    order_limit: int | None
+    history_days: int | None
     features: list[str]
+    coming_soon: list[str]
     highlight: bool
+    free: bool
+    prices: list[CyclePriceOut]
 
 
 class PlansOut(BaseModel):
     trial_days: int
+    default_cycle: Cycle
     plans: list[PlanOut]
 
 
 class TrialRequest(BaseModel):
-    plan: Literal["starter", "growth", "pro"]
+    plan: PaidPlan
+    cycle: Cycle = DEFAULT_CYCLE
+
+
+def _price_id(slug: str, cycle: str) -> str | None:
+    """The Stripe price identifier for a plan's cycle, from the environment only."""
+    price = PLANS[slug].prices.get(cycle)
+    return os.environ.get(price.env_var) if price else None
 
 
 class TrialStart(BaseModel):
@@ -91,7 +119,13 @@ class SubscriptionOut(BaseModel):
     """
 
     status: Literal["none", "trialing", "active", "past_due", "canceled"]
-    plan: Literal["starter", "growth", "pro"] | None = None
+    plan: PaidPlan | None = None
+    # The plan whose limits and features apply now (A38): the paid plan while it runs, and
+    # Explorer for an account with none. `cycle` is worked out from the billing period's
+    # length, so Annual, billed monthly reads as monthly until its price exists (A38.5).
+    effective_plan: Literal["explorer", "starter", "growth", "pro"] = "explorer"
+    cycle: Cycle | None = None
+    shop_limit: int = 1
     trial_ends_at: str | None = None
     current_period_end: str | None = None
     card_last4: str | None = None
@@ -104,19 +138,24 @@ class SubscriptionOut(BaseModel):
 @router.get("/billing/plans", response_model=PlansOut, summary="The plans on sale")
 def list_plans() -> PlansOut:
     """The price is served rather than held in the client, so a price change does not
-    require a client release. A plan lists only what the product does today."""
+    require a client release. A plan's `features` list only what the product does today;
+    `coming_soon` lists what the owner placed in the plan that is not built (A38.3)."""
     return PlansOut(
         trial_days=TRIAL_DAYS,
+        default_cycle=DEFAULT_CYCLE,
         plans=[
             PlanOut(
-                slug=p.slug,
-                name=p.name,
-                strapline=p.strapline,
-                price=money(p.price_minor, p.currency),
-                order_limit=p.order_limit,
-                history_months=p.history_months,
-                features=p.features,
-                highlight=p.highlight,
+                slug=p.slug, name=p.name, audience=p.audience, shop_limit=p.shop_limit,
+                order_limit=p.order_limit, history_days=p.history_days, features=p.features,
+                coming_soon=p.coming_soon, highlight=p.highlight, free=p.free,
+                prices=[
+                    CyclePriceOut(
+                        cycle=c, charge=money(pr.charge_minor, "GBP"),
+                        per_month=money(pr.per_month_minor, "GBP"), payments=pr.payments,
+                        interval=pr.interval, available=bool(os.environ.get(pr.env_var)),
+                    )
+                    for c, pr in ((c, p.prices[c]) for c in CYCLES if c in p.prices)
+                ],
             )
             for p in (PLANS[s] for s in PLAN_ORDER)
         ],
@@ -132,8 +171,9 @@ def start_trial(
     plan = PLANS[body.plan]
 
     # The price identifier comes from the environment. A price sent by a client is never
-    # trusted, because a seller could otherwise start a Pro trial at the Starter price.
-    price_id = os.environ.get(plan.price_env_var)
+    # trusted, because a seller could otherwise start a Pro trial at the Starter price. Until
+    # the owner approves the A38 prices none is set, so this answers 503 (A38.3).
+    price_id = _price_id(plan.slug, body.cycle)
     if not price_id:
         raise Problem(503, "plan_unavailable",
                       "This plan cannot be started at the moment. You have not been charged. "
@@ -179,7 +219,7 @@ def start_trial(
                 # than left owing. The seller keeps their data and is asked for a card.
                 "trial_settings": {"end_behavior": {"missing_payment_method": "cancel"}},
                 "expand": ["pending_setup_intent"],
-                "metadata": {"account_id": account.id, "plan": plan.slug},
+                "metadata": {"account_id": account.id, "plan": plan.slug, "cycle": body.cycle},
             },
             options={"idempotency_key": key} if key else None,
         )
@@ -325,8 +365,10 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
     """
     row = db.get_subscription_row(account.id)
     if row is None:
-        # No plan, no features (A36): the seller is still onboarding.
-        return SubscriptionOut(status="none", features=[])
+        # No plan is Explorer, the free plan (A38).
+        from .entitlements import BY_PLAN
+        return SubscriptionOut(status="none", features=sorted(BY_PLAN["explorer"]),
+                               effective_plan="explorer", shop_limit=PLANS["explorer"].shop_limit)
 
     if row["status"] == "incomplete":
         refreshed = _refresh_from_stripe(account.id, row.get("stripe_customer_id"))
@@ -336,11 +378,25 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
     return _subscription_out(row)
 
 
+def _cycle_of(row: dict) -> str | None:
+    """Annual or monthly, from the length of the billing period. A period longer than about
+    forty days is a year. Annual, billed monthly has a monthly period, so it reads as monthly
+    until its price exists to tell them apart (A38.5)."""
+    start, end = row.get("current_period_start"), row.get("current_period_end")
+    if not start or not end or row.get("status") == "trialing":
+        return None
+    return "annual" if (end - start).days > 40 else "monthly"
+
+
 def _subscription_out(row: dict) -> SubscriptionOut:
-    from .entitlements import features_for_row  # entitlements imports LIVE from here
+    from .entitlements import features_for_row, plan_for_row  # entitlements imports LIVE from here
 
     status = row["status"]
+    effective = plan_for_row(row)
     return SubscriptionOut(
+        effective_plan=effective,
+        cycle=_cycle_of(row),
+        shop_limit=PLANS[effective].shop_limit,
         features=sorted(features_for_row(row)),
         status="none" if status == "incomplete" else status,
         plan=row["plan_slug"],
@@ -362,7 +418,8 @@ def _subscription_out(row: dict) -> SubscriptionOut:
 class RenewalRequest(BaseModel):
     """Either or both. A request carrying neither changes nothing and is refused."""
     cancel_at_period_end: bool | None = None
-    plan: Literal["starter", "growth", "pro"] | None = None
+    plan: PaidPlan | None = None
+    cycle: Cycle = DEFAULT_CYCLE
 
 
 class CardSetupOut(BaseModel):
@@ -404,8 +461,11 @@ def update_subscription(
             # left is cleared. Stripe removes a metadata key that is set to an empty string.
             params["metadata"] = {DELETION_FLAG: ""}
     client = _stripe()
-    if body.plan is not None and body.plan != row["plan_slug"]:
-        change = _plan_change(client, account.id, row, body.plan)
+    # A cycle is compared only when it is known: during a trial the period does not say it.
+    current_cycle = _cycle_of(row)
+    if body.plan is not None and (body.plan != row["plan_slug"]
+                                  or (current_cycle is not None and body.cycle != current_cycle)):
+        change = _plan_change(client, account.id, row, body.plan, body.cycle)
         params["metadata"] = {**params.get("metadata", {}), **change.pop("metadata")}
         params.update(change)
     if not params:
@@ -421,7 +481,8 @@ def update_subscription(
     return _subscription_out(db.get_subscription_row(account.id))
 
 
-def _plan_change(client: stripe.StripeClient, account_id, row: dict, slug: str) -> dict:
+def _plan_change(client: stripe.StripeClient, account_id, row: dict, slug: str,
+                 cycle: str = DEFAULT_CYCLE) -> dict:
     """The Stripe parameters that move a running subscription to another plan.
 
     Added 10 October 2026 with the pricing tiers, because a seller shown an upgrade prompt had
@@ -433,10 +494,10 @@ def _plan_change(client: stripe.StripeClient, account_id, row: dict, slug: str) 
     project has observed. **Unverified against Stripe**: only the live account is reachable,
     so this has run against the stand-in client in the smoke test only.
     """
-    price_id = os.environ.get(PLANS[slug].price_env_var)
+    price_id = _price_id(slug, cycle)
     if not price_id:
         raise Problem(503, "plan_unavailable",
-                      "That plan cannot be chosen at the moment, so your plan was not changed.")
+                      "Checkout is not open yet, so your plan was not changed and nothing was charged.")
     try:
         current = _plain(client.subscriptions.retrieve(row["stripe_subscription_id"]))
     except stripe.StripeError as exc:
@@ -449,7 +510,7 @@ def _plan_change(client: stripe.StripeClient, account_id, row: dict, slug: str) 
         raise Problem(409, "no_live_subscription",
                       "This account has no plan running, so nothing was changed.")
     return {"items": [{"id": item["id"], "price": price_id}],
-            "metadata": {"plan": slug}}
+            "metadata": {"plan": slug, "cycle": cycle}}
 
 
 @router.post("/billing/card", response_model=CardSetupOut,
@@ -608,15 +669,18 @@ def _map_status(stripe_status: str | None) -> str:
 
 def _slug_for_subscription(sub) -> str | None:
     """The plan a Stripe subscription is on. The price identifier decides, as the pricing
-    ruling of 10 October 2026 requires, and `metadata.plan` is read only when the price
-    matches none of the three, as when a variable is not set."""
+    ruling of 10 October 2026 requires: any of a plan's three A38 cycle prices, or the price it
+    was sold at before A38 (`legacy_env_var`). `metadata.plan` is read only when the price
+    matches none, as when a variable is not set."""
     price_id = _first_price_id(sub)
     if price_id:
-        for candidate, plan in PLANS.items():
-            if os.environ.get(plan.price_env_var) == price_id:
+        for candidate in PAID:
+            plan = PLANS[candidate]
+            env_vars = [pr.env_var for pr in plan.prices.values()] + [plan.legacy_env_var]
+            if any(v and os.environ.get(v) == price_id for v in env_vars):
                 return candidate
     slug = (sub.get("metadata") or {}).get("plan")
-    return slug if slug in PLANS else None
+    return slug if slug in PAID else None
 
 
 def _first_item(sub):

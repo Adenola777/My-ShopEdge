@@ -43,54 +43,42 @@ export const metadata = { title: "Overview" };
 /** @type {Record<string, string>} */
 const SEVERITY_WORD = { critical: "Act now", warning: "Check", info: "Note" };
 
-/** @param {number} n */
-function orders(n) {
-  return `${n.toLocaleString("en-GB")} ${n === 1 ? "order" : "orders"}`;
-}
-
-/** What the next plan adds besides orders, in the pricing document's words (10 October 2026). */
-/** @type {Record<string, string>} */
-const NEXT_BENEFIT = { growth: "product-profit tools", pro: "scheduled exports" };
+/**
+ * What upgrading from each plan adds, in the owner's words (A38, 11 October 2026).
+ * @type {Record<string, string>}
+ */
+const NEXT_BENEFIT = {
+  starter: "Upgrade to Starter for 500 orders per month and full product profit.",
+  growth: "Upgrade to Growth for 1,000 orders per month, exports and multi-shop support.",
+  pro: "Upgrade to Pro for unlimited orders and up to 10 TikTok Shops.",
+};
 
 /**
- * A16.3's card, or nothing below 80 per cent.
+ * The monthly order limit at 80 and 100 per cent (A38), or nothing below 80 per cent. Amber
+ * and calm, never red, because reaching a limit is not a fault.
  *
  * @param {{ usage: import("@/lib/api-types").components["schemas"]["OrderUsage"] | null | undefined, shopId: string }} props
  */
 function OrderUsageCard({ usage, shopId }) {
   if (!usage || (usage.state !== "approaching" && usage.state !== "passed")) return null;
   const { order_count: count, order_limit: limit, plan_name: plan, larger_plan: larger } = usage;
-  const ends = formatDate(usage.period_end);
   const passed = usage.state === "passed";
   return (
-    <div className={passed ? "note note--warn" : "card"} role="status" data-testid="order-usage">
-      <h2>{passed ? `This account has ${count === limit ? "reached" : "passed"} its plan's order limit` : "Orders this billing period"}</h2>
+    <div className="note note--warn order-usage" role="status" data-testid="order-usage">
+      <h2>{passed ? "Monthly order limit reached" : "You are close to your monthly order limit"}</h2>
       <p>
-        {!passed
-          ? `The shops on this account have taken ${count.toLocaleString("en-GB")} of the ${orders(limit)} the ${plan} plan covers in the billing period that ends on ${ends}.`
-          : count === limit
-            ? `The shops on this account have taken ${orders(count)} in the billing period that ends on ${ends}, which is the ${plan} plan's limit.`
-            : `The shops on this account have taken ${orders(count)} in the billing period that ends on ${ends}, which is more than the ${limit.toLocaleString("en-GB")} the ${plan} plan covers.`}
-        {" "}Cancelled orders count too.
+        {passed
+          ? `Your ${plan} plan includes up to ${limit.toLocaleString("en-GB")} orders per month. Your existing data remains available, but new orders will not sync until your billing period resets or you upgrade.`
+          : `You have processed ${count.toLocaleString("en-GB")} of ${limit.toLocaleString("en-GB")} orders this month.`}
       </p>
-      <p>
-        Nothing stops at the limit. MyShopEdge keeps reading your orders, and your figures and
-        exports carry on as before.{" "}
-        {larger
-          ? `The ${larger.name} plan covers up to ${orders(larger.order_limit)} a month.`
-          : `The ${plan} plan is the largest MyShopEdge offers.`}
-      </p>
-      {larger ? (
-        <p data-testid="order-usage-next">
-          Choose {larger.name} when you are ready for more order capacity
-          and {NEXT_BENEFIT[larger.slug] ?? "more of MyShopEdge"}.{" "}
-          <Link href={changePlanHref(larger.slug, `/shops/${shopId}/today`)} data-testid="order-usage-choose">
-            Choose {larger.name}
+      {larger && <p data-testid="order-usage-next">{NEXT_BENEFIT[larger.slug]}</p>}
+      <p className="upload__actions">
+        {larger && (
+          <Link className="btn btn--primary btn--small" href={changePlanHref(larger.slug)} data-testid="order-usage-choose">
+            Upgrade to {larger.name}
           </Link>
-        </p>
-      ) : null}
-      <p className="card__foot">
-        <Link href={`/shops/${shopId}/settings/profile`} data-testid="order-usage-plan">See your plan</Link>
+        )}
+        <Link className="btn btn--quiet btn--small" href={`/shops/${shopId}/settings/profile`} data-testid="order-usage-plan">View usage</Link>
       </p>
     </div>
   );
@@ -126,11 +114,14 @@ export default async function TodayPage({ params, searchParams }) {
   const basis = query.basis === "cash" ? "cash" : "sales";
   const periodKey = query.period === "today" || query.period === "last_month" ? query.period : "month";
 
-  const [result, shops, thisMonth] = await Promise.all([
+  const [result, shops, thisMonth, subRes] = await Promise.all([
     fetchShop(shopId, "/today"),
     api("/shops", { cache: "no-store" }),
     fetchShop(shopId, "/money", { basis }),
+    api("/billing/subscription", { cache: "no-store" }),
   ]);
+  // A38: on Explorer the margin is Starter's, so the main card says where it is.
+  const marginLocked = subRes.ok && !(subRes.data?.features ?? []).includes("margin");
   const problem = apiProblem(result, { what: "your overview" })
     ?? apiProblem(thisMonth, { what: "your money figures" });
   if (problem) return problem;
@@ -226,6 +217,12 @@ export default async function TodayPage({ params, searchParams }) {
               <span>{when}</span>
               <span>{basisWord}</span>
             </p>
+            {marginLocked && (
+              <p className="hero__line hero__lock" data-testid="overview-margin-locked">
+                Gross margin is available on Starter.{" "}
+                <Link href={changePlanHref("starter")}>Upgrade to Starter</Link>
+              </p>
+            )}
             <p className="hero__action"><Link href={`/shops/${shopId}/products`}>View product performance</Link></p>
           </>
         ) : soFar ? (

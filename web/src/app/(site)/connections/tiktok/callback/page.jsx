@@ -47,6 +47,10 @@ const REFUSAL = {
     "That shop is already connected to another MyShopEdge account.",
     "Each shop can belong to one account. Sign in with the account that connected it.",
   ],
+  shop_limit_reached: [
+    "You have reached your shop limit.",
+    "Your current plan has no room for another TikTok Shop, so nothing was connected. Upgrade on Plans and pricing to connect more shops.",
+  ],
   tiktok_unconfigured: [
     "We could not connect your shop just now.",
     "Nothing has changed, and you can try again in a few minutes.",

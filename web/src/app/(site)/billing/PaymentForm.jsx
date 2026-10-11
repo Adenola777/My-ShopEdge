@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * S33. Choose a plan and start the free trial.
+ * S33. Secure checkout for the plan and cycle chosen in the cart (A38).
  *
  * The plan cards are the control. A seller taps a card to choose it, reads a plain summary
  * of what starting the trial means, and moves to the card step in one button. This replaced
@@ -30,7 +30,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
-import { api, formatMoney } from "@/lib/api";
+import { api } from "@/lib/api";
+import { COMMITMENT_LINE, CYCLE_LABEL, VAT_LINE, cartPrice } from "@/lib/plans";
 
 // Read on 28 September 2026: without NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY the button below used
 // to create the subscription at Stripe and only then fail to show the card form, leaving a
@@ -45,25 +46,26 @@ const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
  * trial date). `ended` is true when the seller's earlier plan has ended, because
  * `start_trial` lets a cancelled account start again.
  *
- * @param {{ plans: Plan[], trialDays: number, trialEnds: string, ended?: boolean }} props
+ * Since A38 (11 October 2026) the plan and the billing cycle are chosen in the cart on Plans
+ * and pricing, so this form receives them and no longer offers a choice. Whether a paid plan
+ * still starts with a trial is not ruled (A38.5); the service still starts one.
+ *
+ * @param {{ plan: Plan, cycle: "annual" | "annual_monthly" | "monthly", trialDays: number, trialEnds: string, ended?: boolean }} props
  */
-export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = false }) {
-  const preferred = plans.find((p) => p.highlight) ?? plans[0];
-  const [slug, setSlug] = useState(preferred ? preferred.slug : "");
+export function PaymentForm({ plan, cycle, trialDays, trialEnds: estimate, ended = false }) {
   const [phase, setPhase] = useState(
-    /** @type {"choosing" | "collecting" | "done"} */ ("choosing"),
+    /** @type {"review" | "collecting" | "done"} */ ("review"),
   );
   const [clientSecret, setClientSecret] = useState(/** @type {string | null} */ (null));
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
   const [stripeTrialEnd, setStripeTrialEnd] = useState(/** @type {string | null} */ (null));
   const trialEnds = stripeTrialEnd ?? estimate;
+  const price = cartPrice(plan, cycle);
 
   // Held for the life of the component so a retry after a dropped connection does not
   // create a second subscription.
   const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
-
-  const chosen = plans.find((p) => p.slug === slug);
 
   const start = useCallback(async () => {
     setBusy(true);
@@ -71,11 +73,11 @@ export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = fal
     try {
       const { ok, data } = await api("/billing/subscription", {
         method: "POST",
-        body: JSON.stringify({ plan: slug }),
+        body: JSON.stringify({ plan: plan.slug, cycle }),
         idempotencyKey,
       });
       if (!ok) {
-        setError(data?.detail ?? "We could not start the trial. Nobody has been charged. Try again in a moment.");
+        setError(data?.detail ?? "Checkout did not start. Nothing has been charged. Try again in a moment.");
         return;
       }
       if (data.trial_ends_at) {
@@ -92,11 +94,11 @@ export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = fal
       setClientSecret(data.client_secret);
       setPhase("collecting");
     } catch {
-      setError("We could not reach the server. Nobody has been charged.");
+      setError("We could not reach the server. Nothing has been charged.");
     } finally {
       setBusy(false);
     }
-  }, [slug, idempotencyKey]);
+  }, [plan.slug, cycle, idempotencyKey]);
 
   if (!stripePromise) {
     return (
@@ -108,108 +110,40 @@ export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = fal
   }
 
   if (phase === "done") {
-    return <TrialStarted chosen={chosen} trialDays={trialDays} trialEnds={trialEnds} />;
+    return <TrialStarted chosen={plan} trialDays={trialDays} trialEnds={trialEnds} />;
   }
 
   return (
     <>
       <header className="billing__head">
-        <h1>
-          {phase === "collecting"
-            ? "Add your card to start the trial."
-            : ended
-              ? "Your plan has ended. Choose a plan to start again."
-              : "Your shop is connected. Start your free trial."}
-        </h1>
+        <h1>{ended ? "Your plan has ended. Start again with secure checkout." : "Secure checkout"}</h1>
         <p className="billing__lede">
-          Every plan begins with {trialDays} days free, and nothing is taken until{" "}
-          {trialEnds}. You can stop the plan in Settings before then, and nothing is charged.
+          {plan.name} begins with {trialDays} days free, and nothing is taken until {trialEnds}.
+          You can stop the plan in Settings before then, and nothing is charged.
         </p>
       </header>
 
-      {phase === "choosing" ? (
-        <section className="card-step">
-          <fieldset className="plans" aria-describedby="plan-help">
-            <legend className="visually-hidden">Choose your plan</legend>
-            {plans.map((/** @type {Plan} */ plan) => {
-              const selected = slug === plan.slug;
-              const cls =
-                "plan plan--selectable" +
-                (plan.highlight ? " plan--highlight" : "") +
-                (selected ? " plan--selected" : "");
-              return (
-                <label key={plan.slug} className={cls} data-testid={`plan-${plan.slug}`}>
-                  <input
-                    type="radio"
-                    name="plan"
-                    className="plan__radio visually-hidden"
-                    value={plan.slug}
-                    checked={selected}
-                    onChange={() => setSlug(plan.slug)}
-                  />
-                  <span className="plan__select" aria-hidden="true" />
-                  {plan.highlight ? <span className="plan__flag">Most popular</span> : null}
-                  <span className="plan__name">{plan.name}</span>
-                  <span className="plan__strapline">{plan.strapline}</span>
-                  <span className="plan__price">
-                    <span className="plan__amount">{formatMoney(plan.price)}</span>
-                    <small> a month after your free trial</small>
-                  </span>
-                  <span className="plan__limit">
-                    Made for up to {plan.order_limit.toLocaleString("en-GB")} orders a month.
-                    Nothing stops if you sell more. {plan.history_months} months of history.
-                  </span>
-                  <span className="plan__features" role="list">
-                    {plan.features.map((/** @type {string} */ feature) => (
-                      <span className="plan__feature" role="listitem" key={feature}>
-                        {feature}
-                      </span>
-                    ))}
-                  </span>
-                </label>
-              );
-            })}
-          </fieldset>
+      <section className="card-step">
+        <div className="card plan-summary" data-testid="plan-summary">
+          <p className="cart__product">MyShopEdge {plan.name}</p>
+          <p className="cart__cycle">{CYCLE_LABEL[cycle]}</p>
+          <p className="cart__total">{price.total}</p>
+          <p className="cart__how">{price.how}</p>
+          <p className="cart__vat">{VAT_LINE}</p>
+          {cycle === "annual_monthly" && <p className="cycle__commitment">{COMMITMENT_LINE}</p>}
+          <p><Link href={`/pricing?${new URLSearchParams({ plan: plan.slug, cycle })}`}>Change plan or billing cycle</Link></p>
+        </div>
 
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
 
-          <div className="plan-cta">
-            <p className="plan-cta__summary" id="plan-help">
-              {chosen ? (
-                <>
-                  You chose {chosen.name}. After {trialDays} free days it is{" "}
-                  {formatMoney(chosen.price)} a month, and you can change the card or stop the
-                  plan at any time in Settings. Your plan is fixed once you continue to the card.
-                </>
-              ) : (
-                <>Choose a plan to continue.</>
-              )}
-            </p>
-            <button
-              type="button"
-              className="btn btn--primary btn--block"
-              onClick={start}
-              disabled={busy || !chosen}
-              data-testid="billing-continue"
-            >
-              {busy ? "Setting up your trial" : chosen ? `Continue with ${chosen.name}` : "Continue"}
-            </button>
-          </div>
-        </section>
-      ) : null}
+        {phase === "review" ? (
+          <button type="button" className="btn btn--primary btn--block" onClick={start}
+                  disabled={busy} data-testid="billing-continue">
+            {busy ? "Opening secure checkout" : "Continue to secure checkout"}
+          </button>
+        ) : null}
 
-      {phase === "collecting" && clientSecret ? (
-        <section className="card-step">
-          <div className="plan-summary" data-testid="plan-summary">
-            <p>
-              You are starting <strong>{chosen ? chosen.name : "your plan"}</strong>. Your{" "}
-              {trialDays} free days run until {trialEnds}.
-            </p>
-          </div>
+        {phase === "collecting" && clientSecret ? (
           <Elements
             stripe={stripePromise}
             options={{
@@ -217,14 +151,10 @@ export function PaymentForm({ plans, trialDays, trialEnds: estimate, ended = fal
               appearance: { theme: "flat", variables: { colorPrimary: "#C4400C" } },
             }}
           >
-            <ConfirmCard
-              planName={chosen ? chosen.name : "your plan"}
-              trialDays={trialDays}
-              onDone={() => setPhase("done")}
-            />
+            <ConfirmCard planName={plan.name} trialDays={trialDays} onDone={() => setPhase("done")} />
           </Elements>
-        </section>
-      ) : null}
+        ) : null}
+      </section>
 
       <footer className="billing__foot">
         <p>

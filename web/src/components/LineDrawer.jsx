@@ -22,7 +22,7 @@ import { Figure } from "@/components/Figure";
  */
 export function LineDrawer({ href, path, label, title }) {
   const dialog = useRef(/** @type {HTMLDialogElement | null} */ (null));
-  const [state, setState] = useState(/** @type {"idle" | "loading" | "ready" | "failed"} */ ("idle"));
+  const [state, setState] = useState(/** @type {"idle" | "loading" | "ready" | "failed" | "locked"} */ ("idle"));
   const [page, setPage] = useState(/** @type {any} */ (null));
 
   /** @param {React.MouseEvent} e */
@@ -37,6 +37,9 @@ export function LineDrawer({ href, path, label, title }) {
     if (r.ok && r.data) {
       setPage(r.data);
       setState("ready");
+    } else if (r.status === 403 && r.data?.code === "plan_upgrade_required") {
+      // A38: the records behind a figure are Starter's. Said plainly, never as a failure.
+      setState("locked");
     } else {
       setState("failed");
     }
@@ -70,6 +73,13 @@ export function LineDrawer({ href, path, label, title }) {
             <ul className="rows" aria-busy="true">
               {[0, 1, 2].map((i) => <li key={i}><span className="skeleton">Loading the records</span><span className="skeleton">£0.00</span></li>)}
             </ul>
+          )}
+          {state === "locked" && (
+            <div className="locked" data-testid="drawer-locked">
+              <p className="locked__head">The records behind each figure are available on Starter.</p>
+              <p className="rows__sub">You can already see the total on the Overview.</p>
+              <Link className="btn btn--primary btn--small" href="/pricing?plan=starter">Upgrade to Starter</Link>
+            </div>
           )}
           {state === "failed" && (
             <p className="muted" role="status">These records cannot be shown just now. <Link href={href}>Open the full list</Link></p>

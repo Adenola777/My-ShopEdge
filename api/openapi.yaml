@@ -338,6 +338,14 @@ paths:
                     format: date-time
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: The account already holds as many shops as its plan allows (A38), so
+            no shop was connected. The code is `shop_limit_reached` and `shop_limit` gives the
+            plan's limit. A reconnection of a shop the account already holds is not refused.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/RateLimited'
   /connections/tiktok/callback:
@@ -396,6 +404,14 @@ paths:
             The detail never echoes the code or the state back.
 
             '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: The account already holds as many shops as its plan allows (A38), so
+            no shop was connected. The code is `shop_limit_reached` and `shop_limit` gives the
+            plan's limit. A reconnection of a shop the account already holds is not refused.
           content:
             application/problem+json:
               schema:
@@ -1894,7 +1910,6 @@ paths:
       summary: One product, with breakdown, stock and returns
       description: Traces DSH-5. Includes the one-unit breakdown.
       operationId: getProduct
-      x-plan-feature: drilldown
       parameters:
       - $ref: '#/components/parameters/ShopId'
       - name: productId
@@ -2507,6 +2522,7 @@ paths:
 
         '
       operationId: getVatMonitor
+      x-plan-feature: vat
       parameters:
       - $ref: '#/components/parameters/ShopId'
       responses:
@@ -2681,6 +2697,7 @@ paths:
   /shops/{shopId}/settlements/{settlementId}:
     get:
       operationId: getSettlement
+      x-plan-feature: payout_detail
       summary: One statement, and whether it reconciles
       description: 'Carries the reconciliation the product exists to perform. `unexplained_minor`
 
@@ -2932,11 +2949,14 @@ paths:
                 type: object
                 required:
                 - trial_days
+                - default_cycle
                 - plans
                 properties:
                   trial_days:
                     type: integer
-                    example: 14
+                    example: 30
+                  default_cycle:
+                    $ref: '#/components/schemas/BillingCycle'
                   plans:
                     type: array
                     items:
@@ -2996,6 +3016,8 @@ paths:
                   - starter
                   - growth
                   - pro
+                cycle:
+                  $ref: '#/components/schemas/BillingCycle'
       responses:
         '200':
           description: The trial has started, or a card is required
@@ -3007,6 +3029,14 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '402':
           description: The card was declined
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: The plan's cycle has no Stripe price configured, which is every cycle
+            until the owner approves the A38 prices, so nothing was started or charged
+            (`plan_unavailable`).
           content:
             application/problem+json:
               schema:
@@ -3060,6 +3090,8 @@ paths:
                   - starter
                   - growth
                   - pro
+                cycle:
+                  $ref: '#/components/schemas/BillingCycle'
       responses:
         '200':
           description: The subscription as it now stands
@@ -3808,11 +3840,10 @@ components:
     ForbiddenShop:
       description: The shop exists but does not belong to this account, or, with code
         `plan_upgrade_required`, the account's plan does not include the operation. An
-        operation with `x-plan-feature` names the feature its plan must include. Since A36 (10
-        October 2026) the account's state comes first. With no trial started the code is
-        `trial_required` and only the import's progress, disconnecting and the alert settings
-        answer. With an ended plan (canceled) the code is `plan_ended` for any write or export,
-        and reading carries on.
+        operation with `x-plan-feature` names the feature its plan must include. Since A38
+        (11 October 2026) an account with no plan is on Explorer and is checked like any other
+        plan; A36's `trial_required` is no longer answered. With an ended plan (canceled) the
+        code is `plan_ended` for any write or export, and reading carries on.
       content:
         application/problem+json:
           schema:
@@ -4211,39 +4242,98 @@ components:
               reason:
                 type: [string, 'null']
                 description: Why the row did not match, in words a seller can act on.
+    BillingCycle:
+      description: Annual prepaid, Annual billed monthly in twelve payments, or Monthly (A38).
+        Annual prepaid is the default.
+      type: string
+      enum:
+      - annual
+      - annual_monthly
+      - monthly
+    CyclePrice:
+      type: object
+      description: One billing cycle's price. `charge` is one payment, `per_month` the monthly
+        figure a plan card shows and `payments` the payments a term holds. `available` is false
+        while the cycle's Stripe price is not configured, which is every cycle until the owner
+        approves the prices (A38.3); a checkout then answers 503 and charges nothing.
+      required:
+      - cycle
+      - charge
+      - per_month
+      - payments
+      - interval
+      - available
+      properties:
+        cycle:
+          $ref: '#/components/schemas/BillingCycle'
+        charge:
+          $ref: '#/components/schemas/Money'
+        per_month:
+          $ref: '#/components/schemas/Money'
+        payments:
+          type: integer
+          minimum: 1
+        interval:
+          type: string
+          enum:
+          - year
+          - month
+        available:
+          type: boolean
     Plan:
       type: object
+      description: One of the four plans of A38, 11 October 2026. Explorer is free and has no
+        prices. `order_limit` and `history_days` are null where the plan has no limit.
+        `features` lists what the product does today; `coming_soon` lists what the owner
+        placed in the plan that is not built, which a client shows as Coming soon and never
+        as included.
       required:
       - slug
       - name
-      - strapline
-      - price
+      - audience
+      - shop_limit
       - order_limit
-      - history_months
+      - history_days
       - features
+      - coming_soon
+      - highlight
+      - free
+      - prices
       properties:
         slug:
           type: string
           enum:
+          - explorer
           - starter
           - growth
           - pro
         name:
           type: string
-        strapline:
+        audience:
           type: string
-        price:
-          $ref: '#/components/schemas/Money'
+        shop_limit:
+          type: integer
+          minimum: 1
         order_limit:
-          type: integer
-        history_months:
-          type: integer
+          type: [integer, 'null']
+        history_days:
+          type: [integer, 'null']
         features:
+          type: array
+          items:
+            type: string
+        coming_soon:
           type: array
           items:
             type: string
         highlight:
           type: boolean
+        free:
+          type: boolean
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/CyclePrice'
     Subscription:
       type: object
       required:
@@ -4274,14 +4364,34 @@ components:
           type: [string, 'null']
         cancel_at_period_end:
           type: boolean
+        effective_plan:
+          type: string
+          description: The plan whose limits and features apply now. An account with no
+            plan, or an ended one, is on Explorer for its limits (A38).
+          enum:
+          - explorer
+          - starter
+          - growth
+          - pro
+        cycle:
+          description: The running plan's billing cycle, worked out from its period's length,
+            or null during a trial or with no plan. Annual billed monthly reads as monthly
+            until its price exists (A38.5).
+          oneOf:
+          - $ref: '#/components/schemas/BillingCycle'
+          - type: 'null'
+        shop_limit:
+          type: integer
+          minimum: 1
         features:
           type: array
-          description: What the plan includes, by feature name (costs, profit, drilldown,
-            exports, basis, scheduled_exports, export_history, priority_review). Starter holds
-            none, Growth the first five and Pro all eight. With no trial started the list is
-            empty, and with an ended plan it holds the last plan's features less the three
-            export features (A36). The service checks the plan on every request, so this list is for
-            display and grants nothing. Added 10 October 2026.
+          description: What the plan includes, by feature name (costs, profit, margin,
+            drilldown, payout_detail, exports, vat, basis, scheduled_exports, export_history,
+            priority_review). Explorer, which an account with no plan is on, holds costs and
+            profit; Starter adds margin, drilldown and payout_detail; Growth adds exports, vat
+            and basis; Pro holds all eleven (A38). With an ended plan it holds the last plan's
+            features less the three export features. The service checks the plan on every
+            request, so this list is for display and grants nothing.
           items:
             type: string
     TrialStart:
@@ -4368,9 +4478,11 @@ components:
           - plan_upgrade_required
           - trial_required
           - plan_ended
+          - shop_limit_reached
         required_plan:
           type: string
           enum:
+          - starter
           - growth
           - pro
           description: With `plan_upgrade_required`, the smallest plan that includes the
@@ -5432,7 +5544,10 @@ components:
           minimum: 1
         plan:
           type: string
+          description: Explorer's period is the London calendar month, because it has no
+            billing period (A38).
           enum:
+          - explorer
           - starter
           - growth
           - pro
@@ -5462,8 +5577,8 @@ components:
               name:
                 type: string
               order_limit:
-                type: integer
-                minimum: 1
+                description: Null is unlimited (Pro, A38).
+                type: [integer, 'null']
           - type: 'null'
     NeedsYouItem:
       type: object

@@ -37,6 +37,7 @@ from .dates import business_today, now_utc
 from .db import tenant, unscoped
 from .money import Money, money
 from .money_view import calculate
+from .entitlements import require as require_feature
 from .problems import Problem
 from .shops import require_shop
 
@@ -172,7 +173,8 @@ def _twelve_months(today: date) -> list[tuple[int, int]]:
     return seq
 
 
-@router.get("/shops/{shopId}/tax/vat", response_model=VatMonitorOut, summary="VAT threshold monitor")
+@router.get("/shops/{shopId}/tax/vat", response_model=VatMonitorOut, summary="VAT threshold monitor",
+            dependencies=[Depends(require_feature("vat"))])
 def get_vat_monitor(
     shopId: Annotated[UUID, Depends(require_shop)],
     account: Annotated[Account, Depends(require_account)],

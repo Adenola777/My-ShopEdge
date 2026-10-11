@@ -50,7 +50,8 @@ export default async function StartPage() {
       <p className="muted">
         Create your MyShopEdge account, then connect your TikTok Shop to bring sales, fees,
         refunds and payouts into one clear picture. You sign in with Google, GitHub or
-        Microsoft. Your 30-day free trial starts when you choose a plan after connecting.
+        Microsoft. Explorer is free with no credit card required, and you can choose a paid
+        plan whenever you are ready.
       </p>
       <div className="stack" style={{ maxWidth: 360, margin: "0 auto" }}>
         <a className="btn btn--primary btn--block" href="/handler/sign-up">Create account and connect my shop</a>

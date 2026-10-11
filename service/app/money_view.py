@@ -177,7 +177,7 @@ def get_money(
     start = period_from or today.replace(day=1)
     end = period_to or today
     with tenant(account.id) as conn:
-        view = calculate(conn, shop_id, start, end, basis, granularity, "profit" in plan)
+        view = calculate(conn, shop_id, start, end, basis, granularity, "profit" in plan, "margin" in plan)
 
     etag = _etag(view)
     if if_none_match is not None and if_none_match == etag:
@@ -187,7 +187,7 @@ def get_money(
 
 
 def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
-              granularity: str = "month", profit: bool = True) -> MoneyView:
+              granularity: str = "month", profit: bool = True, margin: bool = True) -> MoneyView:
     """The calculator for one period, on a connection the caller has already scoped.
 
     Shared with the Today screen, so the month figure on Today and the Money screen for
@@ -195,7 +195,8 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
 
     `profit` is False for a plan without the profit feature (`entitlements.py`, Starter).
     The chain then stops at Net proceeds: no cost of goods, no stock written off, no gross
-    profit or margin, and `kept_reason` is `not_on_plan`. The seller's postage and return
+    profit or margin, and `kept_reason` is `not_on_plan`. `margin` is False on Explorer (A38),
+    whose figures carry gross profit but no gross margin. The seller's postage and return
     postage are real amounts that need no product cost, so they keep their lines under the
     section totals. Confidence then follows settlement alone, because costs are not part of
     any figure shown.
@@ -318,7 +319,7 @@ def calculate(conn, shop_id: UUID, start: date, end: date, basis: str,
         confidence = "confirmed"
 
     totals.gross_margin_after_returns = gross_margin(
-        gross_profit_after if kept_reason is None else None, net_sales)
+        gross_profit_after if kept_reason is None else None, net_sales) if margin else None
 
     sales_coverage = None
     if profit:
@@ -405,7 +406,7 @@ def get_month_summary(
         raise refuse("basis")
     start, end = _month_bounds(month)
     with tenant(account.id) as conn:
-        return calculate(conn, shop_id, start, end, basis, "month", "profit" in plan)
+        return calculate(conn, shop_id, start, end, basis, "month", "profit" in plan, "margin" in plan)
 
 
 # --- getWhereItWent, LED-8 -----------------------------------------------------------------
@@ -442,7 +443,7 @@ def get_where_it_went(
     start = period_from or today.replace(day=1)
     end = period_to or today
     with tenant(account.id) as conn:
-        view = calculate(conn, shop_id, start, end, basis, "month", "profit" in plan)
+        view = calculate(conn, shop_id, start, end, basis, "month", "profit" in plan, "margin" in plan)
 
     gross_minor = view.totals.gross_sales.amount_minor
     currency = view.totals.gross_sales.currency
