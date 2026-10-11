@@ -319,6 +319,12 @@
   }
   /* Product costs follows the pattern of every other feature: words beside the screenshots. */
   #features .feature-row { padding: 0; }
+  /* 11 October 2026: the owner's illustrations open a section, wide, with the logo cropped off,
+     and the app's own screenshots stay beside the words as the proof. */
+  .feature-art { margin: 0 0 40px; }
+  .feature-art--spaced { margin-top: 56px; }
+  .feature-art img { width: 100%; height: auto; display: block; border-radius: 18px; box-shadow: 0 2px 10px rgba(18,20,28,0.06); }
+  @media (max-width: 860px) { .feature-art { margin-bottom: 28px; } .feature-art--spaced { margin-top: 36px; } .feature-art img { border-radius: 12px; } }
   #features .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   /* Justified text on a larger screen, where lines are long enough to justify cleanly. A phone
      keeps ragged text, because justifying a short line opens wide gaps. */
@@ -392,6 +398,7 @@
         <h2>TikTok pays you in pieces.</h2>
         <p>Fees, discounts, refunds and adjustments all come out before your payout.</p>
       </div>
+      <figure class="feature-art"><img src="art/money-goes.webp" width="1500" height="600" loading="lazy" alt="Illustration: a sale divides into refunds, platform fees and shipping"></figure>
       <div class="problem-grid">
         <div class="pain-list">
           <div class="pain-row"><span class="what">Gross sales</span><span class="amount">&pound;62.00</span></div>
@@ -430,6 +437,7 @@
 
   <section class="band alt" id="features">
     <div class="wrap">
+      <figure class="feature-art"><img src="art/product-costs.webp" width="1500" height="600" loading="lazy" alt="Illustration: what goes into the cost of one product"></figure>
       <div class="feature-row">
         <div class="feature-copy">
           <div class="feature-tag">Product costs</div>
@@ -447,6 +455,7 @@
 
   <section class="band">
     <div class="wrap">
+      <figure class="feature-art"><img src="art/true-profit.webp" width="1500" height="600" loading="lazy" alt="Illustration: revenue on one side, refunds, platform fees and shipping on the other, and the profit left"></figure>
       <div class="feature-row">
         <div class="feature-copy">
           <div class="feature-tag">Money</div>
@@ -454,6 +463,16 @@
           <p>Commission, shipping, promotions and refunds, each on its own line. Open any line to see the orders behind it.</p>
         </div>
         <div class="feature-visual"><img src="shots/money-fees.webp" width="720" height="1560" alt="Each TikTok fee on its own line, down to net proceeds and gross profit"></div>
+      </div>
+
+      <figure class="feature-art feature-art--spaced"><img src="art/reconcile.webp" width="1500" height="600" loading="lazy" alt="Illustration: sales, returns and charges checked against each other to reach final totals"></figure>
+      <div class="feature-row reverse">
+        <div class="feature-copy">
+          <div class="feature-tag">Reconcile</div>
+          <h3>See what TikTok still owes you.</h3>
+          <p>Shop Money sets your net proceeds against what TikTok has paid out, and shows what it still owes you.</p>
+        </div>
+        <div class="feature-visual"><img src="shots/overview.webp" width="720" height="1558" alt="The Overview, with gross profit after returns and the Shop Money card showing net proceeds and what has been paid out"></div>
       </div>
 
       <div class="feature-row reverse">
