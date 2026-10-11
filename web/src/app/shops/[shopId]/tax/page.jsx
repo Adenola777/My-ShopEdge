@@ -20,6 +20,7 @@
 
 import Link from "next/link";
 import { api, fetchShop, formatDate, formatMoney } from "@/lib/api";
+import { LockedBlock } from "@/components/Locked";
 import { apiProblem } from "@/components/ApiProblem";
 import { Figure } from "@/components/Figure";
 
@@ -37,10 +38,12 @@ export default async function TaxPage({ params }) {
   // vat_unconfigured and this screen used to show only an error. A missing rule now empties
   // its own card. A session, access or network fault still stops the screen.
   const vatUnconfigured = vatRes.status === 503;
-  const problem = vatUnconfigured ? null : apiProblem(vatRes, { what: "your VAT position" });
+  // A38: the VAT threshold tracker is Growth's; a smaller plan sees it locked in place.
+  const vatLocked = vatRes.status === 403 && vatRes.data?.code === "plan_upgrade_required";
+  const problem = vatUnconfigured || vatLocked ? null : apiProblem(vatRes, { what: "your VAT position" });
   if (problem) return problem;
 
-  const vat = vatUnconfigured ? null : vatRes.data;
+  const vat = vatUnconfigured || vatLocked ? null : vatRes.data;
   const setAside = setAsideRes.ok ? setAsideRes.data : null;
   /** @type {{ rule_key: string, label: string, date: string, reviewed_at?: string | null }[]} */
   const dates = datesRes.ok ? (datesRes.data.dates ?? []) : [];
@@ -59,7 +62,10 @@ export default async function TaxPage({ params }) {
         <div className="card" data-testid="vat-monitor">
           <h2>VAT registration threshold</h2>
           <p className="card__why">Last 12 months of sales against the threshold.</p>
-          {!vat ? (
+          {vatLocked ? (
+            <LockedBlock plan="growth" testId="vat-locked"
+              items={["Rolling 12-month sales against the VAT threshold", "The amount left before the threshold", "VAT-friendly export structure"]} />
+          ) : !vat ? (
             <p className="muted" data-testid="vat-unconfigured">
               The VAT threshold is not loaded yet, so your position cannot be shown.
             </p>

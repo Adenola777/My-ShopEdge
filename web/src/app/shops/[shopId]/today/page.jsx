@@ -114,11 +114,14 @@ export default async function TodayPage({ params, searchParams }) {
   const basis = query.basis === "cash" ? "cash" : "sales";
   const periodKey = query.period === "today" || query.period === "last_month" ? query.period : "month";
 
-  const [result, shops, thisMonth] = await Promise.all([
+  const [result, shops, thisMonth, subRes] = await Promise.all([
     fetchShop(shopId, "/today"),
     api("/shops", { cache: "no-store" }),
     fetchShop(shopId, "/money", { basis }),
+    api("/billing/subscription", { cache: "no-store" }),
   ]);
+  // A38: on Explorer the margin is Starter's, so the main card says where it is.
+  const marginLocked = subRes.ok && !(subRes.data?.features ?? []).includes("margin");
   const problem = apiProblem(result, { what: "your overview" })
     ?? apiProblem(thisMonth, { what: "your money figures" });
   if (problem) return problem;
@@ -214,6 +217,12 @@ export default async function TodayPage({ params, searchParams }) {
               <span>{when}</span>
               <span>{basisWord}</span>
             </p>
+            {marginLocked && (
+              <p className="hero__line hero__lock" data-testid="overview-margin-locked">
+                Gross margin is available on Starter.{" "}
+                <Link href={changePlanHref("starter")}>Upgrade to Starter</Link>
+              </p>
+            )}
             <p className="hero__action"><Link href={`/shops/${shopId}/products`}>View product performance</Link></p>
           </>
         ) : soFar ? (

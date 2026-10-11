@@ -40,7 +40,8 @@
  */
 
 import Link from "next/link";
-import { fetchProducts, formatDate } from "@/lib/api";
+import { api, fetchProducts, formatDate } from "@/lib/api";
+import { LockedBlock } from "@/components/Locked";
 import { Figure } from "@/components/Figure";
 import { apiProblem } from "@/components/ApiProblem";
 import { LineLabel } from "@/components/LineLabel";
@@ -79,7 +80,13 @@ export default async function ProductsPage({ params, searchParams }) {
   const { shopId } = await params;
   const query = await searchParams;
 
-  const result = await fetchProducts(shopId, { measure: query.measure, from: query.from, to: query.to });
+  const [result, subRes] = await Promise.all([
+    fetchProducts(shopId, { measure: query.measure, from: query.from, to: query.to }),
+    api("/billing/subscription", { cache: "no-store" }),
+  ]);
+  // A38: Explorer sees gross profit; margin and the rest of Starter's product tools are shown
+  // locked under the list. When the plan cannot be read, nothing is shown locked.
+  const marginLocked = subRes.ok && !(subRes.data?.features ?? []).includes("margin");
   const problem = apiProblem(result, { what: "your products" });
   if (problem) return problem;
 
@@ -143,7 +150,7 @@ export default async function ProductsPage({ params, searchParams }) {
         <p className="products__coverage">
           {/* A36: the brief's cost coverage card, from the service's coverage by sales value. */}
           {!coverage
-            ? "Add what each product costs you to see gross profit."
+            ? "Product costs not added yet. You can already see net proceeds; add costs to see gross profit by product."
             : coverageSentence(coverage) ?? <><span className="overview__clear"><span aria-hidden="true">{"\u2713"}</span></span>Every product sold has a cost.</>}
           {coverage && coverage.products_missing > 0 && (
             <> <Link href={`/shops/${shopId}/setup/costs/manual`}>Review missing costs</Link></>
@@ -266,6 +273,13 @@ export default async function ProductsPage({ params, searchParams }) {
         </div>
       )}
 
+      {marginLocked && products.length > 0 && (
+        <div className="overview__more">
+          <LockedBlock plan="starter" testId="products-locked"
+            items={["Gross margin by product", "Cost coverage and missing-cost alerts",
+                    "Return and write-off profit treatment", "Full order-level drilldown"]} />
+        </div>
+      )}
       {starter && <p className="footnote overview__note" data-testid="products-not-on-plan">{NOT_ON_PLAN}</p>}
       {measure === "kept" && (
         <p className="footnote overview__note">

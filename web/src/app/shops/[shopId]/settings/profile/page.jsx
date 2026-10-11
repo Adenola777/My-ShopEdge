@@ -57,9 +57,11 @@ function nextStep(sub) {
 export default async function ProfilePage({ params }) {
   const { shopId } = await params;
   const base = `/shops/${shopId}`;
-  const [meRes, subRes] = await Promise.all([
+  const [meRes, subRes, todayRes] = await Promise.all([
     api("/me", { cache: "no-store" }),
     api("/billing/subscription", { cache: "no-store" }),
+    // A38: the order count against the plan's limit, which "View usage" leads here to see.
+    api(`/shops/${encodeURIComponent(shopId)}/today`, { cache: "no-store" }),
   ]);
   const problem = apiProblem(meRes, { what: "your profile", note: NOTHING_CHANGED });
   if (problem) return problem;
@@ -70,6 +72,10 @@ export default async function ProfilePage({ params }) {
   const sub = subRes.ok ? subRes.data : null;
   const [statusLabel, statusTone] = sub ? (STATUS[sub.status] ?? [sub.status, "quiet"]) : ["Not available", "quiet"];
   const next = sub ? nextStep(sub) : null;
+  /** @type {import("@/lib/api-types").components["schemas"]["OrderUsage"] | null} */
+  const usage = todayRes.ok ? (todayRes.data?.order_usage ?? null) : null;
+  const shopLimit = sub?.shop_limit ?? null;
+  const shopCount = me?.shop_count ?? 0;
   const unavailable = <span className="muted">Not available</span>;
 
   return (
@@ -94,29 +100,30 @@ export default async function ProfilePage({ params }) {
 
         <div className="card" data-testid="profile-plan">
           <h2>Your plan</h2>
-          {sub?.status === "none" ? (
-            <p data-testid="profile-no-plan">This account has no plan yet.</p>
-          ) : (
-            <ul className="rows">
-              <li><span>Plan</span>{sub ? <strong>{sub.plan ? planName(sub.plan) : "None"}</strong> : unavailable}</li>
+          <ul className="rows">
+            <li><span>Plan</span>{sub ? <strong>{planName(sub.effective_plan ?? "explorer")}{sub.status === "none" ? ", free" : ""}</strong> : unavailable}</li>
+            {sub && sub.status !== "none" && (
               <li><span>Status</span><span className={chipClass(statusTone)}>{statusLabel}</span></li>
-              {next && <li><span>{next[0]}</span><strong>{next[1]}</strong></li>}
-              {sub?.card_last4 && <li><span>Card</span><strong>Ending {sub.card_last4}</strong></li>}
-            </ul>
+            )}
+            {next && <li><span>{next[0]}</span><strong>{next[1]}</strong></li>}
+            {sub?.card_last4 && <li><span>Card</span><strong>Ending {sub.card_last4}</strong></li>}
+            {shopLimit !== null && (
+              <li data-testid="profile-shops"><span>Connected TikTok Shops</span><strong>{shopCount} of {shopLimit}</strong></li>
+            )}
+            {usage && (
+              <li data-testid="profile-orders"><span>Orders this month</span><strong>{usage.order_count.toLocaleString("en-GB")} of {usage.order_limit.toLocaleString("en-GB")}</strong></li>
+            )}
+          </ul>
+          {shopLimit !== null && shopCount > shopLimit && (
+            <p className="note note--warn" data-testid="profile-over-shops">
+              Your plan includes {shopLimit === 1 ? "1 TikTok Shop" : `${shopLimit} TikTok Shops`} and {shopCount} are connected.
+              Disconnect {shopCount - shopLimit === 1 ? "one" : shopCount - shopLimit} from Settings, or upgrade to keep them all. Nothing is deleted.
+            </p>
           )}
-          {sub?.status === "none" || sub?.status === "canceled" ? (
-            <p><Link className="btn btn--primary btn--block" href="/billing">Choose a plan</Link></p>
-          ) : null}
+          <p><Link className={`btn btn--block ${sub?.status === "none" || sub?.status === "canceled" ? "btn--primary" : "btn--quiet"}`}
+                   href="/pricing" data-testid="plan-change">See plans and pricing</Link></p>
           {sub?.status === "past_due" ? (
             <p><Link className="btn btn--primary btn--block" href="/billing/payment-failed">See what happened</Link></p>
-          ) : null}
-          {sub && ["trialing", "active", "past_due"].includes(sub.status) ? (
-            <p>
-              <Link className="btn btn--quiet btn--block" data-testid="plan-change"
-                href={`/billing/change?${new URLSearchParams({ back: `${base}/settings/profile` }).toString()}`}>
-                Change plan
-              </Link>
-            </p>
           ) : null}
           {sub && ["trialing", "active", "past_due"].includes(sub.status) ? <PlanControls sub={sub} /> : null}
         </div>
