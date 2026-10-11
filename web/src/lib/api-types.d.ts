@@ -1406,6 +1406,13 @@ export interface paths {
          *     Refused with 409 when the account has no live subscription, and with 403
          *     `account_closing` while a deletion is pending, because the deletion already
          *     decides renewal (A30.1).
+         *
+         *     Since 11 October 2026 (A38.6) a plan on Annual, billed monthly owes the twelve
+         *     payments of its term. Stopping renewal during a term ends the plan on the term's last
+         *     day, so the remaining payments are still taken; stopping during the free trial ends
+         *     it when the trial ends, as on every cycle. During a term a move to Monthly or to a
+         *     smaller plan is refused with 409 `commitment_running`; a larger plan or Annual
+         *     prepaid is allowed.
          */
         patch: operations["updateSubscription"];
         trace?: never;
@@ -2000,13 +2007,24 @@ export interface components {
             /** Format: date-time */
             current_period_end?: string | null;
             card_last4?: string | null;
+            /** @description True when renewal is stopped, whether at the end of the trial or period under way or, on Annual, billed monthly, at the end of its twelve-payment term (A38.6). */
             cancel_at_period_end?: boolean;
+            /**
+             * Format: date-time
+             * @description The day the plan ends if renewal is stopped, or would end if it were stopped now; the term's last day for a stopped Annual, billed monthly plan (A38.6).
+             */
+            ends_at?: string | null;
+            /**
+             * Format: date-time
+             * @description The last day of the running twelve-payment term, on Annual, billed monthly only (A38.6). Null on other cycles.
+             */
+            commitment_ends_at?: string | null;
             /**
              * @description The plan whose limits and features apply now. An account with no plan, or an ended one, is on Explorer for its limits (A38).
              * @enum {string}
              */
             effective_plan?: "explorer" | "starter" | "growth" | "pro";
-            /** @description The running plan's billing cycle, worked out from its period's length, or null during a trial or with no plan. Annual billed monthly reads as monthly until its price exists (A38.5). */
+            /** @description The running plan's billing cycle, from the price it is on since A38.6, or null with no plan. A plan recorded before then is worked out from its period's length and reads null during its trial. */
             cycle?: components["schemas"]["BillingCycle"] | null;
             shop_limit?: number;
             /** @description What the plan includes, by feature name (costs, profit, margin, drilldown, payout_detail, exports, vat, basis, scheduled_exports, export_history, priority_review). Explorer, which an account with no plan is on, holds costs and profit; Starter adds margin, drilldown and payout_detail; Growth adds exports, vat and basis; Pro holds all eleven (A38). With an ended plan it holds the last plan's features less the three export features. The service checks the plan on every request, so this list is for display and grants nothing. */

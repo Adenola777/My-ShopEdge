@@ -210,15 +210,51 @@ def apply_subscription_event(
     return row[0] if row and row[0] else None
 
 
+_SUBSCRIPTION_COLUMNS = ("plan_slug, status, stripe_customer_id, stripe_subscription_id, trial_end, "
+                         "current_period_start, current_period_end, cancel_at_period_end")
+# Added by migration 0036 (A38.6).
+_TERM_COLUMNS = ", cycle, cancel_at, commitment_ends_at"
+
+
 def get_subscription_row(account_id: UUID | str) -> dict | None:
-    """The caller's own subscription row, read under row level security, or None."""
-    with tenant(account_id) as conn:
-        cur = conn.execute(
-            "select plan_slug, status, stripe_customer_id, stripe_subscription_id, trial_end, "
-            "current_period_start, current_period_end, cancel_at_period_end "
-            "from subscriptions where account_id = %s",
-            (str(account_id),),
-        )
-        cols = [d.name for d in cur.description]
-        row = cur.fetchone()
-    return dict(zip(cols, row, strict=True)) if row else None
+    """The caller's own subscription row, read under row level security, or None.
+
+    The three columns of migration 0036 are read when the database has them. On a database
+    that does not have them yet the row is read without them, so a service deployed before the
+    migration is applied keeps working; every route reads this row, so a failure here would
+    stop every page.
+    """
+    for columns in (_SUBSCRIPTION_COLUMNS + _TERM_COLUMNS, _SUBSCRIPTION_COLUMNS):
+        try:
+            with tenant(account_id) as conn:
+                cur = conn.execute(
+                    f"select {columns} from subscriptions where account_id = %s",
+                    (str(account_id),),
+                )
+                cols = [d.name for d in cur.description]
+                row = cur.fetchone()
+        except psycopg.errors.UndefinedColumn:
+            continue
+        return dict(zip(cols, row, strict=True)) if row else None
+    return None
+
+
+def apply_subscription_terms(
+    stripe_customer_id: str,
+    cycle: str | None,
+    cancel_at: datetime | None,
+    commitment_ends_at: datetime | None,
+) -> bool:
+    """Writes the cycle, the date Stripe will end the plan, and the end of the twelve-payment
+    term (A38.6) onto the row for the customer. Returns False, and writes nothing, when the
+    database does not have migration 0036 yet. Raises 'unknown_stripe_customer' as
+    apply_subscription_event does."""
+    try:
+        with unscoped() as conn:
+            conn.execute(
+                "select apply_subscription_terms(%s, %s, %s, %s)",
+                (stripe_customer_id, cycle, cancel_at, commitment_ends_at),
+            )
+    except psycopg.errors.UndefinedFunction:
+        return False
+    return True
