@@ -50,8 +50,9 @@ Explorer those lines as they show every plan. Only the comparison table and the 
 block name the treatment as a Starter feature. Withholding the lines would change Explorer's
 gross profit, so it is left for the owner to rule on.
 
-The landing page, `site/index.html`, shows the four plans at their monthly price with the
-annual price under each, and its calls to action start Explorer rather than a trial.
+The landing page, `site/index.html`, carries no prices. On 11 October 2026 the owner ruled
+that the app's pricing page is the one place for them, so the landing page's Pricing links
+go there, and its calls to action start Explorer rather than a trial.
 
 ## A38.3 The owner's answers of 11 October 2026
 

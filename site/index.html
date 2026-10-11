@@ -282,22 +282,8 @@
   .shot-pair { display:grid; grid-template-columns: repeat(2, minmax(0, 300px)); gap: 28px; justify-content: center; }
   .shot-pair img, .feature-visual img { width:100%; height:auto; display:block; border-radius: 14px; box-shadow: 0 2px 6px rgba(18,20,28,0.08), 0 24px 50px -22px rgba(18,20,28,0.28); }
   .feature-copy .feature-sub { margin-top: 14px; font-size: 0.95rem; }
-  .pricing-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .plan-card { background: var(--white); border-radius: 16px; padding: 26px; box-shadow: 0 2px 10px rgba(18,20,28,0.05); display:flex; flex-direction:column; }
-  .plan-card--highlight { box-shadow: 0 0 0 2px var(--orange-solid), 0 12px 30px -16px rgba(201,61,10,0.4); }
-  .plan-card h3 { margin: 0 0 8px; font-size: 1.3rem; }
-  .plan-price { margin: 0 0 8px; color: var(--ink-soft); }
-  .plan-price span { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size: 2rem; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .plan-strap { margin: 0 0 14px; color: var(--ink-soft); font-size: 0.95rem; }
-  .plan-card ul { margin: 0 0 18px; padding-left: 18px; color: var(--ink); font-size: 0.95rem; line-height: 1.6; flex: 1; }
-  .plan-trial { margin: 0; font-size: 0.88rem; color: var(--ink-soft); line-height: 1.5; }
-  .pricing-note { margin: 22px 0 0; font-size: 0.95rem; color: var(--ink-soft); max-width: 70ch; }
-  .plan-badge { align-self: flex-start; margin: 0 0 10px; padding: 3px 10px; border-radius: 999px; background: var(--orange-solid); color: var(--white); font-size: 0.8rem; font-weight: 600; }
   .final-note { margin: 18px 0 0; color: var(--ink-soft); font-size: 0.98rem; }
-  .pricing-grid--four { grid-template-columns: repeat(4, 1fr); }
-  .plan-soon { display:inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: var(--paper-alt); color: var(--ink-soft); font-size: 0.78rem; font-weight: 600; }
-  @media (max-width: 1100px) { .pricing-grid--four { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 860px) { .pricing-grid--four { grid-template-columns: 1fr; } .pricing-grid { grid-template-columns: 1fr; } .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
+  @media (max-width: 860px) { .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
 
   /* ---------- Revised 10 October 2026 after the owner's review ---------- */
   .hero-shot { width: 100%; max-width: 360px; }
@@ -354,7 +340,7 @@
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#trust">Security</a>
-        <a href="#pricing">Pricing</a>
+        <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
       </div>
       <details class="mobile-menu">
         <summary aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
@@ -363,7 +349,7 @@
           <a href="#how">How it works</a>
           <a href="#features">Features</a>
           <a href="#trust">Security</a>
-          <a href="#pricing">Pricing</a>
+          <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
           <a href="https://app.myshopedge.inspirecraftglobal.com/start">Sign in</a>
         </div>
       </details>
@@ -540,47 +526,6 @@
 
 
 
-  <section class="band alt" id="pricing">
-    <div class="wrap">
-      <div class="section-head">
-        <div class="eyebrow-line"><span>Pricing</span></div>
-        <h2>Choose your plan.</h2>
-        <p>Every plan lets you add product costs. Starter adds margin and full payout detail. Growth adds exports and up to 3 shops. Pro adds unlimited orders and up to 10 shops.</p>
-      </div>
-      <div class="pricing-grid pricing-grid--four">
-        <div class="plan-card">
-          <h3>Explorer</h3>
-          <p class="plan-price"><span>Free</span></p>
-          <p class="plan-strap">For new sellers getting started.</p>
-          <ul><li>1 TikTok Shop</li><li>Up to 100 orders a month</li><li>Net proceeds and where the money went</li><li>Upload product costs</li><li>Gross profit where costs are added</li><li>Basic payout status</li><li>Last 30 days of data</li></ul>
-          <p class="plan-trial">No credit card required.</p>
-        </div>
-        <div class="plan-card">
-          <h3>Starter</h3>
-          <p class="plan-price"><span>&pound;19</span> a month</p>
-          <p class="plan-strap">For serious single-shop sellers.</p>
-          <ul><li>1 TikTok Shop</li><li>Up to 500 orders a month</li><li>Full product profit and margin</li><li>Cost coverage and missing-cost alerts</li><li>Full payout explanations</li><li>Return and write-off treatment</li><li>12 months of data</li></ul>
-          <p class="plan-trial">Or &pound;190 a year, paid annually.</p>
-        </div>
-        <div class="plan-card plan-card--highlight">
-          <p class="plan-badge">Most popular</p>
-          <h3>Growth</h3>
-          <p class="plan-price"><span>&pound;39</span> a month</p>
-          <p class="plan-strap">For growing sellers who need exports and multi-shop control.</p>
-          <ul><li>Up to 3 TikTok Shops</li><li>Up to 1,000 orders a month</li><li>All Starter features</li><li>Product profit and reconciliation exports</li><li>Accountant-ready CSV and XLSX</li><li>VAT threshold tracker</li><li>24 months of data</li><li>Multi-shop consolidated view <span class="plan-soon">Coming soon</span></li><li>1 accountant seat <span class="plan-soon">Coming soon</span></li></ul>
-          <p class="plan-trial">Or &pound;390 a year, paid annually.</p>
-        </div>
-        <div class="plan-card">
-          <h3>Pro</h3>
-          <p class="plan-price"><span>&pound;79</span> a month</p>
-          <p class="plan-strap">For agencies, accountants and high-volume sellers.</p>
-          <ul><li>Up to 10 TikTok Shops</li><li>Unlimited orders</li><li>All Growth features</li><li>Unlimited data history</li><li>Client workspaces <span class="plan-soon">Coming soon</span></li><li>Up to 5 accountant and team seats <span class="plan-soon">Coming soon</span></li><li>Priority support <span class="plan-soon">Coming soon</span></li></ul>
-          <p class="plan-trial">Or &pound;790 a year, paid annually.</p>
-        </div>
-      </div>
-      <p class="pricing-note">Prices are shown per month. An annual plan costs less and can be paid at once or in 12 monthly payments. Prices exclude VAT where applicable, and none is added today. The <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">pricing page</a> compares every feature.</p>
-    </div>
-  </section>
 
   <section class="final-cta">
     <div class="wrap">
@@ -606,7 +551,7 @@
             <h4>Product</h4>
             <a href="#how">How it works</a>
             <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
+            <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
             <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
             <a href="/tools/tiktok-shop-payout-explainer">Payout Explainer</a>
           </div>
