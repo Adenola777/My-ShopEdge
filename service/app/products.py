@@ -34,6 +34,7 @@ from datetime import date
 from typing import Annotated, Any
 from uuid import UUID
 
+import psycopg
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
@@ -108,9 +109,13 @@ class ProductRow(BaseModel):
 COST_STATUSES = ("complete", "cost_needed", "partially_costed", "needs_review")
 
 
-def cost_status(skus_sold: int, skus_without_cost: int) -> str | None:
+def cost_status(skus_sold: int, skus_without_cost: int, needs_review: bool = False) -> str | None:
+    """The brief's four cost statuses (section 8B). Needs review comes first, because it asks
+    the seller to decide something, and it is given only to a product that sold."""
     if skus_sold == 0:
         return None
+    if needs_review:
+        return "needs_review"
     if skus_without_cost == 0:
         return "complete"
     return "cost_needed" if skus_without_cost >= skus_sold else "partially_costed"
@@ -302,6 +307,32 @@ select p.id as product_id, p.tiktok_product_id, p.title,
 """
 
 
+# A36 item 5 and migration 0034: a variant waits on the seller while the shop's latest upload
+# is matched and not applied, found a different cost for it, and no cost has been set since.
+REVIEW_SQL = """
+select distinct k.product_id
+  from cost_upload_reviews r
+  join cost_uploads u on u.id = r.cost_upload_id and u.status = 'confirmed'
+  join skus k on k.id = r.sku_id
+ where r.shop_id = %(shop)s
+   and u.id = (select id from cost_uploads where shop_id = %(shop)s
+                order by created_at desc, id desc limit 1)
+   and not exists (select 1 from product_costs pc
+                    where pc.shop_id = r.shop_id and pc.sku_id = r.sku_id
+                      and pc.created_at > r.created_at)
+"""
+
+
+def _products_to_review(conn, shop_id: UUID) -> set[str]:
+    """The products with a variant waiting on the seller. Before migration 0034 the table is
+    missing, so the query runs in a savepoint and no product is Needs review."""
+    try:
+        with conn.transaction():
+            return {str(r[0]) for r in conn.execute(REVIEW_SQL, {"shop": str(shop_id)}).fetchall()}
+    except psycopg.errors.UndefinedTable:
+        return set()
+
+
 def _net_sales(r: dict[str, Any]) -> int:
     """Net sales on A36's definition: gross sales less discounts less refunds."""
     return (int(r["gross_sales_minor"]) + int(r.get("seller_discount_minor") or 0)
@@ -345,6 +376,7 @@ def list_products(
         cur = conn.execute(sql, args)
         cols = [d.name for d in cur.description]
         rows = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+        to_review = _products_to_review(conn, shop_id) if profit else set()
         cur = conn.execute(
             UNATTRIBUTED_SQL.format(date_column=date_column),
             {**args, "categories": _measure_categories(
@@ -427,7 +459,8 @@ def list_products(
             return_impact=(None if r.get("no_profit")
                            else money(-int(r["return_loss_minor"] or 0), currency)),
             cost_status=(None if r.get("no_profit")
-                         else cost_status(int(r.get("skus_sold") or 0), int(r["skus_without_cost"]))),
+                         else cost_status(int(r.get("skus_sold") or 0), int(r["skus_without_cost"]),
+                                          str(r["product_id"]) in to_review)),
             gross_margin_after_returns=gross_margin(
                 int(r["kept_minor"]) if r["kept_minor"] is not None else None,
                 # Net sales on A36's definition, gross less discounts less refunds.

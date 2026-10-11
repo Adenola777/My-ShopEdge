@@ -2597,7 +2597,7 @@ export interface components {
             /** @description Return shipping paid and stock written off for the product, negative. Null on a plan without profit, because stock written off is costed. */
             return_impact?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
             /**
-             * @description complete when every variant sold had a cost, cost_needed when none did, partially_costed between. needs_review is reserved for a cost an upload could not match with certainty and is not given yet. Null on a plan without profit.
+             * @description needs_review when the shop's latest cost upload is matched and not applied, found a cost for one of the product's variants different from the cost in force, and no cost has been set for it since (A36 item 5, migration 0034; given since 11 October 2026). Otherwise complete when every variant sold had a cost, cost_needed when none did, partially_costed between. Null on a plan without profit, and for a product with no units sold.
              * @enum {string|null}
              */
             cost_status?: "complete" | "cost_needed" | "partially_costed" | "needs_review" | null;

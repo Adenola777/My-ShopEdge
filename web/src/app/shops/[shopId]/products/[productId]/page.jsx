@@ -157,7 +157,18 @@ export default async function ProductDetailPage({ params, searchParams }) {
           </ul>
         </div>
 
-        <div className="card">
+        {p.cost_status === "needs_review" && (
+          <div className="note note--warn" data-testid="cost-needs-review">
+            <p>
+              Your latest cost file has a different cost for this product than the one already set,
+              and it was not applied, so nothing has changed. Upload the file again to keep or
+              replace the cost, or set the cost below.{" "}
+              <Link href={`/shops/${shopId}/setup/costs/upload`}>Upload costs</Link>
+            </p>
+          </div>
+        )}
+
+        <div className="card" id="edit-cost">
           <h2>Edit product cost</h2>
           <p className="card__why">
             What one unit costs you. It drives every profit figure here. Each unit is costed at

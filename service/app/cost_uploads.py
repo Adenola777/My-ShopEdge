@@ -39,6 +39,12 @@ and any cost it would replace. Apply takes matched rows and the needs review row
 chose, and dates each cost from the row's own date, or today when the file has none. The
 `rows_unmatched` count, the database's own column, is no match and invalid cost together.
 A match stored before this change used `unmatched`, which is read as no match.
+
+NEEDS REVIEW ON PRODUCTS, A36 ITEM 5 (11 October 2026)
+
+A match records the variants with a needs review row in `cost_upload_reviews` (migration 0034),
+and applying the upload clears them, so Products can show which products wait on the seller's
+decision. When that holds is in 0034.
 """
 
 from __future__ import annotations
@@ -49,6 +55,7 @@ from datetime import date, datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
+import psycopg
 from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -406,6 +413,22 @@ def _result(upload_id: UUID, stored: list[dict[str, Any]]) -> CostMatchResult:
     )
 
 
+def _keep_reviews(conn, shop_id: UUID, upload_id: UUID, sku_ids: set[str]) -> None:
+    """Records the variants this upload leaves waiting on the seller (migration 0034), which
+    makes their products Needs review. An empty set clears them. Before 0034 is applied the
+    table is missing, and the upload works as it did, with no product shown as Needs review."""
+    try:
+        with conn.transaction():
+            conn.execute("delete from cost_upload_reviews where cost_upload_id = %s",
+                         (str(upload_id),))
+            for sku in sorted(sku_ids):
+                conn.execute(
+                    "insert into cost_upload_reviews (cost_upload_id, shop_id, sku_id) "
+                    "values (%s, %s, %s)", (str(upload_id), str(shop_id), sku))
+    except psycopg.errors.UndefinedTable:
+        pass
+
+
 @router.post("/shops/{shopId}/cost-uploads/{uploadId}/match", dependencies=[Depends(require_feature("costs"))], response_model=CostMatchResult)
 def match_cost_upload(
     account: Annotated[Account, Depends(require_account)],
@@ -462,6 +485,8 @@ def match_cost_upload(
             for o in outcomes
         ]
         storage.put_bytes(_rows_key(row["storage_key"]), json.dumps(stored).encode(), "application/json")
+        _keep_reviews(conn, shop_id, uploadId,
+                      {r["sku_id"] for r in stored if r["outcome"] == "needs_review" and r["sku_id"]})
         result = _result(uploadId, stored)
         conn.execute(
             "update cost_uploads set status = 'confirmed', rows_total = %s, rows_matched = %s, "
@@ -533,6 +558,8 @@ def apply_cost_upload(
             "update cost_uploads set status = 'applied', confirmed_at = now() where id = %s",
             (str(uploadId),),
         )
+        # The seller has decided every row, replacing a cost or keeping it.
+        _keep_reviews(conn, shop_id, uploadId, set())
         result = _result(uploadId, stored)
         record(conn, account.id, op, idempotency_key, digest, 200, result.model_dump(mode="json"))
     return result
