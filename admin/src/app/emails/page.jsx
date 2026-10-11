@@ -21,7 +21,7 @@ export default async function Emails() {
   return (
     <section>
       <h1>Notice emails</h1>
-      <p className="lede">Emails sent through Resend for the notices NTF-2, A16.3, A5.7 and A34 name.</p>
+      <p className="lede">Emails sent through Postmark for the notices NTF-2, A16.3, A5.7 and A34 name.</p>
       {loaded.state !== "ok" ? <Gate loaded={loaded} /> : (
         <>
           <div className="tiles">
@@ -33,7 +33,7 @@ export default async function Emails() {
           {loaded.data.problems.length === 0 ? <p className="note">No email is waiting or has failed.</p> : (
             <div className="scroll">
               <table>
-                <thead><tr><th>Written</th><th>Account</th><th>Notice</th><th>State</th><th className="num">Tries</th><th>Resend's answer</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Written</th><th>Account</th><th>Notice</th><th>State</th><th className="num">Tries</th><th>Postmark's answer</th><th>Actions</th></tr></thead>
                 <tbody>
                   {loaded.data.problems.map((/** @type {any} */ p) => (
                     <tr key={p.notification_id}>

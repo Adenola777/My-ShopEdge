@@ -45,7 +45,7 @@ the sync, the figures and the exports carry on (A16.3, "What never happens").
 THE EMAIL A16.3 ASKS FOR
 
 `notify_order_limit` writes one in-app notice per account per billing period when the count
-reaches 100 per cent. Since 10 October 2026 `notice_email` emails that notice through Resend
+reaches 100 per cent. Since 10 October 2026 `notice_email` emails that notice through Postmark
 unless the seller has switched email off, once migration 0031 is applied. The note of
 9 October saying the email waited on a provider is replaced by this one.
 """

@@ -1,7 +1,9 @@
 """Which notices are emailed, and the sweep that sends them. Written 10 October 2026.
 
-Needs migration 0031. **Unverified against Resend**, like `mailer.py`: the sweep has run only
-against a local PostgreSQL 16 and a stand-in for Resend (`testdata/notice_email_check.py`).
+Needs migration 0031. **Unverified against Postmark**, like `mailer.py`: the sweep has run only
+against a local PostgreSQL 16 and a stand-in for the email provider
+(`testdata/notice_email_check.py`). The provider was Resend when this was written and Postmark
+from later the same day.
 
 WHICH NOTICES ARE EMAILED
 
@@ -34,15 +36,18 @@ email"), when the account is closing, when the seller marked it done before it w
 it is more than three days old when first tried. The last rule exists so that a sender that was
 unconfigured for a while does not deliver a backlog of stale news when it starts.
 
-While `RESEND_API_KEY` is unset the sweep does nothing and leaves every notice pending.
+While `POSTMARK_SERVER_TOKEN` is unset the sweep does nothing and leaves every notice pending.
 
 SENDING ONCE
 
 Each notice is sent in its own `tenant()` transaction, locked with `for update skip locked`, so
-the daily job and a webhook's sweep never both send it. A process that dies after Resend
-accepted the email and before the commit leaves the notice pending, and the next attempt reuses
-the idempotency key `notice-<id>`, which Resend honours for 24 hours. A refusal is counted, and
-the third marks the notice `failed`.
+the daily job and a webhook's sweep never both send it. A process that dies after Postmark
+accepted the email and before the commit leaves the notice pending, and the next attempt sends
+it again, because Postmark takes no idempotency key. The seller would then receive the same
+notice twice. That window is the time between Postmark's answer and one row's commit, and it
+was preferred to the opposite fault, a notice marked sent that never left. Each email carries
+`notice-<id>` as metadata, so a repeat can be traced. A refusal is counted, and the third marks
+the notice `failed`.
 """
 
 from __future__ import annotations
