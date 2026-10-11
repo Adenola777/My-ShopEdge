@@ -288,7 +288,7 @@ a:hover { color: var(--orange-700); }
 /* On a phone the bottom tabs are Overview, Reconcile, Products, Exports and More (A36.1
    item 4). Returns, Stock, VAT and tax and Settings are on the More page, and an area's
    pages are the row above the page. */
-.tabs__area--rail, .tabs__pages { display: none; }
+.tabs__area--rail, .tabs__pages, .tabs__tab--toggle { display: none; }
 
 /* The pages of an area, on a phone: a row of chips that wraps onto a second line when it
    does not fit. Until 10 October 2026 the row scrolled sideways, which hid the last page off
@@ -337,7 +337,7 @@ a:hover { color: var(--orange-700); }
     height: auto;
     flex-direction: column;
     justify-content: flex-start;
-    gap: var(--space-1);
+    gap: var(--space-2);
     padding: 100px var(--space-3) var(--space-4);
     border-top: 0;
     background: var(--rail);
@@ -345,7 +345,24 @@ a:hover { color: var(--orange-700); }
     overflow-y: auto;
   }
   .tabs__area { flex: none; max-width: none; flex-direction: column; }
-  .tabs__tab { flex: none; min-height: 40px; flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding: 0 var(--space-3); font-size: 0.9375rem; }
+  .tabs__tab { flex: none; min-height: 44px; flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding: 0 var(--space-3); font-size: 0.9375rem; }
+  /* An area with several pages is a button that folds them away (A37.1 item 8). */
+  .tabs__tab--link { display: none; }
+  .tabs__tab--toggle {
+    display: flex;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--ease), color var(--ease);
+  }
+  .tabs__tab--toggle[data-current] { background: var(--orange-50); color: var(--orange-600); }
+  .tabs__chevron { width: 16px !important; height: 16px !important; margin-left: auto; transition: transform var(--ease); }
+  .tabs__tab--toggle[aria-expanded="true"] .tabs__chevron { transform: rotate(90deg); }
   /* No side lines on a larger screen, at the owner's request: the active area is marked by
      its background and colour alone. */
   .tabs__tab[aria-current]::after { display: none; }
@@ -353,12 +370,12 @@ a:hover { color: var(--orange-700); }
   .tabs__tab[aria-current] { background: var(--orange-50); }
   .tabs__tab:hover { color: var(--orange-700); }
   /* Inside an open area the page in use carries the mark, so the area's own row is quieter. */
-  .tabs__area--open .tabs__tab[aria-current="true"] { background: transparent; }
-  .tabs__pages { display: block; list-style: none; margin: 2px 0 var(--space-2); padding: 0 0 0 34px; }
+  .tabs__area--open .tabs__tab--toggle[data-current="true"] { background: transparent; }
+  .tabs__pages { display: grid; gap: var(--space-2); list-style: none; margin: var(--space-2) 0 var(--space-2); padding: 0 0 0 34px; }
   .tabs__pages a {
     display: flex;
     align-items: center;
-    min-height: 34px;
+    min-height: 40px;
     padding: 0 var(--space-3);
     border-radius: var(--radius);
     color: var(--ink-700);
