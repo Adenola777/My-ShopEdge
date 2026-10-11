@@ -19,7 +19,7 @@ h1, h2, h3 { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing
 h1 { font-size: clamp(30px, 5vw, 40px); margin: 8px 0 6px; }
 h2 { font-size: 21px; margin: 40px 0 10px; }
 h3 { font-size: 17px; margin: 24px 0 6px; }
-a { color: var(--orange-solid); }
+a { color: #C4400C; }
 .wrap { max-width: 820px; margin: 0 auto; padding: 0 16px; }
 header { border-bottom: 1px solid var(--line); }
 header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 76px; }

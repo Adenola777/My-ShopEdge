@@ -213,7 +213,7 @@ function PlanCard({ plan, cycle, current, signedIn, onChoose }) {
   const mine = current === plan.slug;
   const label = buttonLabel(plan, current, signedIn);
   return (
-    <article role="listitem" className={`card plan-card${plan.highlight ? " plan-card--popular" : ""}${mine ? " plan-card--current" : ""}`}
+    <div role="listitem" className={`card plan-card${plan.highlight ? " plan-card--popular" : ""}${mine ? " plan-card--current" : ""}`}
              aria-labelledby={`plan-${plan.slug}-name`} data-testid={`plan-card-${plan.slug}`}>
       <div className="plan-card__badges">
         {mine && <span className="chip chip--quiet plan-card__current">Current</span>}
@@ -245,7 +245,7 @@ function PlanCard({ plan, cycle, current, signedIn, onChoose }) {
           </button>
         )}
       </p>
-    </article>
+    </div>
   );
 }
 
@@ -255,7 +255,7 @@ function Comparison({ plans, current }) {
     <section className="pricing__section" aria-labelledby="compare-title">
       <h2 id="compare-title" className="overview__heading">Compare plans</h2>
       {/* On a phone the table scrolls sideways, so it takes focus for keyboard scrolling. */}
-      <div className="card compare" tabIndex={0} role="region" aria-labelledby="compare-title">
+      <div className="card compare" tabIndex={0} role="region" aria-label="Compare plans, table">
         <table className="compare__table">
           <caption className="visually-hidden">What each plan includes</caption>
           <thead>

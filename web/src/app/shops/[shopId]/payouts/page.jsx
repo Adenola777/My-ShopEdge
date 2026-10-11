@@ -21,6 +21,7 @@
  * payout has its statement.
  */
 
+import { Pager } from "@/components/Pager";
 import Link from "next/link";
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
@@ -106,9 +107,12 @@ export default async function PayoutsPage({ params, searchParams }) {
         )}
       </div>
 
-      {next && (
-        <p className="overview__more"><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/payouts?${new URLSearchParams({ cursor: next })}`}>Older payouts</Link></p>
-      )}
+      <Pager
+        next={next ? `/shops/${shopId}/payouts?${new URLSearchParams({ cursor: next })}` : null}
+        first={cursor ? `/shops/${shopId}/payouts` : null}
+        nextLabel="Older payouts"
+        label="Payout pages"
+      />
     </section>
   );
 }

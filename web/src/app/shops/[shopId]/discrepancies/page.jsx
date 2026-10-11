@@ -15,6 +15,7 @@
  * service says the fact is the seller's own (`correctable`).
  */
 
+import { Pager } from "@/components/Pager";
 import Link from "next/link";
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
@@ -162,16 +163,11 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
         </div>
       )}
 
-      {next_cursor && (
-        <p className="pager">
-          <Link
-            className="btn btn--quiet"
-            href={`${base}?${new URLSearchParams({ status, ...(query.kind ? { kind: query.kind } : {}), cursor: next_cursor })}`}
-          >
-            Next page
-          </Link>
-        </p>
-      )}
+      <Pager
+        next={next_cursor ? `${base}?${new URLSearchParams({ status, ...(query.kind ? { kind: query.kind } : {}), cursor: next_cursor })}` : null}
+        first={query.cursor ? `${base}?${new URLSearchParams({ status, ...(query.kind ? { kind: query.kind } : {}) })}` : null}
+        label="Issue pages"
+      />
     </section>
   );
 }

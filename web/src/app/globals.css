@@ -1008,7 +1008,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .switch a[aria-current="true"] { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-300); font-weight: 650; }
 
 .muted { color: var(--ink-500); }
-.pager { margin-top: var(--space-4); text-align: right; }
+.pager { margin-top: var(--space-4); display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-3); }
+.pager__next { margin-left: auto; }
 .footnote { color: var(--ink-700); font-size: 0.875rem; font-style: normal; margin: var(--space-2) 0 0; }
 
 /* --- forms on the shop screens --------------------------------------------------- */
@@ -1263,3 +1264,13 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 @media (max-width: 720px) { .acct__label { display: none; } }
 .crumb a { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600; }
 .crumb a::before { content: "\2190"; font-weight: 400; }
+
+/* 11 October 2026, the accessibility sweep: on a phone a checked return's chip and refund wrap
+   instead of pushing the row past the screen, and a row of filters scrolls within itself. */
+.rows li > span:first-child { min-width: 0; }
+@media (max-width: 480px) {
+  .products__figure { flex: 0 1 auto; max-width: 48%; }
+  .products__figure .chip { white-space: normal; text-align: right; }
+}
+.switch--compact { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.switch--compact::-webkit-scrollbar { display: none; }

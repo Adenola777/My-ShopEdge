@@ -39,6 +39,7 @@
  * Discrepancies.
  */
 
+import { Pager } from "@/components/Pager";
 import Link from "next/link";
 import { api, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
@@ -154,16 +155,12 @@ export default async function NotificationsPage({ params, searchParams }) {
         </div>
       )}
 
-      {next_cursor && (
-        <p className="pager">
-          <Link
-            className="btn btn--quiet"
-            href={`${base}?${new URLSearchParams({ ...(resolved ? { show: "resolved" } : {}), cursor: next_cursor })}`}
-          >
-            Older notices
-          </Link>
-        </p>
-      )}
+      <Pager
+        next={next_cursor ? `${base}?${new URLSearchParams({ ...(resolved ? { show: "resolved" } : {}), cursor: next_cursor })}` : null}
+        first={query.cursor ? `${base}${resolved ? "?show=resolved" : ""}` : null}
+        nextLabel="Older notices"
+        label="Notification pages"
+      />
     </section>
   );
 }

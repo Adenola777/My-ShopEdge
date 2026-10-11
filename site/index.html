@@ -259,7 +259,7 @@
   .footer-brand img { height: 26px; margin-bottom: 14px; }
   .footer-brand p { font-size: 13px; color: var(--ink-soft); max-width: 32ch; line-height:1.6; margin:0; }
   .footer-nav { display:flex; gap: 48px; flex-wrap: wrap; }
-  .footer-col h4 { font-size:12.5px; font-weight:600; color: var(--ink-faint); margin:0 0 12px; }
+  .footer-col h4, .footer-col__title { font-size:12.5px; font-weight:600; color: var(--ink-faint); margin:0 0 12px; }
   .footer-col a { display:block; font-size:13.5px; color: var(--ink-soft); text-decoration:none; margin-bottom:9px; }
   .footer-col a:hover { color: var(--ink); }
   .footer-identity { font-style:normal; font-size:13.5px; color: var(--ink-soft); line-height:1.75; max-width: 34ch; }
@@ -431,10 +431,14 @@
   @media (max-width: 860px) { .to-top { bottom: 92px; right: 14px; width: 42px; height: 42px; } .nav.is-slim .nav-inner { height: 64px; } .nav.is-slim .logo-lockup img { height: 40px; } }
   @media (max-width: 420px) { .nav-actions .nav-login { display: none; } }
   @media (prefers-reduced-motion: reduce) { .nav, .nav-inner, .to-top { transition: none; } }
+  .footer-col__title { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin: 0 0 12px; }
+  .skip-link { position: absolute; left: 16px; top: -60px; z-index: 100; background: var(--ink); color: var(--white); padding: 10px 16px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+  .skip-link:focus { top: 12px; }
 </style>
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to content</a>
 <section id="marketing" class="screen"><span id="top"></span>
   <nav class="nav">
     <div class="wrap nav-inner">
@@ -471,6 +475,7 @@
     </div>
   </nav>
 
+  <main id="main">
   <header class="hero">
     <div class="wrap hero-grid">
       <div>
@@ -682,7 +687,9 @@
     <a class="btn final-cta__btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start free with Explorer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </div>
 
-  <footer>
+  </main>
+
+  <footer role="contentinfo">
     <div class="wrap">
       <div class="footer-top">
         <div class="footer-brand">
@@ -692,7 +699,7 @@
         </div>
         <div class="footer-nav">
           <div class="footer-col">
-            <h4>Product</h4>
+            <h3 class="footer-col__title">Product</h3>
             <a href="#features">Features</a>
             <a href="#how">How it works</a>
             <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
@@ -701,23 +708,23 @@
             <a href="https://app.myshopedge.inspirecraftglobal.com/handler/sign-in">Log in</a>
           </div>
           <div class="footer-col">
-            <h4>Resources</h4>
+            <h3 class="footer-col__title">Resources</h3>
             <a href="/tools/tiktok-shop-payout-explainer">Payout Explainer</a>
             <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
           </div>
           <div class="footer-col">
-            <h4>Legal</h4>
+            <h3 class="footer-col__title">Legal</h3>
             <a href="https://app.myshopedge.inspirecraftglobal.com/legal/privacy.html">Privacy Policy</a>
             <a href="https://app.myshopedge.inspirecraftglobal.com/legal/terms.html">Terms and Conditions</a>
             <a href="https://app.myshopedge.inspirecraftglobal.com/legal/cookies.html">Cookie Policy</a>
           </div>
           <div class="footer-col">
-            <h4>Company</h4>
+            <h3 class="footer-col__title">Company</h3>
             <a href="mailto:support@inspirecraftglobal.com">Contact</a>
             <a href="mailto:info@inspirecraftglobal.com">info@inspirecraftglobal.com</a>
           </div>
           <div class="footer-col">
-            <h4>Inspirecraft Global Ltd</h4>
+            <h3 class="footer-col__title">Inspirecraft Global Ltd</h3>
             <address class="footer-identity">
               Company No. 16159924<br>
               Maisonette 3, 23 Watkins Road, Leicester, United Kingdom<br>
