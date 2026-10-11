@@ -5301,6 +5301,17 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CursorPage"] & {
                         settlements: components["schemas"]["Settlement"][];
+                        /** @description Payouts TikTok lists that no statement names, the Unmatched status of A36.2 answer 2, newest first and at most 100. Served on the first page only, and empty on later pages. Read from TikTok's Get Payments since 11 October 2026 (A11.5 as amended, A36 item 6, migration 0035). */
+                        unmatched?: {
+                            tiktok_payment_id: string;
+                            /** @description TikTok's own status for the payout, such as PAID. */
+                            status?: string | null;
+                            amount: components["schemas"]["Money"];
+                            /** Format: date-time */
+                            created_at?: string | null;
+                            /** Format: date-time */
+                            paid_at?: string | null;
+                        }[];
                     };
                 };
             };

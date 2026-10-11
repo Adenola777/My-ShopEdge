@@ -142,10 +142,20 @@ than that.
 bank reconciliation is out of scope under PRD 6.2, *payments, lending, or any regulated
 financial activity*.
 
+**Amended 11 October 2026 by the owner** (see A11.5): the endpoint is read for one purpose
+only, to find a payout with no statement behind it.
+
 ## A11.5 Three scope rulings
 
 **Bank reconciliation is out.** No open banking provider, no account matching, and
 `GET /finance/202309/payments` is not called.
+
+**Amended by the owner on 11 October 2026.** `GET /finance/202309/payments` may be read for one
+purpose only: to find a payout TikTok lists that no statement names, which A36.2 calls
+Unmatched. Bank reconciliation stays out of scope. Nothing is matched to a bank account, and
+the masked `bank_account` TikTok returns is not stored. The fields read are from TikTok's Get
+Payments page, whose response example the owner pasted the same day. Migration 0035 and
+`tiktok_sync.sync_payments` hold the detail, and A36.14 records what was built.
 
 A consequence follows. No TikTok endpoint returns the text a seller sees on a bank
 statement. `settlements.settlement_reference` therefore has no automatic source. It remains

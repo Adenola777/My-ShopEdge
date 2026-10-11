@@ -19,6 +19,9 @@ statement and the month it settled. Nothing is ever reversed. So:
     calculator gives the SKU breakdown (A11.2), and every entry is posted with the statement
     and its London month. A statement already posted is never posted again; only its payment
     status and payment time are brought up to date, because `settlements` is not append-only.
+  * `sync_payments`, run at the end of `sync_finance` since 11 October 2026, keeps TikTok's
+    own list of payouts in `tiktok_payments`, so a payout no statement names can be shown as
+    Unmatched (A11.5 as amended, A36 item 6). It writes no ledger entry.
 
 A consequence the owner accepted: a sale shows on the sales basis only once it settles, so
 recent weeks read low and the screens mark them incomplete.
@@ -86,6 +89,7 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import psycopg
 from psycopg.types.json import Jsonb
 
 from .alert_notices import raise_alert_notices
@@ -98,6 +102,7 @@ from .tiktok_api import (
     ORDER_DETAIL_PATH,
     ORDER_SEARCH_BODY,
     ORDER_SEARCH_PATH,
+    PAYMENTS_PATH,
     RETURN_SEARCH_BODY,
     RETURN_SEARCH_PATH,
     STATEMENT_TXNS_PATH,
@@ -508,7 +513,62 @@ def sync_finance(conn, shop_id: str, client: Client, since: datetime, until: dat
             except TikTokError as err:
                 tally.failed += 1
                 tally.notes.append(f"statement {s['id']}: {err}")
+    sync_payments(conn, shop_id, client, since, until, tally)
     return tally
+
+
+def _amount(field: Any) -> tuple[int, str] | None:
+    """A payment amount is an object, `{"value": "100", "currency": "GBP"}`, on TikTok's Get
+    Payments page. Read in major units as the statements' amounts are; unverified (0035)."""
+    if not isinstance(field, dict) or field.get("value") in (None, ""):
+        return None
+    currency = field.get("currency") or "GBP"
+    return pence(field["value"], currency), currency
+
+
+def sync_payments(conn, shop_id: str, client: Client, since: datetime, until: datetime,
+                  tally: Tally) -> None:
+    """TikTok's payouts in the window, kept so one with no statement shows as Unmatched
+    (A11.5 as amended on 11 October 2026, A36 item 6, migration 0035). Read after the
+    statements, so a payout and the statement that names it arrive in the same run.
+
+    A refusal is noted and never fails the finance read, because statements are what the
+    figures are built on and a payout list that cannot be read must not stop them. Before
+    0035 is applied the table is missing, and that is noted the same way."""
+    query = {"sort_field": "create_time", "sort_order": "ASC",
+             "create_time_ge": str(int(since.timestamp())),
+             "create_time_lt": str(int(until.timestamp()))}
+    try:
+        with conn.transaction():
+            for page in client.pages("GET", PAYMENTS_PATH, query):
+                for pay in page.get("payments") or []:
+                    amount = _amount(pay.get("amount"))
+                    if not pay.get("id") or amount is None:
+                        tally.notes.append(f"payment {pay.get('id')}: no id or amount, not kept")
+                        continue
+                    if amount[1] not in MINOR_UNIT_EXPONENT:
+                        tally.notes.append(f"payment {pay['id']}: currency {amount[1]} is not read")
+                        continue
+                    settled = _amount(pay.get("settlement_amount"))
+                    reserve = _amount(pay.get("reserve_amount"))
+                    conn.execute(
+                        "insert into tiktok_payments (shop_id, tiktok_payment_id, status, "
+                        "amount_minor, settlement_amount_minor, reserve_amount_minor, currency, "
+                        "created_at, paid_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                        "on conflict (shop_id, tiktok_payment_id) do update set "
+                        "status = excluded.status, amount_minor = excluded.amount_minor, "
+                        "settlement_amount_minor = excluded.settlement_amount_minor, "
+                        "reserve_amount_minor = excluded.reserve_amount_minor, "
+                        "paid_at = excluded.paid_at, read_at = now()",
+                        (shop_id, str(pay["id"]), pay.get("status"), amount[0],
+                         settled[0] if settled else None, reserve[0] if reserve else None,
+                         amount[1], utc(pay.get("create_time")), utc(pay.get("paid_time"))))
+    except TikTokError as err:
+        tally.notes.append(f"payments not read: {err}")
+        return
+    except psycopg.errors.UndefinedTable:
+        tally.notes.append("payments not kept: migration 0035 is not applied")
+        return
 
 
 # --- the first read of a shop ----------------------------------------------------------------

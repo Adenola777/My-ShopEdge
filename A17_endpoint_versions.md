@@ -53,7 +53,7 @@ Other renames between the two versions, recorded so nobody reintroduces the old 
 | Settlement list | `/finance/202309/statements` | Yes, no newer version exists |
 | Awaiting settlement | `/finance/202507/orders/unsettled` | Yes |
 | VAT registration | `/finance/202504/tax_information` | Yes |
-| Payments | `/finance/202309/payments` | Deliberately unused, A11 section 7 |
+| Payments | `/finance/202309/payments` | Read since 11 October 2026 to find a payout with no statement only (A11.5 as amended) |
 
 ## 17.3 The history window is not stated, so it has to be measured
 

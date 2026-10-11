@@ -29,6 +29,8 @@ answering Unix times as TikTok does: 36 of 36 on both again.
 Rerun after A31.7, with a second shop sharing the authorisation: 37 of 37 on both.
 Rerun on 30 September 2026 with the stock read (A32) and STK-8's cases TC-STK-08 to 11:
 45 of 45 on both datasets.
+Rerun on 11 October 2026 with TikTok's payouts read for Unmatched (A36 item 6): 50 of 50 on
+both datasets.
 """
 
 import base64
@@ -90,6 +92,23 @@ def answer(data):
 NEW_ACCESS_EXPIRES = 1791309162
 
 
+def _payment(pid, when, value):
+    """One payout in the shape of the example on TikTok's Get Payments page, which the owner
+    pasted on 11 October 2026 (A36 item 6)."""
+    gbp = lambda v: {"value": v, "currency": "GBP"}  # noqa: E731
+    return {"create_time": when, "id": pid, "status": "PAID", "amount": gbp(value),
+            "settlement_amount": gbp(value), "reserve_amount": gbp("0"),
+            "payment_amount_before_exchange": gbp(value), "exchange_rate": "1.000000",
+            "paid_time": when, "bank_account": "***********1234"}
+
+
+# One payout per statement, named by the statement's payment_id, and one no statement names.
+PAYMENTS = [_payment(st["payment_id"], st["payment_time"], st["settlement_amount"])
+            for st in STATEMENTS if st.get("payment_id") and st.get("payment_time")]
+ORPHAN = "PAY-NO-STATEMENT-0001"
+PAYMENTS.append(_payment(ORPHAN, max(x["create_time"] for x in PAYMENTS), "12.34"))
+
+
 def fake(method, url, params, headers, body):
     """Answers as TikTok would, from the payload files. Records every request it receives."""
     path = urlparse(url).path
@@ -103,6 +122,10 @@ def fake(method, url, params, headers, body):
     if path == tiktok_api.STATEMENTS_PATH:
         ge, lt = int(params["statement_time_ge"]), int(params["statement_time_lt"])
         return answer({"statements": [s for s in STATEMENTS if ge <= s["statement_time"] < lt],
+                       "next_page_token": ""})
+    if path == tiktok_api.PAYMENTS_PATH:
+        ge, lt = int(params["create_time_ge"]), int(params["create_time_lt"])
+        return answer({"payments": [x for x in PAYMENTS if ge <= x["create_time"] < lt],
                        "next_page_token": ""})
     if path.startswith("/finance/202501/statements/"):
         return STMT_TXNS[path.split("/")[4]]
@@ -264,6 +287,23 @@ def main():
             "where le.shop_id = %s and le.settlement_month <> date_trunc('month', "
             "s.statement_time at time zone 'Europe/London')::date", (shop,)).fetchone()[0]
         check(months == 0, "every entry's settlement month is its statement's London month")
+        # A36 item 6: the payouts are kept, the one no statement names is Unmatched, and the
+        # masked bank account is not stored anywhere.
+        kept = conn.execute("select count(*) from tiktok_payments where shop_id = %s", (shop,)).fetchone()[0]
+        check(kept == len(PAYMENTS), f"{kept} payouts kept for {len(PAYMENTS)} TikTok listed")
+        lone = [r[0] for r in conn.execute(
+            "select p.tiktok_payment_id from tiktok_payments p where p.shop_id = %s and not exists "
+            "(select 1 from settlements s where s.shop_id = p.shop_id and s.tiktok_payment_id = p.tiktok_payment_id)",
+            (shop,)).fetchall()]
+        check(lone == [ORPHAN], f"only the payout no statement names is unmatched: {lone}")
+        same = conn.execute(
+            "select count(*) from tiktok_payments p join settlements s on s.shop_id = p.shop_id "
+            "and s.tiktok_payment_id = p.tiktok_payment_id where p.shop_id = %s "
+            "and p.amount_minor = s.statement_amount_minor", (shop,)).fetchone()[0]
+        check(same == len(PAYMENTS) - 1, f"each matched payout reads as its statement's amount: {same}")
+        bank = conn.execute("select count(*) from information_schema.columns where table_name = 'tiktok_payments' "
+                            "and column_name like '%%bank%%'").fetchone()[0]
+        check(bank == 0, "no bank account column exists")
         entries_before = n[3]
         sold = {r[0] for r in conn.execute(
             "select distinct k.tiktok_sku_id from order_lines l join skus k on k.id = l.sku_id "
@@ -282,6 +322,9 @@ def main():
         runs = conn.execute("select kind, count(*) from sync_runs where shop_id = %s group by kind order by kind",
                             (shop,)).fetchall()
     check(after == entries_before, f"a second run writes no ledger entry: {entries_before} then {after}")
+    with psycopg.connect(url) as conn:
+        again = conn.execute("select count(*) from tiktok_payments where shop_id = %s", (shop,)).fetchone()[0]
+    check(again == len(PAYMENTS), f"a second run keeps each payout once: {again}")
     check("error" not in second[0], "the second run ran without an error")
     check(dict(runs) == {"backfill": 4, "incremental": 4}, f"the first run is a backfill, the second incremental: {runs}")
     cal = [p for m, path, p in calls if path == tiktok_api.STATEMENTS_PATH][0]

@@ -165,7 +165,10 @@ def settlements_list():
            NOW, date(2026,8,15), None, "PAID", "GBP", 14750, 13750, -1000, None, 0)
     settlements.tenant = with_conn(settlements, [
         ("domain = 'finance'", Result(["latest","last_success"], [("completed", NOW)])),
-        ("from settlements where", Result(cols, [row]))])
+        ("from settlements where", Result(cols, [row])),
+        # A36 item 6: one payout TikTok lists that no statement names.
+        ("from tiktok_payments p", Result(["i","s","a","c","t","p"],
+                                          [("3458767051733897992", "PAID", 10000, "GBP", NOW, NOW)]))])
     r = client.get(f"/v1/shops/{SHOP}/settlements")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
     b = r.json()["settlements"][0]
@@ -173,6 +176,11 @@ def settlements_list():
     _assert(b["total_reserve"]["amount_minor"] == -1000, "reserve must keep its sign")
     _assert(b["payable_amount"]["amount_minor"] == 13750)
     _assert(b["reconcile_status"] == "reconciled" and b["difference"]["amount_minor"] == 0, b)
+    u = r.json()["unmatched"]
+    _assert(len(u) == 1 and u[0]["tiktok_payment_id"] == "3458767051733897992"
+            and u[0]["amount"]["amount_minor"] == 10000, u)
+    r = client.get(f"/v1/shops/{SHOP}/settlements", params={"cursor": settlements.encode_cursor(NOW, row[0])})
+    _assert(r.status_code == 200 and r.json()["unmatched"] == [], "a later page carries no unmatched list")
 check("GET settlements returns statement, reserve and payout as three figures", settlements_list)
 
 
