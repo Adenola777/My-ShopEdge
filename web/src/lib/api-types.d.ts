@@ -3556,6 +3556,18 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /**
+             * @description A shop TikTok authorised already belongs to a different MyShopEdge account.
+             *     The code is `shop_already_connected`, and nothing from this authorisation is kept.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     listShops: {
