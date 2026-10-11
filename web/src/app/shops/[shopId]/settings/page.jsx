@@ -34,8 +34,8 @@ export const metadata = { title: "TikTok Shop connection" };
 const CONNECTION = {
   connected: ["Connected", "good"],
   pending: ["Being read", "warn"],
-  needs_reconnect: ["Reconnect needed", "critical"],
-  disconnected: ["Disconnected", "critical"],
+  needs_reconnect: ["Reconnect needed", "review"],
+  disconnected: ["Disconnected", "quiet"],
 };
 
 /** @type {Record<string, string>} */

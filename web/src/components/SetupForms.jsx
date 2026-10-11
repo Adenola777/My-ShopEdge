@@ -214,10 +214,10 @@ const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
  */
 const ROW_STATUS = {
   matched: ["Matched", "good", "Ready to apply."],
-  needs_review: ["Needs review", "warn", "A different cost is already set. Choose the row to replace it."],
-  no_match: ["No match found", "strong", "No product in your shop has this code."],
-  duplicate: ["Duplicate", "quiet", "This code appears more than once in your file."],
-  invalid_cost: ["Invalid cost", "strong", "The amount or date in this row could not be read."],
+  needs_review: ["Needs your confirmation", "review", "A different cost is already set. Choose the row to replace it."],
+  no_match: ["No match found", "review", "No product in your shop has this code."],
+  duplicate: ["Duplicate", "review", "This code appears more than once in your file."],
+  invalid_cost: ["Invalid cost", "review", "The amount or date in this row could not be read."],
 };
 
 /**

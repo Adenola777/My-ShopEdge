@@ -26,7 +26,7 @@ export const metadata = { title: "Account, billing and plan" };
 const STATUS = {
   trialing: ["Free trial", "good"],
   active: ["Active", "good"],
-  past_due: ["Payment did not go through", "critical"],
+  past_due: ["Payment did not go through", "bad"],
   canceled: ["Ended", "quiet"],
   none: ["No plan yet", "warn"],
 };

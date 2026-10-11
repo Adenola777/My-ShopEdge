@@ -51,9 +51,9 @@ const SWITCH = [
 /** The brief's cost statuses (section 13), as the service serves them. @type {Record<string, [string, string]>} */
 const COST_STATUS = {
   complete: ["Complete", "good"],
-  cost_needed: ["Cost needed", "strong"],
-  partially_costed: ["Partially costed", "warn"],
-  needs_review: ["Needs review", "strong"],
+  cost_needed: ["Cost needed", "cost"],
+  partially_costed: ["Partially costed", "cost"],
+  needs_review: ["Needs review", "review"],
 };
 
 /** @type {Record<string, string>} */

@@ -119,7 +119,7 @@ export default async function DiscrepanciesPage({ params, searchParams }) {
             <article className="card" key={d.id}>
               <h2>
                 {DISCREPANCY_KIND[d.kind] ?? "A figure differs"}{" "}
-                <span className={chipClass(d.status === "open" ? "strong" : "quiet")}>
+                <span className={chipClass(d.status === "open" ? "review" : "quiet")}>
                   {d.status === "open" ? "Open" : (RESOLUTION[d.resolution ?? ""] ?? "Resolved")}
                 </span>
               </h2>

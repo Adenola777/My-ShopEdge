@@ -96,7 +96,7 @@ The honest summary is that the thinking is done and the building has started.
 
 ## The documents
 
-`A2` to `A36` are the rulings, one file per action. A35 holds the pricing tiers: what each plan includes, enforced by `service/app/entitlements.py`. A36 holds the owner's rulings of 10 October 2026 on aligning the web app with his brief, including that no figures are shown before a trial starts. A29 holds the dashboard rules and the
+`A2` to `A37` are the rulings, one file per action. A37 holds the visual system the owner set on 11 October 2026: Inter, no gradient outside the logo, orange for the primary action and the selected state, status chips with an icon as well as a colour, and his spacing. A35 holds the pricing tiers: what each plan includes, enforced by `service/app/entitlements.py`. A36 holds the owner's rulings of 10 October 2026 on aligning the web app with his brief, including that no figures are shown before a trial starts. A29 holds the dashboard rules and the
 rule that Python owns every financial and business rule. **A29.11 sets which document wins:
 the product rulings and the contract govern the master engineering skill, and a provider's
 documentation governs only facts about that provider.** A29.12 states why MyShopEdge exists. They are decisions rather than notes, so

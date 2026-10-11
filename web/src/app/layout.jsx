@@ -10,12 +10,12 @@
  * comes from `brand/`, and the icons and manifest are the ones A7.3 built
  * (`brand/head-snippet.html`).
  *
- * Fonts, WFW 1.1: Plus Jakarta Sans for text and Archivo for figures, self-hosted from the
- * @fontsource packages, so no request leaves for a font service.
+ * Fonts: Inter for text and figures since A37 (11 October 2026), which replaced WFW 1.1's
+ * Plus Jakarta Sans and Archivo. It is self-hosted from the @fontsource package, so no request
+ * leaves for a font service, and figures use its tabular numerals.
  */
 
-import "@fontsource-variable/plus-jakarta-sans";
-import "@fontsource-variable/archivo";
+import "@fontsource-variable/inter";
 import "./globals.css";
 import { StackProvider, StackTheme } from "@stackframe/stack";
 import { Analytics } from "@vercel/analytics/next";
