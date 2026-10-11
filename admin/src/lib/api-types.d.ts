@@ -1960,16 +1960,35 @@ export interface components {
                 reason?: string | null;
             }[];
         };
+        /**
+         * @description Annual prepaid, Annual billed monthly in twelve payments, or Monthly (A38). Annual prepaid is the default.
+         * @enum {string}
+         */
+        BillingCycle: "annual" | "annual_monthly" | "monthly";
+        /** @description One billing cycle's price. `charge` is one payment, `per_month` the monthly figure a plan card shows and `payments` the payments a term holds. `available` is false while the cycle's Stripe price is not configured, which is every cycle until the owner approves the prices (A38.3); a checkout then answers 503 and charges nothing. */
+        CyclePrice: {
+            cycle: components["schemas"]["BillingCycle"];
+            charge: components["schemas"]["Money"];
+            per_month: components["schemas"]["Money"];
+            payments: number;
+            /** @enum {string} */
+            interval: "year" | "month";
+            available: boolean;
+        };
+        /** @description One of the four plans of A38, 11 October 2026. Explorer is free and has no prices. `order_limit` and `history_days` are null where the plan has no limit. `features` lists what the product does today; `coming_soon` lists what the owner placed in the plan that is not built, which a client shows as Coming soon and never as included. */
         Plan: {
             /** @enum {string} */
-            slug: "starter" | "growth" | "pro";
+            slug: "explorer" | "starter" | "growth" | "pro";
             name: string;
-            strapline: string;
-            price: components["schemas"]["Money"];
-            order_limit: number;
-            history_months: number;
+            audience: string;
+            shop_limit: number;
+            order_limit: number | null;
+            history_days: number | null;
             features: string[];
-            highlight?: boolean;
+            coming_soon: string[];
+            highlight: boolean;
+            free: boolean;
+            prices: components["schemas"]["CyclePrice"][];
         };
         Subscription: {
             /** @enum {string} */
@@ -1982,7 +2001,15 @@ export interface components {
             current_period_end?: string | null;
             card_last4?: string | null;
             cancel_at_period_end?: boolean;
-            /** @description What the plan includes, by feature name (costs, profit, drilldown, exports, basis, scheduled_exports, export_history, priority_review). Starter holds none, Growth the first five and Pro all eight. With no trial started the list is empty, and with an ended plan it holds the last plan's features less the three export features (A36). The service checks the plan on every request, so this list is for display and grants nothing. Added 10 October 2026. */
+            /**
+             * @description The plan whose limits and features apply now. An account with no plan, or an ended one, is on Explorer for its limits (A38).
+             * @enum {string}
+             */
+            effective_plan?: "explorer" | "starter" | "growth" | "pro";
+            /** @description The running plan's billing cycle, worked out from its period's length, or null during a trial or with no plan. Annual billed monthly reads as monthly until its price exists (A38.5). */
+            cycle?: components["schemas"]["BillingCycle"] | null;
+            shop_limit?: number;
+            /** @description What the plan includes, by feature name (costs, profit, margin, drilldown, payout_detail, exports, vat, basis, scheduled_exports, export_history, priority_review). Explorer, which an account with no plan is on, holds costs and profit; Starter adds margin, drilldown and payout_detail; Growth adds exports, vat and basis; Pro holds all eleven (A38). With an ended plan it holds the last plan's features less the three export features. The service checks the plan on every request, so this list is for display and grants nothing. */
             features?: string[];
         };
         TrialStart: {
@@ -2020,12 +2047,12 @@ export interface components {
              * @description The contract. Clients branch on this, never on `title` or `status` alone.
              * @enum {string}
              */
-            code: "unauthenticated" | "token_expired" | "forbidden_shop" | "not_found" | "validation_failed" | "conflict" | "idempotency_key_conflict" | "rate_limited" | "shop_needs_reconnect" | "shop_region_unsupported" | "upstream_unavailable" | "internal_error" | "plan_upgrade_required" | "trial_required" | "plan_ended";
+            code: "unauthenticated" | "token_expired" | "forbidden_shop" | "not_found" | "validation_failed" | "conflict" | "idempotency_key_conflict" | "rate_limited" | "shop_needs_reconnect" | "shop_region_unsupported" | "upstream_unavailable" | "internal_error" | "plan_upgrade_required" | "trial_required" | "plan_ended" | "shop_limit_reached";
             /**
              * @description With `plan_upgrade_required`, the smallest plan that includes the operation. Added 10 October 2026.
              * @enum {string}
              */
-            required_plan?: "growth" | "pro";
+            required_plan?: "starter" | "growth" | "pro";
             /** @description With `plan_upgrade_required`, the feature the operation needs, as listed in `Subscription.features` and in each operation's `x-plan-feature`. */
             feature?: string;
         };
@@ -2478,8 +2505,11 @@ export interface components {
             state: "below" | "approaching" | "passed";
             order_count: number;
             order_limit: number;
-            /** @enum {string} */
-            plan: "starter" | "growth" | "pro";
+            /**
+             * @description Explorer's period is the London calendar month, because it has no billing period (A38).
+             * @enum {string}
+             */
+            plan: "explorer" | "starter" | "growth" | "pro";
             plan_name: string;
             /** Format: date-time */
             period_start: string;
@@ -2490,7 +2520,8 @@ export interface components {
                 /** @enum {string} */
                 slug: "starter" | "growth" | "pro";
                 name: string;
-                order_limit: number;
+                /** @description Null is unlimited (Pro, A38). */
+                order_limit: number | null;
             } | null;
         };
         NeedsYouItem: {
@@ -3183,7 +3214,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The shop exists but does not belong to this account, or, with code `plan_upgrade_required`, the account's plan does not include the operation. An operation with `x-plan-feature` names the feature its plan must include. Since A36 (10 October 2026) the account's state comes first. With no trial started the code is `trial_required` and only the import's progress, disconnecting and the alert settings answer. With an ended plan (canceled) the code is `plan_ended` for any write or export, and reading carries on. */
+        /** @description The shop exists but does not belong to this account, or, with code `plan_upgrade_required`, the account's plan does not include the operation. An operation with `x-plan-feature` names the feature its plan must include. Since A38 (11 October 2026) an account with no plan is on Explorer and is checked like any other plan; A36's `trial_required` is no longer answered. With an ended plan (canceled) the code is `plan_ended` for any write or export, and reading carries on. */
         ForbiddenShop: {
             headers: {
                 [name: string]: unknown;
@@ -3520,6 +3551,15 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            /** @description The account already holds as many shops as its plan allows (A38), so no shop was connected. The code is `shop_limit_reached` and `shop_limit` gives the plan's limit. A reconnection of a shop the account already holds is not refused. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             429: components["responses"]["RateLimited"];
         };
     };
@@ -3549,6 +3589,15 @@ export interface operations {
              *     The detail never echoes the code or the state back.
              */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The account already holds as many shops as its plan allows (A38), so no shop was connected. The code is `shop_limit_reached` and `shop_limit` gives the plan's limit. A reconnection of a shop the account already holds is not refused. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5563,8 +5612,9 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @example 14 */
+                        /** @example 30 */
                         trial_days: number;
+                        default_cycle: components["schemas"]["BillingCycle"];
                         plans: components["schemas"]["Plan"][];
                     };
                 };
@@ -5610,6 +5660,7 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     plan: "starter" | "growth" | "pro";
+                    cycle?: components["schemas"]["BillingCycle"];
                 };
             };
         };
@@ -5649,6 +5700,15 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationFailed"];
+            /** @description The plan's cycle has no Stripe price configured, which is every cycle until the owner approves the A38 prices, so nothing was started or charged (`plan_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     updateSubscription: {
@@ -5664,6 +5724,7 @@ export interface operations {
                     cancel_at_period_end?: boolean;
                     /** @enum {string} */
                     plan?: "starter" | "growth" | "pro";
+                    cycle?: components["schemas"]["BillingCycle"];
                 };
             };
         };

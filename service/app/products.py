@@ -43,7 +43,6 @@ from .auth import Account, require_account
 from .dates import business_today
 from .db import tenant
 from .entitlements import features_for, refuse
-from .entitlements import require as require_feature
 from .money import Money, money, per_unit
 from .money_lines import SHARED, VERBATIM, gross_margin, line_label
 from .settlements import MAX_LIMIT, decode_cursor, encode_cursor
@@ -53,7 +52,7 @@ from .stock import StockPosition
 router = APIRouter(tags=["Products"])
 
 # The pricing ruling's own sentence, shown wherever Starter would otherwise show profit.
-NOT_ON_PLAN = "Add product costs with Growth to see gross profit and margin by product."
+NOT_ON_PLAN = "Add product costs to see gross profit by product. Gross margin is available on Starter."
 
 # Net Proceeds is sales, refunds and platform deductions. It deliberately excludes
 # return_cost and write_off, which A4 carries separately through Return Loss, and excludes
@@ -354,6 +353,7 @@ def list_products(
     if basis == "cash" and "basis" not in plan:
         raise refuse("basis")
     profit = "profit" in plan
+    margin = "margin" in plan
     if not profit and measure == "kept":
         # Starter ranks by net proceeds (the pricing ruling of 10 October 2026), and the
         # response's `measure` says so.
@@ -461,7 +461,7 @@ def list_products(
             cost_status=(None if r.get("no_profit")
                          else cost_status(int(r.get("skus_sold") or 0), int(r["skus_without_cost"]),
                                           str(r["product_id"]) in to_review)),
-            gross_margin_after_returns=gross_margin(
+            gross_margin_after_returns=None if not margin else gross_margin(
                 int(r["kept_minor"]) if r["kept_minor"] is not None else None,
                 # Net sales on A36's definition, gross less discounts less refunds.
                 int(r["gross_sales_minor"]) + int(r.get("seller_discount_minor") or 0)
@@ -626,8 +626,9 @@ LABELS = {
 }
 
 
-@router.get("/shops/{shopId}/products/{productId}", response_model=ProductDetail,
-            dependencies=[Depends(require_feature("drilldown"))])
+# A product's page is on every plan since A38 (11 October 2026): Explorer lists its products
+# and opens each. The orders behind it, its transactions, stay Starter's (`drilldown`).
+@router.get("/shops/{shopId}/products/{productId}", response_model=ProductDetail)
 def get_product(
     account: Annotated[Account, Depends(require_account)],
     shop_id: Annotated[UUID, Depends(require_shop)],

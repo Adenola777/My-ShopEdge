@@ -1,5 +1,6 @@
-"""What each plan may use. Built 10 October 2026 from the owner's "MyShopEdge Final Pricing
-Packaging and Code Command", which the owner told this session to build that day.
+"""What each plan may use. Built 10 October 2026 (A35) and rebuilt 11 October 2026 to the
+owner's pricing and checkout specification (A38), which adds Explorer and moves product costs
+and gross profit onto every plan.
 
 WHERE THE PLAN COMES FROM
 
@@ -7,34 +8,31 @@ The plan is `subscriptions.plan_slug`, which only `billing._apply_stripe_subscri
 from the Stripe subscription's price identifier, on a verified webhook or on a read back from
 Stripe. A browser never sends a plan here, and nothing in this module reads one from a request.
 
-ACCESS BY ACCOUNT STATE (A36, the owner's ruling of 10 October 2026)
+ACCESS BY ACCOUNT STATE
 
-The owner first chose that an account with no live plan keeps everything (A35.1). Later the
-same day he ruled that the accounts without a plan are test accounts and that the brief's
-billing access rule applies from now on. `access_for_row` gives one of three answers:
+`access_for_row` gives one of three answers:
 
-  * `full`: a status in `billing.LIVE` (trialing, active, past_due) with a known plan. The
-    plan's features below apply.
-  * `none`: no subscription row, or one still `incomplete`. The seller may watch the import,
-    choose a plan and disconnect, and nothing else (`shop_access`). The service answers
-    403 `trial_required`.
+  * `full`: a status in `billing.LIVE` (trialing, active, past_due) with a paid plan. That
+    plan's features apply.
+  * `explorer`: no subscription row, or one still `incomplete`. Since A38 such an account is
+    on Explorer, the free plan, and sees its figures with Explorer's features. It replaces
+    A36's `none`, which closed every figure until a trial started.
   * `read_only`: `canceled`, which covers an ended trial or plan. The figures stay readable
     with the features of the plan the account last held, less exports, and nothing can be
     changed. The service answers 403 `plan_ended` to a write or an export.
 
-WHAT EACH PLAN HOLDS
+WHAT EACH PLAN HOLDS (A38.2)
 
-  * Starter: none of the features below. It keeps the Overview, the net proceeds chain,
-    payouts and statements, refunds and returns, products ranked by net proceeds and the VAT
-    threshold, none of which is gated.
-  * Growth: costs, profit, drilldown, exports and basis.
-  * Pro: everything in Growth, plus scheduled_exports, export_history and priority_review.
+  * Explorer: product costs, uploaded or typed, and gross profit.
+  * Starter: adds gross margin, the orders behind a figure and the full payout explanation.
+  * Growth: adds exports, the VAT threshold tracker and the cash basis.
+  * Pro: adds scheduled exports, export history and the payout review list.
 
 A seller's own copy of their data (`/me/export`) is not a plan feature. It is the seller's
 right under data protection law, so every plan keeps it.
 
-**Unverified against a real Starter seller.** Production held one subscription when queried on
-10 October 2026, a Starter trial. The gating has run in the smoke test and against the local
+**Unverified against a real seller on each plan.** Production held one subscription on
+11 October 2026, a Starter trial. The gating has run in the smoke test and against the local
 copy only.
 """
 
@@ -48,36 +46,50 @@ from fastapi import Depends
 from . import db
 from .auth import Account, require_account
 from .billing import LIVE
-from .plans import PLANS
 from .problems import Problem
 
 # Each feature, the plan that first holds it, and the sentence a refused request carries.
 FEATURES: dict[str, tuple[str, str]] = {
-    "costs": ("growth", "Product costs come with the Growth plan."),
-    "profit": ("growth", "Gross profit and margin come with the Growth plan."),
-    "drilldown": ("growth", "The transactions behind a figure come with the Growth plan."),
-    "exports": ("growth", "Exports come with the Growth plan."),
-    "basis": ("growth", "The cash basis comes with the Growth plan."),
-    "scheduled_exports": ("pro", "Scheduled exports come with the Pro plan."),
-    "export_history": ("pro", "Export history comes with the Pro plan."),
-    "priority_review": ("pro", "The payout review list comes with the Pro plan."),
+    "costs": ("explorer", "Product costs are on every plan."),
+    "profit": ("explorer", "Gross profit is on every plan."),
+    "margin": ("starter", "Gross margin by product is available on Starter."),
+    "drilldown": ("starter", "The orders behind a figure are available on Starter."),
+    "payout_detail": ("starter", "Full payout explanations are available on Starter."),
+    "exports": ("growth", "Exports are available on Growth."),
+    "vat": ("growth", "The VAT threshold tracker is available on Growth."),
+    "basis": ("growth", "The cash basis is available on Growth."),
+    "scheduled_exports": ("pro", "Scheduled exports are available on Pro."),
+    "export_history": ("pro", "Export history is available on Pro."),
+    "priority_review": ("pro", "The payout review list is available on Pro."),
 }
 
-ALL = frozenset(FEATURES)
-GROWTH = frozenset(f for f, (plan, _) in FEATURES.items() if plan == "growth")
-BY_PLAN: dict[str, frozenset[str]] = {"starter": frozenset(), "growth": GROWTH, "pro": ALL}
+_RANK = {"explorer": 0, "starter": 1, "growth": 2, "pro": 3}
+BY_PLAN: dict[str, frozenset[str]] = {
+    plan: frozenset(f for f, (first, _) in FEATURES.items() if _RANK[first] <= rank)
+    for plan, rank in _RANK.items()
+}
+ALL = BY_PLAN["pro"]
 # What an ended plan can no longer do, because each makes something new.
 EXPORTING = frozenset({"exports", "scheduled_exports", "export_history"})
 
 
 def access_for_row(row: dict | None) -> str:
-    """`full`, `none` or `read_only`, as the module's docstring sets out."""
+    """`full`, `explorer` or `read_only`, as the module's docstring sets out."""
     status = (row or {}).get("status")
-    if status in LIVE and row.get("plan_slug") in PLANS:
+    if status in LIVE and row.get("plan_slug") in BY_PLAN:
         return "full"
     if status == "canceled":
         return "read_only"
-    return "none"
+    return "explorer"
+
+
+def plan_for_row(row: dict | None) -> str:
+    """The plan whose limits and features apply: the paid plan while it is live, and
+    Explorer otherwise. An ended plan keeps its features for reading (`features_for_row`) but
+    its limits are Explorer's, because nothing new is bought on it."""
+    if access_for_row(row) == "full":
+        return row["plan_slug"]
+    return "explorer"
 
 
 def features_for_row(row: dict | None) -> frozenset[str]:
@@ -86,30 +98,24 @@ def features_for_row(row: dict | None) -> frozenset[str]:
     if access == "full":
         return BY_PLAN[row["plan_slug"]]
     if access == "read_only":
-        return BY_PLAN.get(row.get("plan_slug") or "", frozenset()) - EXPORTING
-    return frozenset()
+        return BY_PLAN.get(row.get("plan_slug") or "", BY_PLAN["explorer"]) - EXPORTING
+    return BY_PLAN["explorer"]
 
 
-# The shop routes a seller with no trial may use: the import's progress, disconnecting, and
-# the alert settings the Settings page reads. Matched on the method and the end of the path.
-ONBOARDING_ROUTES = (("GET", "/sync"), ("DELETE", "/connection"),
-                     ("GET", "/alert-settings"), ("PUT", "/alert-settings"))
 # Paths an ended plan may not read either, because each builds or lists files.
 EXPORT_PATHS = ("/exports", "/export-schedules", "/cost-uploads")
+# The shop routes an ended plan may still change: disconnecting, and the alert settings.
+ENDED_WRITES = (("DELETE", "/connection"), ("PUT", "/alert-settings"))
 
 
 def shop_access(row: dict | None, method: str, path: str) -> None:
-    """Raises the right 403 when the account's state does not allow this shop request."""
-    access = access_for_row(row)
-    if access == "full":
+    """Raises 403 `plan_ended` when an ended plan asks to change or export something.
+    Explorer and a live plan pass; their features are checked by each route."""
+    if access_for_row(row) != "read_only":
         return
     tail = path.rstrip("/")
-    if any(method == m and tail.endswith(end) for m, end in ONBOARDING_ROUTES):
+    if any(method == m and tail.endswith(end) for m, end in ENDED_WRITES):
         return
-    if access == "none":
-        raise Problem(403, "trial_required",
-                      "Start your 30-day free trial to see your shop's figures. Your shop "
-                      "stays connected, and nothing has been charged.")
     if method != "GET" or any(p in tail for p in EXPORT_PATHS):
         raise Problem(403, "plan_ended",
                       "Your plan has ended, so your figures can be read but nothing can be "

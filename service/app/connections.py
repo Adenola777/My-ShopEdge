@@ -152,6 +152,15 @@ def authorize_tiktok(
     service_id = _config("TIKTOK_SERVICE_ID")
     return_to = _safe_return_to(body.return_to if body else None)
 
+    # A38: the number of connected shops is the plan's first limit. A seller at the limit is
+    # refused here, before TikTok is asked, unless one of their shops is waiting to be
+    # reconnected, which the callback then allows because it adds no shop.
+    limit, _, plan_name = _shop_limit(account.id)
+    with tenant(account.id) as conn:
+        active = _active_shops(conn, account.id)
+    if len(active) >= limit and not any(status == "needs_reconnect" for _, status in active):
+        raise _shop_limit_reached(limit, plan_name)
+
     # 32 bytes from the system CSPRNG. The value must be unguessable, because anyone who can
     # guess a live state can complete a connection the seller did not start.
     state = secrets.token_urlsafe(32)
@@ -358,6 +367,32 @@ def _first_sync(shop_id, account_id) -> None:
         log.exception("first read notice for shop %s was not written", shop_id)
 
 
+def _shop_limit(account_id) -> tuple[int, str, str]:
+    """The account's connected-shop limit and its plan's slug and name (A38)."""
+    from .db import get_subscription_row
+    from .entitlements import plan_for_row
+    from .plans import PLANS
+    plan = PLANS[plan_for_row(get_subscription_row(account_id))]
+    return plan.shop_limit, plan.slug, plan.name
+
+
+def _shop_limit_reached(limit: int, name: str) -> Problem:
+    shops = "1 TikTok Shop" if limit == 1 else f"up to {limit} TikTok Shops"
+    return Problem(403, "shop_limit_reached",
+                   f"You have reached your shop limit. Your {name} plan includes {shops}, so no "
+                   "shop was connected. Upgrade to connect more shops, or disconnect one first.",
+                   {"shop_limit": limit})
+
+
+def _active_shops(conn, account_id) -> list[tuple[str, str]]:
+    """The account's shops that count against its limit: every one not disconnected."""
+    return conn.execute(
+        "select tiktok_shop_id, connection_status from shops "
+        "where account_id = %s and connection_status <> 'disconnected'",
+        (str(account_id),),
+    ).fetchall()
+
+
 def _shop_already_connected() -> Problem:
     return Problem(
         409, "shop_already_connected",
@@ -441,7 +476,14 @@ def tiktok_callback(
     # a shop that cannot be read from, and a connection without its shop has nothing to hang
     # on, so neither may exist alone. One statement's now() gives every connection from this
     # authorisation the same `authorised_at`, which is how a refresh finds its siblings.
+    limit, _, plan_name = _shop_limit(account_id)
     with tenant(account_id) as conn:
+        # A38: only shops new to this account count against the limit; a reconnection
+        # replaces its own row.
+        active = {tiktok_id for tiktok_id, _ in _active_shops(conn, account_id)}
+        new = [s for s in shops if s["id"] not in active and s.get("region") == SUPPORTED_REGION]
+        if new and len(active) + len(new) > limit:
+            raise _shop_limit_reached(limit, plan_name)
         for shop, enc_cipher in zip(shops, ciphers, strict=True):
             region = shop.get("region")
             seller_type = shop.get("seller_type")

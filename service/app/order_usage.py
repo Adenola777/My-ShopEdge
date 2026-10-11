@@ -68,6 +68,16 @@ LONDON = ZoneInfo("Europe/London")
 LIVE = ("trialing", "active", "past_due")   # the same set as billing.LIVE
 APPROACHING_PERCENT = 80
 
+# Explorer has no billing period, so its usage is counted over the London calendar month
+# (A38). Cancelled orders count, as they do for a paid plan.
+EXPLORER_USAGE_SQL = """
+select count(*)
+  from orders o
+  join shops s on s.id = o.shop_id
+ where s.account_id = %(account)s
+   and o.order_created_at >= %(start)s and o.order_created_at < %(end)s
+"""
+
 ORDER_USAGE_SQL = """
 select q.plan_slug, q.status, q.current_period_start, q.current_period_end,
        q.orders_in_period
@@ -79,14 +89,14 @@ select q.plan_slug, q.status, q.current_period_start, q.current_period_end,
 class LargerPlan(BaseModel):
     slug: Literal["starter", "growth", "pro"]
     name: str
-    order_limit: int
+    order_limit: int | None    # None is unlimited (Pro, A38)
 
 
 class OrderUsage(BaseModel):
     state: Literal["below", "approaching", "passed"]
     order_count: int
     order_limit: int
-    plan: Literal["starter", "growth", "pro"]
+    plan: Literal["explorer", "starter", "growth", "pro"]
     plan_name: str
     period_start: datetime
     period_end: datetime
@@ -116,8 +126,10 @@ def read_order_usage(conn, account_id: UUID | str, now: datetime) -> OrderUsage 
     cur = conn.execute(ORDER_USAGE_SQL, {"account": str(account_id)})
     cols = [d.name for d in cur.description]
     row = cur.fetchone()
-    if row is None:
-        return None
+    if row is None or row[cols.index("status")] not in LIVE:
+        if row is not None and row[cols.index("status")] == "canceled":
+            return None
+        return _explorer_usage(conn, account_id, now)
     r: dict[str, Any] = dict(zip(cols, row, strict=True))
     start, end = r["current_period_start"], r["current_period_end"]
     if r["status"] not in LIVE or start is None or end is None or r["plan_slug"] not in PLANS:
@@ -125,6 +137,8 @@ def read_order_usage(conn, account_id: UUID | str, now: datetime) -> OrderUsage 
     if not (start <= now < end):
         return None
     plan = PLANS[r["plan_slug"]]
+    if plan.order_limit is None:
+        return None
     count = int(r["orders_in_period"])
     return OrderUsage(
         state=usage_state(count, plan.order_limit),
@@ -136,6 +150,20 @@ def read_order_usage(conn, account_id: UUID | str, now: datetime) -> OrderUsage 
         period_end=end,
         larger_plan=larger_plan(plan.slug),
     )
+
+
+def _explorer_usage(conn, account_id: UUID | str, now: datetime) -> OrderUsage:
+    """Explorer's orders in the London calendar month that holds `now` (A38)."""
+    local = now.astimezone(LONDON)
+    start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end = (start.replace(year=start.year + 1, month=1) if start.month == 12
+           else start.replace(month=start.month + 1))
+    count = int(conn.execute(EXPLORER_USAGE_SQL, {"account": str(account_id), "start": start,
+                                                 "end": end}).fetchone()[0])
+    plan = PLANS["explorer"]
+    return OrderUsage(state=usage_state(count, plan.order_limit), order_count=count,
+                      order_limit=plan.order_limit, plan="explorer", plan_name=plan.name,
+                      period_start=start, period_end=end, larger_plan=larger_plan("explorer"))
 
 
 def london_date(when: datetime) -> str:
