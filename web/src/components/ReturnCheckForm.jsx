@@ -9,6 +9,9 @@
  * Unsellable, and Unsellable asks for a second press before it records, because a write-off
  * cannot be undone.
  *
+ * Since 11 October 2026 (A36 item 4) the seller may add a note of up to 500 characters, kept
+ * with the check and shown on the item once it is checked.
+ *
  * What each choice writes is the service's rule (checkReturnItem, A30.2), and the "What this check records"
  * card describes it without working out any money here: a write-off is valued by the service
  * at the cost in force when the unit sold, so the card names the rule rather than a figure.
@@ -21,12 +24,16 @@ import { newKey, parsePounds } from "@/lib/money-input";
 
 /** @typedef {"resellable" | "unsellable" | "not_applicable"} CheckStatus */
 
+/** The service's bound on a note (migration 0033). */
+const NOTE_MAX = 500;
+
 /** @param {{ shopId: string, itemId: string, quantity: number, currency: string }} props */
 export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
   const router = useRouter();
   const pathname = usePathname();
   const [status, setStatus] = useState(/** @type {CheckStatus | null} */ (null));
   const [postage, setPostage] = useState("");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   // The brief asks for a confirmation before Unsellable (section 14), because a write-off
@@ -65,6 +72,7 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
       body: JSON.stringify({
         seller_check_status: status,
         ...(postageMinor !== null ? { return_postage: { amount_minor: postageMinor, currency } } : {}),
+        ...(note.trim() !== "" ? { seller_note: note.trim() } : {}),
       }),
     });
     setBusy(false);
@@ -100,6 +108,15 @@ export function ReturnCheckForm({ shopId, itemId, quantity, currency }) {
           <label htmlFor={`postage-${itemId}`}>Return shipping you paid (£)</label>
           <input id={`postage-${itemId}`} inputMode="decimal" placeholder="0.00" value={postage}
                  onChange={(e) => setPostage(e.target.value)} data-testid="return-postage" />
+        </div>
+      )}
+
+      {status !== null && (
+        <div>
+          <label htmlFor={`note-${itemId}`}>Note (optional)</label>
+          <textarea id={`note-${itemId}`} rows={2} maxLength={NOTE_MAX} value={note}
+                    onChange={(e) => setNote(e.target.value)} data-testid="return-note-input" />
+          <p className="footnote">For your own records, such as the state the item came back in.</p>
         </div>
       )}
 
