@@ -162,6 +162,7 @@ a:hover { color: var(--orange-700); }
   display: flex;
   flex-direction: column;
 }
+.shell__body { flex: 1 0 auto; min-height: 100dvh; }
 
 .appbar {
   position: sticky;
@@ -318,7 +319,7 @@ a:hover { color: var(--orange-700); }
   text-decoration: none;
   white-space: nowrap;
 }
-.subnav a:hover { border-color: var(--orange-600); color: var(--orange-600); }
+@media (hover: hover) { .subnav a:hover { border-color: var(--orange-600); color: var(--orange-600); } }
 .subnav a[aria-current="page"] { background: var(--orange-50); border-color: var(--orange-300); color: var(--orange-700); }
 
 /* WFW 7: on larger screens the column is centred and the tabs become a left rail. The
@@ -490,9 +491,9 @@ a:hover { color: var(--orange-700); }
   transition: background-color var(--ease), border-color var(--ease), color var(--ease);
 }
 .btn--primary { background: var(--orange-600); color: var(--white); }
-.btn--primary:hover:not(:disabled) { background: var(--orange-700); color: var(--white); }
+@media (hover: hover) { .btn--primary:hover:not(:disabled) { background: var(--orange-700); color: var(--white); } }
 .btn--quiet { background: var(--white); color: var(--orange-600); border-color: var(--orange-600); }
-.btn--quiet:hover:not(:disabled) { background: var(--orange-50); color: var(--orange-700); }
+@media (hover: hover) { .btn--quiet:hover:not(:disabled) { background: var(--orange-50); color: var(--orange-700); } }
 .btn--block { display: flex; width: 100%; }
 /* A row action, such as marking a notice read. It keeps a 44px target for a thumb. */
 .btn--small { padding: var(--space-2) var(--space-3); min-height: 44px; font-size: 0.875rem; }
@@ -592,7 +593,7 @@ tbody tr:last-child td { border-bottom: 0; }
   gap: var(--space-2);
 }
 .plan--selectable { cursor: pointer; transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease; }
-.plan--selectable:hover { border-color: var(--orange-300); }
+@media (hover: hover) { .plan--selectable:hover { border-color: var(--orange-300); } }
 .plan--selectable:focus-within { outline: 3px solid var(--orange-600); outline-offset: 2px; }
 /* The recommended plan is marked by a border, a label and its position. */
 .plan--highlight { border-color: var(--orange-600); }
@@ -765,8 +766,8 @@ tbody tr:last-child td { border-bottom: 0; }
   min-height: 56px; color: var(--ink-900); text-decoration: none;
   transition: background-color 150ms ease-out;
 }
-.payouts__row:hover { background: var(--orange-50); }
-.payouts__row:focus-visible { outline: 2px solid var(--orange-600); outline-offset: 2px; }
+@media (hover: hover) { .payouts__row:hover { background: var(--orange-50); } }
+.payouts__row:focus-visible { outline: 3px solid var(--orange-600); outline-offset: 2px; }
 .payouts__when { font-weight: 600; color: var(--navy-900); }
 .payouts__when .rows__sub { display: block; font-weight: 400; margin-top: 2px; }
 .payouts__figures { display: inline-flex; align-items: center; gap: var(--space-3); flex: none; }
@@ -910,7 +911,7 @@ tbody tr:last-child td { border-bottom: 0; }
   display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: var(--radius); background: transparent; color: var(--ink-700); cursor: pointer;
 }
-.drawer__close:hover { background: var(--orange-50); color: var(--orange-700); }
+@media (hover: hover) { .drawer__close:hover { background: var(--orange-50); color: var(--orange-700); } }
 .drawer__close svg { width: 20px; height: 20px; }
 .drawer__foot { margin: var(--space-5) 0 0; }
 @media (max-width: 40rem) {
@@ -1004,7 +1005,7 @@ tbody tr:last-child td { border-bottom: 0; }
   border: 1px solid transparent;
   transition: background-color var(--ease), color var(--ease);
 }
-.switch a:hover { color: var(--orange-700); background: var(--orange-50); }
+@media (hover: hover) { .switch a:hover { color: var(--orange-700); background: var(--orange-50); } }
 .switch a[aria-current="true"] { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-300); font-weight: 650; }
 
 .muted { color: var(--ink-500); }
@@ -1047,7 +1048,7 @@ a.chip { text-decoration: none; }
 .segmented label { flex: 1; text-align: center; padding: 8px 6px; border-radius: calc(var(--radius) - 3px); font-weight: 600; font-size: 0.875rem; color: var(--ink-700); cursor: pointer; }
 .segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .segmented .segmented__on { background: var(--orange-50); color: var(--orange-700); box-shadow: 0 0 0 1px var(--orange-300); }
-.segmented label:focus-within { outline: 2px solid var(--orange-600); outline-offset: 1px; }
+.segmented label:focus-within { outline: 3px solid var(--orange-600); outline-offset: 2px; }
 
 /* Setup forms, 29 September 2026: three money fields side by side, and a tick box with its words. */
 .cost-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
@@ -1142,9 +1143,9 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
   color: var(--ink-700); font-weight: 600; font-size: 0.9375rem; cursor: pointer; text-align: center;
   border: 1px solid transparent; transition: background-color var(--ease), color var(--ease);
 }
-.cycle__option:hover { color: var(--orange-700); background: var(--orange-50); }
+@media (hover: hover) { .cycle__option:hover { color: var(--orange-700); background: var(--orange-50); } }
 .cycle__option[aria-current="true"] { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-300); font-weight: 650; }
-.cycle__option:has(input:focus-visible) { outline: 2px solid var(--orange-600); outline-offset: 2px; }
+.cycle__option:has(input:focus-visible) { outline: 3px solid var(--orange-600); outline-offset: 2px; }
 .cycle__save { font-size: 0.8125rem; font-weight: 600; color: var(--good-600); }
 .cycle__note { margin: var(--space-2) 0 0; color: var(--ink-700); font-size: 0.875rem; }
 .cycle__commitment { margin: var(--space-2) 0 0; color: var(--warn-700); background: var(--warn-50); border: 1px solid #ecd6a6; border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-size: 0.875rem; }
@@ -1255,11 +1256,12 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 .acct { position: relative; }
 .acct summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; color: var(--ink-900); font-weight: 600; font-size: 0.9375rem; }
 .acct summary::-webkit-details-marker { display: none; }
-.acct summary:hover, .acct[open] summary { background: var(--ink-50); }
+.acct[open] summary { background: var(--ink-50); }
+@media (hover: hover) { .acct summary:hover { background: var(--ink-50); } }
 .acct summary svg { width: 22px; height: 22px; }
 .acct__panel { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; background: #fff; border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px -12px rgba(17, 24, 32, 0.28), 0 0 0 1px rgba(17, 24, 32, 0.06); display: grid; z-index: 60; }
 .acct__panel a { padding: 10px 12px; border-radius: 8px; color: var(--ink-900); text-decoration: none; font-size: 0.9375rem; }
-.acct__panel a:hover { background: var(--ink-50); }
+@media (hover: hover) { .acct__panel a:hover { background: var(--ink-50); } }
 .acct__panel .acct__out { border-top: 1px solid var(--ink-100); margin-top: 4px; border-radius: 0 0 8px 8px; }
 @media (max-width: 720px) { .acct__label { display: none; } }
 .crumb a { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600; }
@@ -1274,3 +1276,78 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 }
 .switch--compact { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .switch--compact::-webkit-scrollbar { display: none; }
+
+/* --- 11 October 2026, the responsiveness layer the owner approved --------------------
+   Every control answers a press within one frame, before the server has answered. A pressed
+   button sinks a little; a pressed row, tab or chip takes the orange tint with a 2px orange
+   edge. A link that has been clicked takes the selected look at once (`data-pending`, set by
+   `NavFeedback.jsx`), and the link it replaces gives the look up, so the seller sees where
+   they are going while the next page loads. A button whose action is running carries a small
+   spinner (`data-pending` again). Hover is kept to devices that have it, so a tap on a phone
+   leaves nothing lit. Under reduced motion the rule near the top of this file stops the
+   movement, and the colours stay. */
+
+:root { --orange-800: #85290a; --press: 80ms ease-out; }
+
+.btn { transition: background-color var(--ease), border-color var(--ease), color var(--ease), transform var(--press); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn--primary:active:not(:disabled) { background: var(--orange-800); color: var(--white); }
+.btn--quiet:active:not(:disabled) { background: var(--orange-100); color: var(--orange-700); }
+
+/* Rows, tabs, chips and menu items: tinted with an orange edge while pressed. */
+.tabs__tab, .tabs__pages a, .subnav a, .switch a, .cycle__option, .morelist a, .payouts__row,
+.acct__panel a, .acct summary, .appbar__sitelink, .appbar__login, .drawer__close, .bell {
+  -webkit-tap-highlight-color: transparent;
+}
+.tabs__tab:active, .tabs__pages a:active, .subnav a:active, .switch a:active, .cycle__option:active,
+.morelist a:active, .payouts__row:active, .acct__panel a:active, .acct summary:active,
+.drawer__close:active, .bell:active {
+  background: var(--orange-100);
+  box-shadow: inset 0 0 0 2px var(--orange-300);
+  color: var(--orange-700);
+}
+.rowlink:active, .appbar__sitelink:active, .appbar__login:active, .crumb a:active { color: var(--orange-800); }
+
+/* Rows and cards that open something rise by 2px on hover and press back down. */
+.payouts__row, .plan--selectable { transition: background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; }
+@media (hover: hover) {
+  .payouts__row:hover, .plan--selectable:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+}
+.payouts__row:active, .plan--selectable:active { transform: none; }
+
+/* A clicked link takes the selected look before its page arrives, and the old one clears. */
+.tabs__tab[data-pending] { background: var(--orange-50); color: var(--orange-600); }
+.tabs__pages a[data-pending] { color: var(--orange-700); font-weight: 650; background: var(--orange-50); }
+.subnav a[data-pending] { background: var(--orange-50); border-color: var(--orange-300); color: var(--orange-700); }
+.switch a[data-pending] { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-300); font-weight: 650; }
+.morelist a[data-pending], .acct__panel a[data-pending] { background: var(--orange-50); color: var(--orange-700); }
+.payouts__row[data-pending] { background: var(--orange-50); }
+/* The area being left gives up its look; the area being opened takes it, folded or not. */
+.tabs:has([data-pending]) .tabs__area:not(:has([data-pending])) .tabs__tab[aria-current],
+.tabs:has([data-pending]) .tabs__area:not(:has([data-pending])) .tabs__tab--toggle[data-current] { background: transparent; color: var(--ink-700); }
+.tabs:has([data-pending]) .tabs__area:not(:has([data-pending])) .tabs__tab[aria-current]::after { display: none; }
+.tabs__area:has(.tabs__pages a[data-pending]) .tabs__tab--toggle { background: var(--orange-50); color: var(--orange-600); }
+.tabs:has([data-pending]) .tabs__pages a[aria-current]:not([data-pending]) { background: transparent; color: var(--ink-700); font-weight: 600; }
+.subnav:has([data-pending]) a[aria-current]:not([data-pending]) { background: var(--white); border-color: var(--ink-200); color: var(--ink-700); }
+.switch:has([data-pending]) a[aria-current]:not([data-pending]) { background: transparent; border-color: transparent; color: var(--ink-700); font-weight: 600; }
+
+/* A button whose action is running: a spinner beside its label, not faded like a disabled one. */
+.btn[data-pending] { cursor: progress; }
+.btn[data-pending]:disabled { opacity: 0.9; }
+.btn[data-pending]::before {
+  content: "";
+  width: 14px; height: 14px; flex: none;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* The bar along the top of the window while a page is on its way. It appears only when the
+   page takes longer than 120ms, so a quick page never flickers it. */
+.navbar-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1000;
+  background: var(--orange-600); transform-origin: 0 50%; transform: scaleX(0);
+  opacity: 0; pointer-events: none;
+}
+.navbar-progress[data-state="running"] { opacity: 1; transform: scaleX(0.85); transition: transform 2.4s cubic-bezier(0.1, 0.7, 0.2, 1), opacity 100ms linear; }
+.navbar-progress[data-state="done"] { opacity: 0; transform: scaleX(1); transition: transform 160ms ease-out, opacity 220ms ease-out 140ms; }

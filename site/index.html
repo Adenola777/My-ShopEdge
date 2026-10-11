@@ -15,10 +15,16 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="MyShopEdge on a laptop and a phone, with the headline Know your numbers">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* Inter, served from this site since 11 October 2026 (@fontsource-variable/inter 5.3.0,
+     SIL Open Font License, assets/fonts/LICENSE-Inter.txt), so no font service holds up the page. */
+  @font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900;
+    src: url(/assets/fonts/inter-latin-ext-wght-normal.woff2) format('woff2');
+    unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+  @font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900;
+    src: url(/assets/fonts/inter-latin-wght-normal.woff2) format('woff2');
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   :root {
     --ink: #12141C;
     --ink-soft: #5B6472;
@@ -434,6 +440,20 @@
   .footer-col__title { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin: 0 0 12px; }
   .skip-link { position: absolute; left: 16px; top: -60px; z-index: 100; background: var(--ink); color: var(--white); padding: 10px 16px; border-radius: 8px; font-weight: 600; text-decoration: none; }
   .skip-link:focus { top: 12px; }
+  /* 11 October 2026, the responsiveness layer the owner approved: every control answers a
+     press within one frame. A button sinks a little and darkens, a link or menu item takes a
+     tint, and hover lift is kept to devices that can hover, so a tap on a phone leaves nothing
+     raised. Under reduced motion the movement stops and the colours stay. */
+  a, button, summary { -webkit-tap-highlight-color: transparent; }
+  .btn, .btn-ghost { transition: transform .08s ease-out, box-shadow .15s ease, background .15s ease, filter .08s ease-out; }
+  .btn:active { transform: translateY(0) scale(0.97); filter: brightness(0.9); box-shadow: 0 1px 2px rgba(146,45,5,0.35); }
+  .btn-ghost:active { transform: scale(0.97); background: var(--line); }
+  @media (hover: none) { .btn:hover { transform: none; } }
+  .nav-links a:active, .nav-login:active, .link-secondary:active, .footer-col a:active { color: var(--orange-solid); }
+  .nav-drop__panel a:active, .mobile-menu__panel a:active { background: #FFF2EC; box-shadow: inset 0 0 0 2px #F59577; }
+  .to-top:active { transform: scale(0.94); }
+  :focus-visible { outline-width: 3px; }
+  @media (prefers-reduced-motion: reduce) { .btn, .btn-ghost { transition: none; } .btn:active, .btn-ghost:active, .to-top:active { transform: none; } }
 </style>
 </head>
 <body>
@@ -496,7 +516,7 @@
       </div>
       <div class="hero-visual-wrap">
         <div class="hero-glow" aria-hidden="true"></div>
-        <img class="hero-devices" src="art/hero-devices.webp" width="956" height="645" alt="MyShopEdge on a laptop and a phone">
+        <img class="hero-devices" src="art/hero-devices.webp" width="956" height="645" fetchpriority="high" alt="MyShopEdge on a laptop and a phone">
       </div>
     </div>
   </header>
@@ -556,8 +576,8 @@
           <img class="copy-art" src="art/product-costs.webp" width="850" height="560" loading="lazy" alt="Illustration: what goes into the cost of one product">
         </div>
         <div class="shot-pair">
-          <img src="shots/costs-choice.webp" width="720" height="1560" alt="Do you have your product costs, with Excel or CSV, type them in, or skip for now">
-          <img src="shots/costs-manual.webp" width="720" height="1560" alt="Typing product costs, with cost coverage for the last 30 days">
+          <img loading="lazy" decoding="async" src="shots/costs-choice.webp" width="720" height="1560" alt="Do you have your product costs, with Excel or CSV, type them in, or skip for now">
+          <img loading="lazy" decoding="async" src="shots/costs-manual.webp" width="720" height="1560" alt="Typing product costs, with cost coverage for the last 30 days">
         </div>
       </div>
     </div>
@@ -572,7 +592,7 @@
           <p>Commission, shipping, promotions and refunds, each on its own line. Open any line to see the orders behind it.</p>
           <img class="copy-art" src="art/true-profit.webp" width="900" height="520" loading="lazy" alt="Illustration: revenue on one side, refunds, platform fees and shipping on the other, and the profit left">
         </div>
-        <div class="feature-visual"><img src="shots/money-fees-top.webp" width="720" height="1000" alt="Each TikTok fee on its own line, down to net proceeds"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/money-fees-top.webp" width="720" height="1000" alt="Each TikTok fee on its own line, down to net proceeds"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -582,7 +602,7 @@
           <p>Shop Money sets your net proceeds against what TikTok has paid out, and shows what it still owes you.</p>
           <img class="copy-art" src="art/reconcile.webp" width="850" height="410" loading="lazy" alt="Illustration: sales, returns and charges checked against each other to reach final totals">
         </div>
-        <div class="feature-visual"><img src="shots/overview.webp" width="720" height="1558" alt="The Overview, with gross profit after returns and the Shop Money card showing net proceeds and what has been paid out"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/overview.webp" width="720" height="1558" alt="The Overview, with gross profit after returns and the Shop Money card showing net proceeds and what has been paid out"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -592,7 +612,7 @@
           <p>Every unit, pound by pound: sales, fees, returns and cost, down to gross profit and margin.</p>
           <p class="feature-sub">Gross profit on every plan, Explorer included. Margin from Starter.</p>
         </div>
-        <div class="feature-visual"><img src="shots/products-ranking.webp" width="720" height="1560" alt="One product, one unit pound by pound: gross sales, refunds, discounts, net sales and each fee"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/products-ranking.webp" width="720" height="1560" alt="One product, one unit pound by pound: gross sales, refunds, discounts, net sales and each fee"></div>
       </div>
 
       <div class="feature-row">
@@ -602,7 +622,7 @@
           <p>Month summary, ledger or order lines, in Excel or CSV. Totals match your Overview.</p>
           <p class="feature-sub">Growth and Pro plans.</p>
         </div>
-        <div class="feature-visual"><img src="shots/exports.webp" width="720" height="1560" alt="The Exports screen, with what to export, period, basis and format"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/exports.webp" width="720" height="1560" alt="The Exports screen, with what to export, period, basis and format"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -611,7 +631,7 @@
           <h3>Every return, counted once.</h3>
           <p>Mark each return resellable or unsellable. Stock and profit stay right.</p>
         </div>
-        <div class="feature-visual"><img src="shots/returns.webp" width="720" height="1560" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/returns.webp" width="720" height="1560" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back"></div>
       </div>
 
       <div class="feature-row">
@@ -621,7 +641,7 @@
           <p>12 months of turnover against the &pound;90,000 threshold, and an estimate of tax to set aside.</p>
           <p class="feature-sub">Estimates, not tax advice. Scottish rates not yet included.</p>
         </div>
-        <div class="feature-visual"><img src="shots/tax.webp" width="720" height="1560" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/tax.webp" width="720" height="1560" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -630,7 +650,7 @@
           <h3>Know what is running low.</h3>
           <p>On hand, coming back and days of cover for every product.</p>
         </div>
-        <div class="feature-visual"><img src="shots/stock.webp" width="720" height="1560" alt="The Stock screen, with units on hand and days of cover for each product"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/stock.webp" width="720" height="1560" alt="The Stock screen, with units on hand and days of cover for each product"></div>
       </div>
     </div>
   </section>

@@ -20,7 +20,9 @@ import "./globals.css";
 import { StackProvider, StackTheme } from "@stackframe/stack";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Suspense } from "react";
 import { stackApp } from "@/lib/stack";
+import { NavFeedback } from "@/components/NavFeedback";
 
 export const metadata = {
   title: {
@@ -53,7 +55,10 @@ export const viewport = {
 export default function RootLayout({ children }) {
   const page = (
     <div className="shell">
-      {children}
+      {/* The page fills at least the first screen, so the footer starts below it and is not
+          seen while a page loads and then pushed away, which was the only layout shift
+          measured on Pricing and the Overview on 11 October 2026. */}
+      <div className="shell__body">{children}</div>
       <footer className="footer">
         <div className="footer__inner">
           <p>
@@ -77,6 +82,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en-GB">
       <body>
+        {/* The bar and the instant highlight for a click (11 October 2026). It reads the
+            search parameters, so it sits in its own Suspense boundary. */}
+        <Suspense fallback={null}>
+          <NavFeedback />
+        </Suspense>
         <a className="skip" href="#main">
           Skip to content
         </a>

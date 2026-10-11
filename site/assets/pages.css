@@ -1,20 +1,27 @@
-/* The FAQ and the Payout Explainer. Colours and fonts follow site/index.html. */
+/* The FAQ and the Payout Explainer. Colours and fonts follow site/index.html. Since 11 October
+   2026 they use Inter from this site, as A37 sets, in place of Space Grotesk and IBM Plex Sans. */
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url(/assets/fonts/inter-latin-ext-wght-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url(/assets/fonts/inter-latin-wght-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
 :root {
   --ink: #12141C;
   --ink-soft: #5B6472;
-  --ink-faint: #8C93A1;
+  --ink-faint: #5B6472;
   --white: #FFFFFF;
   --paper-alt: #F6F7F9;
   --line: #E7E8EC;
-  --orange-solid: #D9480F;
+  --orange-solid: #C4400C;
   --good: #1F7A4D;
   --bad: #B42318;
   color-scheme: light;
 }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; background: var(--white); color: var(--ink); }
-body { font-family: 'IBM Plex Sans', system-ui, -apple-system, Segoe UI, sans-serif; font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
-h1, h2, h3 { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: -0.01em; line-height: 1.25; }
+body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif; font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: 'Inter', system-ui, sans-serif; letter-spacing: -0.01em; line-height: 1.25; }
 h1 { font-size: clamp(28px, 5vw, 40px); margin: 8px 0 10px; }
 h2 { font-size: 21px; margin: 36px 0 10px; }
 a { color: var(--orange-solid); }
@@ -32,7 +39,7 @@ main { padding: 28px 0 56px; }
 .toc ol { margin: 0; padding-left: 22px; }
 .toc li { margin-bottom: 4px; }
 details.qa { border-bottom: 1px solid var(--line); padding: 4px 0; }
-details.qa summary { cursor: pointer; list-style: none; padding: 14px 0; font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; font-size: 18px; }
+details.qa summary { cursor: pointer; list-style: none; padding: 14px 0; font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 18px; }
 details.qa summary::-webkit-details-marker { display: none; }
 details.qa summary::after { content: "+"; float: right; color: var(--ink-faint); }
 details.qa[open] summary::after { content: "\2212"; }
@@ -53,7 +60,7 @@ footer.bottom a { color: var(--ink-soft); }
 /* Payout Explainer */
 .tool { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
 .tool fieldset { border: 0; padding: 0; margin: 0 0 14px; }
-.tool legend { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; margin-bottom: 8px; }
+.tool legend { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; margin-bottom: 8px; }
 .field { display: grid; grid-template-columns: 1fr 140px; gap: 10px; align-items: center; margin-bottom: 8px; }
 .field label { font-size: 15px; }
 .field input[aria-invalid="true"] { border-color: var(--bad); outline: 1px solid var(--bad); }
@@ -69,3 +76,12 @@ footer.bottom a { color: var(--ink-soft); }
 header.top nav a:hover { color: var(--ink); }
 header.top nav a.login { color: var(--ink); font-weight: 600; }
 header.top nav a.cta:hover { color: var(--white); background: var(--orange-solid); }
+
+/* 11 October 2026: a press answers within one frame, as on the landing page. */
+a, button { -webkit-tap-highlight-color: transparent; }
+header.top nav a { transition: background .15s ease, color .15s ease, transform .08s ease-out; }
+header.top nav a:active { color: var(--orange-solid); }
+header.top nav a.cta { display: inline-block; }
+header.top nav a.cta:active { transform: scale(0.97); background: #9E330A; color: var(--white); }
+:focus-visible { outline: 3px solid var(--orange-solid); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { header.top nav a { transition: none; } header.top nav a.cta:active { transform: none; } }
