@@ -58,10 +58,10 @@
   --white:   #ffffff;
 
   /* The surfaces. The owner ruled a warm tint on 11 October 2026 and the same day asked for
-     the page to be white instead (A37.1 item 5), so the page is pure white, the rail a
-     neutral off-white, and borders a neutral grey with no pink in them. */
+     white instead (A37.1 item 5): the page, the navigation and every card are pure white,
+     borders are a neutral grey with no pink in them, and orange is the highlight. */
   --page: #ffffff;
-  --rail: #f7f7f8;
+  --rail: #ffffff;
   --line: #e5e7eb;
 
   /* The three data families, A7.10. Fees are blue in fee order, the seller's costs plum. */
@@ -349,7 +349,9 @@ a:hover { color: var(--orange-700); }
   /* No side lines on a larger screen, at the owner's request: the active area is marked by
      its background and colour alone. */
   .tabs__tab[aria-current]::after { display: none; }
-  .tabs__tab[aria-current] { background: var(--white); }
+  /* The area in use is highlighted in orange on the white rail (A37.1 item 5). */
+  .tabs__tab[aria-current] { background: var(--orange-50); }
+  .tabs__tab:hover { color: var(--orange-700); }
   /* Inside an open area the page in use carries the mark, so the area's own row is quieter. */
   .tabs__area--open .tabs__tab[aria-current="true"] { background: transparent; }
   .tabs__pages { display: block; list-style: none; margin: 2px 0 var(--space-2); padding: 0 0 0 34px; }
@@ -365,7 +367,7 @@ a:hover { color: var(--orange-700); }
     text-decoration: none;
   }
   .tabs__pages a:hover { color: var(--orange-600); }
-  .tabs__pages a[aria-current="page"] { color: var(--orange-600); font-weight: 650; background: var(--white); }
+  .tabs__pages a[aria-current="page"] { color: var(--orange-700); font-weight: 650; background: var(--orange-50); }
   /* The sidebar lists all eight areas, so More is not needed there. */
   .tabs__area--rail { display: flex; }
   .tabs__area--more { display: none; }
@@ -683,9 +685,9 @@ tbody tr:last-child td { border-bottom: 0; }
 .content :not(.stack, .pair, .plan-cards) > :not(h1, h2, h3) + .card { margin-top: var(--space-5); }
 .pair { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; }
 
-/* The hero: an orange tinted panel with a navy figure. The tint marks the panel as the
-   headline; the figure is navy because orange never carries data (A7.10). */
-.hero { position: relative; overflow: hidden; background: var(--orange-50); border-color: var(--orange-100); border-radius: var(--radius-lg); padding: var(--hero-pad); }
+/* The hero: a white panel, set apart by its size, its 16 px corners and its figure, the
+   largest on the page. It had an orange tint until the owner asked for white (A37.1 item 5). */
+.hero { position: relative; overflow: hidden; background: var(--white); border-color: var(--line); border-radius: var(--radius-lg); padding: var(--hero-pad); }
 
 .hero__label { font-weight: 650; margin: 0; color: var(--navy-900); }
 .hero__value { font-size: 2.5rem; font-weight: 700; margin: var(--space-2) 0; line-height: 1.1; letter-spacing: -0.02em; }
@@ -779,7 +781,7 @@ tbody tr:last-child td { border-bottom: 0; }
   border: 1px solid transparent;
   transition: background-color var(--ease), color var(--ease);
 }
-.switch a:hover { color: var(--orange-700); background: var(--rail); }
+.switch a:hover { color: var(--orange-700); background: var(--orange-50); }
 .switch a[aria-current="true"] { background: var(--orange-50); color: var(--orange-700); border-color: var(--orange-300); font-weight: 650; }
 
 .muted { color: var(--ink-500); }
