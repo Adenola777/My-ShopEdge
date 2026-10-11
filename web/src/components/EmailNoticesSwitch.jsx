@@ -38,8 +38,8 @@ export function EmailNoticesSwitch({ on }) {
       <h2>Email notices</h2>
       <p>
         {on
-          ? "MyShopEdge emails you when your shop's connection stops working, when you pass your plan's orders, and when a scheduled export is ready."
-          : "MyShopEdge does not email you. Every notice still appears in Notifications."}
+          ? "Emails for connection problems, plan limits and ready exports."
+          : "No emails. Notices stay in Notifications."}
       </p>
       <p>
         <button type="button" className="btn btn--quiet btn--block" disabled={busy}

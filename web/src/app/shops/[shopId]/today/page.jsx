@@ -169,7 +169,7 @@ export default async function TodayPage({ params, searchParams }) {
       <header className="page-head">
         {/* Named Overview, with this subtitle, from the owner's brief approved 10 October 2026. */}
         <h1>Overview</h1>
-        <p>A clear picture of what your TikTok Shop has left you.</p>
+        <p>What your TikTok Shop has left you.</p>
         {shop?.shop_name && <p className="muted">{shop.shop_name}</p>}
       </header>
 
@@ -202,9 +202,9 @@ export default async function TodayPage({ params, searchParams }) {
         <Link href={href({ ...withPeriod, basis: "cash" })} aria-current={basis === "cash" ? "true" : undefined}>Cash basis</Link>
       </nav>
       <p className="rows__sub" data-testid="overview-period">
-        {periodKey === "today" ? `Today, ${formatDate(period.to)}` : `${formatDate(period.from)} to ${formatDate(period.to)}`},{" "}
-        {basis === "sales" ? "counted on the day of each sale" : "counted on the day TikTok settled it"}.
-        {t.freshness?.last_synced_at ? ` Last updated ${formatDate(t.freshness.last_synced_at, { time: true })}.` : ""}{" "}
+        {periodKey === "today" ? `Today, ${formatDate(period.to)}` : `${formatDate(period.from)} to ${formatDate(period.to)}`}
+        {" \u00b7 "}{basis === "sales" ? "by sale date" : "by settlement date"}
+        {t.freshness?.last_synced_at ? ` \u00b7 Updated ${formatDate(t.freshness.last_synced_at, { time: true })}` : ""}{" \u00b7 "}
         <Link href={`/shops/${shopId}/money/export`} data-testid="overview-export">Export</Link>
       </p>
 

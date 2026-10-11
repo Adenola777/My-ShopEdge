@@ -510,6 +510,9 @@ input, select, textarea {
   color: var(--ink-900);
 }
 input:hover, select:hover, textarea:hover { border-color: var(--ink-300); }
+/* A37.1 item 9: a hint inside an empty field, faint but still 4.76 : 1 on white. */
+input::placeholder, textarea::placeholder { color: var(--ink-500); opacity: 1; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--orange-600); outline: none; box-shadow: 0 0 0 3px var(--orange-300); border-radius: var(--radius); }
 
 /* --- tables ---------------------------------------------------------------------- */
 

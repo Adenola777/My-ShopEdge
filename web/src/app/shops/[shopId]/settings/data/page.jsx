@@ -23,7 +23,7 @@ export default async function DataPage({ params }) {
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/settings`}>Settings</Link></p>
         <h1>Data and privacy</h1>
-        <p>Download everything MyShopEdge keeps about your account, see how long it is kept, and find who to contact.</p>
+        <p>Your data, how long it is kept, and who to contact.</p>
       </header>
       {/* A36 step 8, the brief's section 18: retention, deletion, and the privacy and support
           contacts. Each period is the Privacy Policy's own, as published on 10 October 2026. */}
@@ -38,7 +38,7 @@ export default async function DataPage({ params }) {
           The <a href="/legal/privacy.html">Privacy Policy</a> sets out every period and your rights.
         </p>
         <p><Link className="btn btn--quiet btn--block" href={`/shops/${shopId}/settings/delete`} data-testid="data-delete">Delete account</Link></p>
-        <p className="footnote">Deleting asks you to confirm first, and you can cancel it for thirty days.</p>
+        <p className="footnote">You confirm first, and can cancel for 30 days.</p>
       </div>
       <div className="card" data-testid="data-contacts">
         <h2>Contacts</h2>
@@ -55,7 +55,7 @@ export default async function DataPage({ params }) {
             "Product costs", "Stock and returns", "Exports and notifications", "Your plan and settings",
             "The history of what was read from TikTok"].map((l) => <li key={l}><span>{l}</span></li>)}
         </ul>
-        <p className="card__why">Your download holds each part of your records as a spreadsheet file (CSV) and as a data file (JSON). It holds no buyer names or addresses, because MyShopEdge never keeps them. Your TikTok sign-in details are never included.</p>
+        <p className="card__why">CSV and JSON. No buyer details or TikTok sign-in.</p>
       </div>
       <DataDownload />
     </section>

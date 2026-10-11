@@ -99,7 +99,7 @@ export default async function ProductsPage({ params, searchParams }) {
     <section>
       <header className="page-head">
         <h1>Products</h1>
-        <p>See which products make money after TikTok fees, returns and product costs.</p>
+        <p>Profit by product, after fees, returns and costs.</p>
         <p className="muted" data-testid="products-measure">{RANKED_BY[measure] ?? "Ranked"}{dates}.</p>
       </header>
 

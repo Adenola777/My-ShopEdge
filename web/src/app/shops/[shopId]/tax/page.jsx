@@ -49,13 +49,13 @@ export default async function TaxPage({ params }) {
     <section data-testid="tax-screen">
       <header className="page-head">
         <h1>VAT and tax</h1>
-        <p>Track your VAT position and plan a tax reserve from available shop data.</p>
+        <p>VAT threshold and tax to set aside.</p>
       </header>
 
       <div className="stack">
         <div className="card" data-testid="vat-monitor">
           <h2>VAT registration threshold</h2>
-          <p className="card__why">This compares your gross sales over the last twelve months with the current threshold. It is not tax advice.</p>
+          <p className="card__why">Last 12 months of sales against the threshold.</p>
           {!vat ? (
             <p className="muted" data-testid="vat-unconfigured">
               The VAT threshold is not loaded yet, so your position cannot be shown.
@@ -96,17 +96,17 @@ export default async function TaxPage({ params }) {
                 )}
                 <p className="card__why" data-testid="vat-status">
                   {vat.above_threshold
-                    ? "Your turnover here is above the VAT registration threshold. HMRC's own guidance decides whether you need to register, so check it or ask an accountant."
-                    : "Your turnover here is below the VAT registration threshold."}{" "}
-                  Worked out {formatDate(vat.as_of, { time: true })}.
+                    ? "Above the threshold. Check HMRC's guidance or ask an accountant."
+                    : "Below the threshold."}{" "}
+                  Worked out {formatDate(vat.as_of, { time: true })}
                 </p>
               </>
             );
           })()}
           <p className="card__foot">
             {vat.includes_other_channels
-              ? "This includes the other-channel sales you entered."
-              : (<>Only TikTok turnover is counted. <Link href={`/shops/${shopId}/other-sales`}>Add other-channel sales</Link> to see your whole turnover.</>)}
+              ? "Includes your other-channel sales."
+              : (<>TikTok sales only. <Link href={`/shops/${shopId}/other-sales`}>Add other-channel sales</Link></>)}
           </p>
           </>)}
         </div>
@@ -127,8 +127,8 @@ export default async function TaxPage({ params }) {
           <div className="card" data-testid="set-aside">
             <h2>Estimated Income Tax and National Insurance reserve</h2>
             <p className="card__why">
-              An estimate of what to keep back for tax
-              {setAside.period ? ` on your profit from ${formatDate(setAside.period.from)} to ${formatDate(setAside.period.to)}` : ""}.
+              To keep back for tax
+              {setAside.period ? `, ${formatDate(setAside.period.from)} to ${formatDate(setAside.period.to)}` : ""}
             </p>
             {/* The reason and the basis are the service's own words (A30.3), so the card
                 cannot describe a company, a missing cost or unloaded rates wrongly. */}
@@ -158,7 +158,7 @@ export default async function TaxPage({ params }) {
                 ))}
               </ul>
             )}
-            <p className="footnote">This is an estimate based on the information in MyShopEdge and is not tax advice.</p>
+            <p className="footnote">An estimate, not tax advice.</p>
           </div>
         )}
 

@@ -88,7 +88,7 @@ export default async function SettingsPage({ params }) {
     <section data-testid="settings-page">
       <header className="page-head">
         <h1>TikTok Shop connection</h1>
-        <p>MyShopEdge can read your TikTok Shop data but cannot place orders, issue refunds or change your shop.</p>
+        <p>Read only. MyShopEdge cannot change your shop.</p>
       </header>
       <div className="stack">
         <div className="card" data-testid="settings-connection">
@@ -164,7 +164,7 @@ export default async function SettingsPage({ params }) {
             Disconnect TikTok Shop
           </Link>
         </p>
-        <p className="footnote">Disconnecting stops updates and keeps everything you already have. It does not change your plan.</p>
+        <p className="footnote">Disconnecting stops updates. Your data and plan stay.</p>
       </div>
     </section>
   );

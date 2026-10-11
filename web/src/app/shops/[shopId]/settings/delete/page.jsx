@@ -46,14 +46,13 @@ export default async function DeleteAccountPage({ params }) {
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/settings`}>Settings</Link></p>
         <h1>Delete my account</h1>
-        <p>Your account closes now. After thirty days MyShopEdge erases your name and email and deletes your files.</p>
+        <p>Closes now. Name, email and files erased after 30 days.</p>
       </header>
       <div className="stack">
         <div className="card">
           <h2>Take your data first</h2>
           <p className="card__why">
-            MyShopEdge can build a copy of everything it holds about you. You may want to download
-            it before you delete your account.
+            Download a copy before you delete.
           </p>
           <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/settings/data`} data-testid="take-data">Download my data</Link></p>
         </div>
@@ -69,10 +68,9 @@ export default async function DeleteAccountPage({ params }) {
             <li><span>Your ledger</span><strong>Kept, with your name and email removed</strong></li>
           </ul>
           <p className="card__why">
-            Financial records must be kept after a business stops trading, so MyShopEdge
-            keeps your ledger with your name and email removed. MyShopEdge has not yet set when
-            that ledger is deleted. For thirty days you can sign in and cancel the deletion.
-            Your shops stay disconnected, so you would connect each one again on TikTok.
+            Your ledger is kept without your name or email, as financial records must be. Its
+            deletion date is not yet set. Sign in within 30 days to cancel. Shops stay
+            disconnected.
           </p>
         </div>
         <DeleteAccountForm />

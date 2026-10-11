@@ -77,8 +77,7 @@ export default async function MoneyPage({ params, searchParams }) {
       <header className="page-head">
         <h1>Where the money went</h1>
         <p>
-          This shows where every pound went{" "}
-          {day ? `on ${formatDate(day)}` : `from ${formatDate(period.from)} to ${formatDate(period.to)}`}.{" "}
+          {day ? formatDate(day) : `${formatDate(period.from)} to ${formatDate(period.to)}`}{" "}
           <span className={chipClass(tone)} title={CONFIDENCE_MEANING[m.confidence]}>{confidence}</span>
         </p>
       </header>
@@ -160,7 +159,7 @@ function ExpectedPayouts({ result, shopId }) {
               expects to pay.{" "}
               <Link href={`/shops/${shopId}/connection-problem`}>Reconnect your shop</Link>
             </>
-          ) : "TikTok did not answer just now, so expected payouts are not shown. The figures above are unaffected."}
+          ) : "TikTok is not answering. Try again shortly."}
         </p>
       </div>
     );

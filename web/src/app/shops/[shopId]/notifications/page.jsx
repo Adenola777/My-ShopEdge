@@ -124,13 +124,7 @@ export default async function NotificationsPage({ params, searchParams }) {
       {notifications.length === 0 ? (
         <section className="state">
           <h2>{resolved ? "Nothing resolved yet." : "You have no open notices."}</h2>
-          <p>
-            MyShopEdge tells you here when an item runs low on stock, when a return has waited
-            longer than your Alerts setting for your check, when TikTok&rsquo;s stock count rises
-            and MyShopEdge reduces your adjustment, when your shops pass the plan&rsquo;s order
-            limit, when your TikTok connection is close to expiring, or when a scheduled export
-            is ready.
-          </p>
+          <p>Low stock, waiting returns, plan limits and ready exports appear here.</p>
         </section>
       ) : (
         <div className="card">

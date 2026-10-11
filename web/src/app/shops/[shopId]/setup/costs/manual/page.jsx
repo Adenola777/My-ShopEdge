@@ -40,12 +40,12 @@ export default async function ManualCostsPage({ params }) {
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/setup/costs`}>Product costs</Link></p>
         <h1>Type your costs</h1>
-        <p>Product cost is needed. Packaging and shipping you pay are optional.</p>
+        <p>Product cost needed. Packaging and shipping optional.</p>
       </header>
       {coverage.ok && (
         <p className="note" data-testid="coverage-line">
-          {coverage.data.units_with_cost} of {coverage.data.units_total} units sold in the last 30 days have a cost
-          ({Math.round(coverage.data.coverage * 100)}%).
+          {coverage.data.units_with_cost} of {coverage.data.units_total} units costed, last 30 days
+          ({Math.round(coverage.data.coverage * 100)}%)
         </p>
       )}
       {rows.length === 0

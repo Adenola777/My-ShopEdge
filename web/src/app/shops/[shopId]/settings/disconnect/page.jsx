@@ -36,7 +36,7 @@ export default async function DisconnectPage({ params }) {
   }
 
   const plan = (
-    <>Disconnecting does not change your plan, and you can stop it renewing in <Link href={`/shops/${shopId}/settings/profile`}>Account, billing and plan</Link>.</>
+    <>Your plan is unchanged. <Link href={`/shops/${shopId}/settings/profile`}>Manage plan</Link></>
   );
 
   if (shop.connection_status === "disconnected") {
@@ -44,7 +44,7 @@ export default async function DisconnectPage({ params }) {
       <section data-testid="disconnect-screen">
         <header className="page-head">
           <h1>This shop is already disconnected</h1>
-          <p>MyShopEdge is not reading {shop.shop_name ?? "this shop"} from TikTok, so there is nothing to disconnect. {plan}</p>
+          <p>{shop.shop_name ?? "This shop"} is not being read. {plan}</p>
         </header>
         <div className="stack">
           <div className="card" data-testid="disconnect-already">
@@ -62,7 +62,7 @@ export default async function DisconnectPage({ params }) {
     <section data-testid="disconnect-screen">
       <header className="page-head">
         <h1>Disconnect this shop</h1>
-        <p>MyShopEdge stops reading from TikTok. Nothing you already have is deleted. {plan}</p>
+        <p>Updates stop. Nothing is deleted. {plan}</p>
       </header>
       <div className="card">
         <h2>What stays</h2>
@@ -71,7 +71,7 @@ export default async function DisconnectPage({ params }) {
           <li><span>Your ledger and figures</span><strong>Kept</strong></li>
           <li><span>Your product costs</span><strong>Kept</strong></li>
         </ul>
-        <p className="card__why">If you connect the same shop again later, MyShopEdge reads from where it stopped and adds what you missed to these records. MyShopEdge does not ask TikTok to withdraw the approval you gave it.</p>
+        <p className="card__why">Reconnect later and the gap is filled. TikTok approval is not withdrawn.</p>
       </div>
       <DisconnectAction shopId={shopId} />
     </section>

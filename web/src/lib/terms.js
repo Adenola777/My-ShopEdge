@@ -11,7 +11,7 @@ import { NOT_ON_PLAN } from "./upgrade";
 import { formatMoney } from "./api";
 
 /** The statement CLR-5 requires wherever gross profit after returns is shown. */
-export const BEFORE_OVERHEADS = "This is before your own running costs and your tax.";
+export const BEFORE_OVERHEADS = "Before your running costs and tax.";
 
 /**
  * Gross margin after returns as words, from the service's fraction (0.4752 reads "47.5%").

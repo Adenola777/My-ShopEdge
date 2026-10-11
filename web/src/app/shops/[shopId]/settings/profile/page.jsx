@@ -76,7 +76,7 @@ export default async function ProfilePage({ params }) {
     <section data-testid="profile-page">
       <header className="page-head">
         <h1>Account, billing and plan</h1>
-        <p>This page shows how you sign in and which plan this account is on.</p>
+        <p>How you sign in, and your plan.</p>
       </header>
       <div className="stack">
         <div className="card" data-testid="profile-account">
@@ -87,7 +87,7 @@ export default async function ProfilePage({ params }) {
             <li><span>Member since</span><strong>{formatDate(me.created_at)}</strong></li>
             <li><span>Shops</span><strong>{me.shop_count ?? 0}</strong></li>
           </ul>
-          <p className="card__why">Your name and email come from the account you sign in with, such as Google, so you change them there.</p>
+          <p className="card__why">Change these with Google.</p>
         </div>
 
         <EmailNoticesSwitch on={me.email_notices ?? true} />
@@ -127,7 +127,7 @@ export default async function ProfilePage({ params }) {
             Delete my account
           </Link>
         </p>
-        <p className="footnote">Deleting closes your account at once. After thirty days MyShopEdge erases your name and email. Until then you can sign in and cancel the deletion.</p>
+        <p className="footnote">Closes your account now. Name and email erased after 30 days. Cancel any time before.</p>
       </div>
     </section>
   );

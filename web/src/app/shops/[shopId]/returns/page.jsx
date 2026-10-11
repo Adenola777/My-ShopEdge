@@ -23,9 +23,9 @@ export const metadata = { title: "Returns" };
 
 /** The brief's states for a checked item, with the chip tone. @type {Record<string, [string, string, string]>} */
 const STATE = {
-  resellable: ["Resellable", "good", "Back in available stock."],
-  unsellable: ["Unsellable, written off", "bad", "Written off and reflected in your figures."],
-  not_applicable: ["Nothing came back", "quiet", "Stock did not change."],
+  resellable: ["Resellable", "good", "Back in stock."],
+  unsellable: ["Unsellable, written off", "bad", "Included in your figures."],
+  not_applicable: ["Nothing came back", "quiet", "No stock change."],
 };
 
 /**
@@ -60,7 +60,7 @@ export default async function ReturnsPage({ params, searchParams }) {
     <section data-testid="returns-screen">
       <header className="page-head">
         <h1>Returns</h1>
-        <p>Review each return once so your stock and product figures stay accurate.</p>
+        <p>Check each return once.</p>
       </header>
 
       {checked && RECORDED[checked] && (
@@ -68,7 +68,7 @@ export default async function ReturnsPage({ params, searchParams }) {
       )}
 
       <h2>Awaiting inspection</h2>
-      <p className="muted">Say whether each returned item can be sold again. Each item is checked once, and the check cannot be changed.</p>
+      <p className="muted">Can it be sold again? Each check is final.</p>
       {returns.length === 0 ? (
         <div className="card">
           <p className="muted">There are no returns waiting for a check.</p>

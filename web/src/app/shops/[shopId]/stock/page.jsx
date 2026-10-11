@@ -51,10 +51,9 @@ export default async function StockPage({ params, searchParams }) {
     <section>
       <header className="page-head">
         <h1>Stock</h1>
-        <p>Know what is on hand, what is coming back and what may run out next.</p>
+        <p>On hand, coming back and running low.</p>
         <p className="muted">
-          This is your stock as TikTok last reported it, with your own adjustments.
-          {items.length > 0 && ` The newest count is from ${formatDate(as_of, { time: true })}.`}
+          TikTok&apos;s count with your adjustments{items.length > 0 && `, ${formatDate(as_of, { time: true })}`}
         </p>
       </header>
 
@@ -113,10 +112,8 @@ export default async function StockPage({ params, searchParams }) {
       ) : (
         <div className="card">
           <p className="rows__sub" style={{ marginTop: 0 }}>
-            Days of cover is stock on hand divided by the daily rate of the last fourteen days.
-            It is not shown when nothing sold in that time. Low means fewer days of cover than
-            your <Link href={`/shops/${shopId}/settings/alerts`}>low stock alert</Link>, which is
-            fourteen days unless you change it.
+            Days of cover from the last 14 days of sales. Low is under your{" "}
+            <Link href={`/shops/${shopId}/settings/alerts`}>low stock alert</Link>.
           </p>
           <ul className="rows">
             {items.map((s) => {

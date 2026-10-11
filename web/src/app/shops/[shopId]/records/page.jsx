@@ -59,12 +59,10 @@ export default async function RecordsPage({ params, searchParams }) {
         <h1>{heading}</h1>
         <p>
           {filters.from && filters.to
-            ? `${formatDate(filters.from)} to ${formatDate(filters.to)}, on the `
-            : "On the "}
-          {filters.basis === "cash" ? "cash basis" : "sales basis"}.{" "}
-          {forFigure
-            ? "These are the records that make up the figure."
-            : "These are the records MyShopEdge holds for this shop."}
+            ? `${formatDate(filters.from)} to ${formatDate(filters.to)} \u00b7 `
+            : ""}
+          {filters.basis === "cash" ? "Cash basis" : "Sales basis"}
+          {forFigure ? " \u00b7 The records behind this figure" : ""}
         </p>
       </header>
 

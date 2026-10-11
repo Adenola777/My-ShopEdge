@@ -65,7 +65,7 @@ export default async function SetupPage({ params }) {
     <section data-testid="setup-screen">
       <header className="page-head">
         <h1>Continue setting up</h1>
-        <p>Pick up where you left off. Nothing you have done is repeated.</p>
+        <p>Pick up where you left off.</p>
       </header>
       <div className="card">
         <ul className="rows">
