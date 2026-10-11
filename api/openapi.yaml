@@ -400,6 +400,16 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '409':
+          description: 'A shop TikTok authorised already belongs to a different MyShopEdge account.
+
+            The code is `shop_already_connected`, and nothing from this authorisation is kept.
+
+            '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /shops:
     get:
       tags:

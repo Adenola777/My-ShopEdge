@@ -45,6 +45,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
+import psycopg
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query
 from fastapi.responses import JSONResponse
@@ -357,6 +358,15 @@ def _first_sync(shop_id, account_id) -> None:
         log.exception("first read notice for shop %s was not written", shop_id)
 
 
+def _shop_already_connected() -> Problem:
+    return Problem(
+        409, "shop_already_connected",
+        "That shop is already connected to a different MyShopEdge account, so it was not "
+        "added here. Sign in with that account, or email "
+        "info@inspirecraftglobal.com if you no longer use it.",
+    )
+
+
 class ConnectionResultOut(BaseModel):
     shop: dict[str, Any] | None = None
     accepted: bool
@@ -441,29 +451,36 @@ def tiktok_callback(
             elif seller_type != SUPPORTED_SELLER_TYPE:
                 rejection_reason = "seller_type_unsupported"
 
-            row = conn.execute(
-                "insert into shops (account_id, platform, tiktok_shop_id, tiktok_shop_code, "
-                "  shop_name, region, seller_type, currency, connection_status) "
-                "values (%s, 'tiktok_shop', %s, %s, %s, %s, %s, 'GBP', 'pending') "
-                "on conflict (platform, tiktok_shop_id) do update set "
-                "  tiktok_shop_code = excluded.tiktok_shop_code, shop_name = excluded.shop_name, "
-                "  region = excluded.region, seller_type = excluded.seller_type, "
-                "  connection_status = 'pending' "
-                "returning id",
-                (str(account_id), shop["id"], shop.get("code"), shop.get("name"),
-                 region, seller_type),
-            ).fetchone()
+            try:
+                row = conn.execute(
+                    "insert into shops (account_id, platform, tiktok_shop_id, tiktok_shop_code, "
+                    "  shop_name, region, seller_type, currency, connection_status) "
+                    "values (%s, 'tiktok_shop', %s, %s, %s, %s, %s, 'GBP', 'pending') "
+                    "on conflict (platform, tiktok_shop_id) do update set "
+                    "  tiktok_shop_code = excluded.tiktok_shop_code, shop_name = excluded.shop_name, "
+                    "  region = excluded.region, seller_type = excluded.seller_type, "
+                    "  connection_status = 'pending' "
+                    "returning id",
+                    (str(account_id), shop["id"], shop.get("code"), shop.get("name"),
+                     region, seller_type),
+                ).fetchone()
+            except psycopg.errors.InsufficientPrivilege as err:
+                # A shop held by another account. The conflict clause tries to update that
+                # account's row, and row level security refuses it with an error rather than
+                # hiding it. The earlier code expected an empty result here, and nobody ran the
+                # case until the owner met it on 11 October 2026: PostgreSQL 16 answered
+                # `new row violates row-level security policy (USING expression) for table
+                # "shops"` on a local copy, the service answered 500 `internal_error`, and the
+                # page showed its catch-all sentence. The transaction rolls back, so nothing of
+                # this authorisation is kept. Any other refusal is not this case and is raised.
+                if "row-level security" not in str(err):
+                    raise
+                raise _shop_already_connected() from err
 
             if row is None:
-                # The conflict clause updates rather than doing nothing, so a null here means
-                # the row belongs to another account and row level security hid it. That is
-                # the UNIQUE (platform, tiktok_shop_id) guard doing its job.
-                raise Problem(
-                    409, "shop_already_connected",
-                    "That shop is already connected to a different MyShopEdge account, so it was not "
-                    "added here. Sign in with that account, or email "
-                    "info@inspirecraftglobal.com if you no longer use it.",
-                )
+                # Not reached on PostgreSQL 16, which raises as above. Kept so that a database
+                # which hides the row instead still gives the seller the right sentence.
+                raise _shop_already_connected()
             shop_id = row[0]
 
             conn.execute(

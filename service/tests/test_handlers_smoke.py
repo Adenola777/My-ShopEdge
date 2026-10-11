@@ -749,7 +749,7 @@ GB_SHOP = {"id": "7495", "code": "GBGBLCRKQTEX", "name": "My ShopEdge",
            "region": "GB", "seller_type": "LOCAL", "cipher": "GCP_test"}
 
 
-def _callback_with(shop, written):
+def _callback_with(shop, written, shop_error=None):
     connections.unscoped = _fake_unscoped(
         [("consume_tiktok_auth_state", Result(["a", "r"], [(ACCOUNT.id, "/connect/done")]))]
     )
@@ -765,6 +765,8 @@ def _callback_with(shop, written):
         def execute(self, sql, args=None):
             flat = " ".join(sql.split())
             if "insert into shops" in flat:
+                if shop_error is not None:
+                    raise shop_error
                 written["shop"] = args
                 written.setdefault("shops", []).append(args)
                 return Result(["id"], [(SHOP,)])
@@ -843,6 +845,21 @@ def callback_stores_every_authorised_shop():
     # The contract returns one shop: the first accepted one.
     _assert(r.json()["shop"]["tiktok_shop_code"] == "GBGBLCUKQTCE" and r.json()["accepted"] is True, r.json())
 check("GET callback stores every shop TikTok authorises, each with its own cipher", callback_stores_every_authorised_shop)
+
+
+def callback_refuses_a_shop_another_account_holds():
+    # 11 October 2026. PostgreSQL 16 refuses the conflict update on another account's shop with
+    # this error, which the service had answered as 500 internal_error. The message is the
+    # one a local copy printed.
+    import psycopg
+    written = {}
+    r = _callback_with(GB_SHOP, written, shop_error=psycopg.errors.InsufficientPrivilege(
+        'new row violates row-level security policy (USING expression) for table "shops"'))
+    _assert(r.status_code == 409, f"status {r.status_code}: {r.text[:300]}")
+    _assert(r.json()["code"] == "shop_already_connected", r.json())
+    _assert(not written.get("conns"), "no connection may be written for a shop the account does not own")
+    _assert(not written.get("first_sync"), "a refused shop must not be read")
+check("GET callback answers shop_already_connected for a shop another account holds", callback_refuses_a_shop_another_account_holds)
 
 
 # --- stock, movements and discrepancies
