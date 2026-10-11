@@ -114,7 +114,12 @@ export default async function MoneyPage({ params, searchParams }) {
           <p className="muted">Nothing recorded in this period.</p>
         </div>
       ) : (
-        <MoneySections m={m} shopId={shopId} basis={basis} />
+        <>
+          {/* The sections are third-level headings, as on Overview, so the page names the
+              calculation at the second level for a screen reader (A37 phase 6, axe-core). */}
+          <h2 className="visually-hidden">The calculation, line by line</h2>
+          <MoneySections m={m} shopId={shopId} basis={basis} />
+        </>
       )}
 
       {m.totals?.gross_profit_so_far && (

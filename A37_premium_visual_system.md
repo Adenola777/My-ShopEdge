@@ -172,8 +172,27 @@ one duplicate, each shown with its status. Apply was not pressed, so the run sav
 typed cost of "abc" showed its error, marked the field invalid and saved nothing. No page
 scrolls sideways.
 
+## A37.9 Phase 6, accessibility and wording, built 11 October 2026
+
+- **Accessibility, as measured.** axe-core 4.10.2 ran its WCAG 2.0 A and AA, WCAG 2.1 AA and
+  best-practice rules on 27 shop screens at 1280 and 390 px. It found one fault: Where the money
+  went went from its title to a third-level heading. The page now names the calculation at the
+  second level for a screen reader, and a second run found nothing on any screen. Pressing Tab
+  up to 60 times on Overview, Payouts, Explain this payout, Products, Type your costs, Returns
+  and Stock reached no control without a visible focus ring. axe-core does not judge everything
+  WCAG asks, so this is a check and not a certificate; no screen reader was used.
+- **Returns.** The checked returns are one list, a row each, where each had been a card of five
+  lines: 442 words to 349 and 5,716 px to 2,142 px at 1280. A return still to check keeps its
+  card, because the card holds its form.
+- **Stock.** The four counts sit side by side in one card, under a title that no longer repeats
+  Units in hand, and the filter is the compact switch.
+- **VAT and tax.** The reserve said twice that it is not tax advice; the page now says it only
+  when the service's own estimate, which says so, is not shown. The review date of the tax
+  dates is said once when every date was reviewed on the same day.
+
 ## A37.4 The phases still to come
 
-Each is its own pull request, shown to the owner before it merges: the Overview (phase 2), Reconcile
-and Explain this payout (phase 3), Products (phase 4), cost upload (phase 5), and accessibility
-and wording (phase 6). Phase 2 waits on the waterfall answer in A37.1.
+Each is shown to the owner before it merges: the Overview (phase 2), Reconcile and Explain this
+payout (phase 3), Products (phase 4), cost upload (phase 5), and accessibility and wording
+(phase 6). Phase 2 merged in PR 79. Phases 3 to 6 were built on 11 October 2026 (A37.6 to A37.9)
+and are one pull request with a commit for each, because the session works on one branch.

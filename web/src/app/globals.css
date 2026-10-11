@@ -754,7 +754,8 @@ tbody tr:last-child td { border-bottom: 0; }
    larger screen and stacked on a phone, and every payout as one row of a single list. A row
    is a link across its whole width, so the target is the row, not a word in it. */
 .stats { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
-@media (min-width: 40rem) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 40rem) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .stats--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 40rem) { .stats--4 { grid-template-columns: 1fr 1fr; } }
 .overview .overview__note { margin: var(--space-3) 0 0; }
 .overview .overview__more { margin-top: var(--space-5); }
 .content .payouts li { padding: 0; display: block; }

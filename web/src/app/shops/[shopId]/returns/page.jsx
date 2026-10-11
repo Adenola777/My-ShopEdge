@@ -11,6 +11,12 @@
  * and the returns already checked, read only, with what each did to stock and figures. A
  * check stays one way. The brief's optional note is not offered, because the service has
  * nowhere to keep one.
+ *
+ * A37 phase 6, 11 October 2026: the checked returns are one list, a row each, where each had
+ * been a card of five lines. A row carries the product, its order, the check's date and any
+ * note on one quiet line, and the state and refund on the right, with the cost written off
+ * under the refund when there is one. Returns waiting for a check keep their cards, because
+ * each holds its form.
  */
 
 import { fetchShop, formatDate } from "@/lib/api";
@@ -56,46 +62,37 @@ export default async function ReturnsPage({ params, searchParams }) {
   /** @type {import("@/lib/api-types").components["schemas"]["ReturnSummary"][]} */
   const returns = result.data.returns ?? [];
 
+  /** A product and its quantity, in a few words. @param {any} item */
+  const what = (item) => `${[item.product_title, item.variant_label].filter(Boolean).join(", ") || "A product TikTok did not name"}${item.quantity === 1 ? "" : `, ${item.quantity} units`}`;
+
   return (
-    <section data-testid="returns-screen">
+    <section className="overview" data-testid="returns-screen">
       <header className="page-head">
         <h1>Returns</h1>
-        <p>Check each return once.</p>
+        <p>Check each return once. Each check is final.</p>
       </header>
 
       {checked && RECORDED[checked] && (
         <div className="note note--info" role="status" data-testid="return-recorded"><p>{RECORDED[checked]}</p></div>
       )}
 
-      <h2>Awaiting inspection</h2>
-      <p className="muted">Can it be sold again? Each check is final.</p>
+      <h2 className="overview__heading">Awaiting inspection</h2>
       {returns.length === 0 ? (
         <div className="card">
-          <p className="muted">There are no returns waiting for a check.</p>
+          <p className="overview__clear"><span aria-hidden="true">{"\u2713"}</span> No returns waiting for a check.</p>
         </div>
       ) : (
         <div className="stack">
           {returns.map((r) => {
             const waiting = (r.items ?? []).filter((i) => i.seller_check_status === "pending");
             return waiting.map((item) => (
-              <div className="card stack" key={item.id} data-testid="return-to-check">
-                <div>
-                  <h2>Order {r.tiktok_order_id}</h2>
-                  <ul className="rows">
-                    <li>
-                      <span>Product</span>
-                      <strong>
-                        {[item.product_title, item.variant_label].filter(Boolean).join(", ") || "A product TikTok did not name"}
-                        {`, ${item.quantity} ${item.quantity === 1 ? "unit" : "units"}`}
-                      </strong>
-                    </li>
-                    <li>
-                      <span>Refund to the customer</span>
-                      <Figure amount={r.refund} reason="Not refunded yet" />
-                    </li>
-                    {r.requested_at && <li><span>Requested</span><strong>{formatDate(r.requested_at)}</strong></li>}
-                  </ul>
-                </div>
+              <div className="card" key={item.id} data-testid="return-to-check">
+                <p className="hero__label">{what(item)}</p>
+                <p className="hero__meta">
+                  <span>Order {r.tiktok_order_id}</span>
+                  {r.requested_at && <span>Requested {formatDate(r.requested_at)}</span>}
+                  <span>Refund <Figure amount={r.refund} reason="Not refunded yet" /></span>
+                </p>
                 <ReturnCheckForm shopId={shopId} itemId={item.id} quantity={item.quantity}
                                  currency={r.refund?.currency ?? "GBP"} />
               </div>
@@ -106,34 +103,32 @@ export default async function ReturnsPage({ params, searchParams }) {
 
       {checkedReturns.length > 0 && (
         <>
-          <h2>Checked</h2>
-          <div className="stack">
-            {checkedReturns.flatMap((r) => (r.items ?? []).map((item) => {
-              const [word, tone, effect] = STATE[item.seller_check_status] ?? ["Checked", "quiet", ""];
-              return (
-                <div className="card" key={item.id} data-testid="return-checked">
-                  <ul className="rows">
-                    <li>
-                      <span>
-                        {[item.product_title, item.variant_label].filter(Boolean).join(", ") || "A product TikTok did not name"}
-                        {`, ${item.quantity} ${item.quantity === 1 ? "unit" : "units"}`}
+          <h2 className="overview__heading">Checked</h2>
+          <div className="card">
+            <ul className="rows">
+              {checkedReturns.flatMap((r) => (r.items ?? []).map((item) => {
+                const [word, tone, effect] = STATE[item.seller_check_status] ?? ["Checked", "quiet", ""];
+                const cost = r.return_cost && r.return_cost.amount_minor !== 0 ? r.return_cost : null;
+                return (
+                  <li key={item.id} data-testid="return-checked">
+                    <span>
+                      <span className="payouts__when">{what(item)}</span>
+                      <span className="rows__sub products__sub">
+                        {[`Order ${r.tiktok_order_id}`, item.checked_at ? `Checked ${formatDate(item.checked_at)}` : null, effect].filter(Boolean).join(" \u00b7 ")}
                       </span>
+                      {item.seller_note && (
+                        <span className="rows__sub products__sub" data-testid="return-note">Your note: {item.seller_note}</span>
+                      )}
+                    </span>
+                    <span className="products__figure">
                       <span className={chipClass(tone)}>{word}</span>
-                    </li>
-                    <li><span>Order</span><strong>{r.tiktok_order_id}</strong></li>
-                    <li><span>Refund to the customer</span><Figure amount={r.refund} reason="Not refunded yet" /></li>
-                    {item.checked_at && <li><span>Checked</span><strong>{formatDate(item.checked_at)}</strong></li>}
-                    {r.return_cost && r.return_cost.amount_minor !== 0 && (
-                      <li><span>Return cost in your figures</span><Figure amount={r.return_cost} /></li>
-                    )}
-                  </ul>
-                  {effect && <p className="card__why">{effect}</p>}
-                  {item.seller_note && (
-                    <p className="card__why" data-testid="return-note"><strong>Your note:</strong> {item.seller_note}</p>
-                  )}
-                </div>
-              );
-            }))}
+                      <span>Refund <Figure amount={r.refund} reason="Not refunded yet" /></span>
+                      {cost && <span className="rows__sub">Return cost <Figure amount={cost} /></span>}
+                    </span>
+                  </li>
+                );
+              }))}
+            </ul>
           </div>
         </>
       )}

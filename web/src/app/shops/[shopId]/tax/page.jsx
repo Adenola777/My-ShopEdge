@@ -45,6 +45,9 @@ export default async function TaxPage({ params }) {
   /** @type {{ rule_key: string, label: string, date: string, reviewed_at?: string | null }[]} */
   const dates = datesRes.ok ? (datesRes.data.dates ?? []) : [];
 
+  const reviews = new Set(dates.map((d) => d.reviewed_at ?? ""));
+  const oneReview = dates.length > 0 && reviews.size === 1 && !reviews.has("") ? (dates[0]?.reviewed_at ?? null) : null;
+
   return (
     <section data-testid="tax-screen">
       <header className="page-head">
@@ -158,7 +161,9 @@ export default async function TaxPage({ params }) {
                 ))}
               </ul>
             )}
-            <p className="footnote">An estimate, not tax advice.</p>
+            {/* When the estimate is served, its own last line already says it is not tax advice,
+                so the page says it only when no estimate is shown (A37 phase 6). */}
+            {!setAside.amount && <p className="footnote">An estimate, not tax advice.</p>}
           </div>
         )}
 
@@ -170,17 +175,21 @@ export default async function TaxPage({ params }) {
               {datesRes.ok ? "Tax dates are not loaded yet." : "Tax dates could not be loaded just now."}
             </p>
           ) : (
-            <ul className="rows">
-              {dates.map((d) => (
-                <li key={d.rule_key}>
-                  <span>
-                    {d.label}
-                    {d.reviewed_at && <div className="rows__sub">Reviewed {formatDate(d.reviewed_at)}</div>}
-                  </span>
-                  <strong>{formatDate(d.date)}</strong>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="rows">
+                {dates.map((d) => (
+                  <li key={d.rule_key}>
+                    <span>
+                      {d.label}
+                      {!oneReview && d.reviewed_at && <div className="rows__sub">Reviewed {formatDate(d.reviewed_at)}</div>}
+                    </span>
+                    <strong>{formatDate(d.date)}</strong>
+                  </li>
+                ))}
+              </ul>
+              {/* A37 phase 6: when every date was reviewed on the same day, the day is said once. */}
+              {oneReview && <p className="rows__sub" style={{ margin: "var(--space-2) 0 0" }}>Reviewed {formatDate(oneReview)}</p>}
+            </>
           )}
         </div>
       </div>
