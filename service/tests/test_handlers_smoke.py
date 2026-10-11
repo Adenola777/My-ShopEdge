@@ -70,6 +70,9 @@ class Conn:
         for needle, result in self.answers:
             if needle in " ".join(sql.split()):
                 return result
+        if "cost_upload_reviews" in sql:
+            # No upload waits on the seller unless a case says so (A36 item 5).
+            return Result(["product_id"], [])
         raise KeyError(f"No canned answer for: {' '.join(sql.split())[:140]}")
     def __enter__(self): return self
     def __exit__(self, *a): return False
@@ -243,16 +246,18 @@ check("GET records distinguishes the total from the page sum", records_page)
 def products_ranking():
     cols = ["product_id","tiktok_product_id","title","units_sold","returns_units",
             "gross_sales_minor","net_proceeds_minor","currency","return_loss_minor",
-            "cost_retained_minor","skus_without_cost","kept_minor"]
+            "cost_retained_minor","skus_without_cost","kept_minor","skus_sold"]
     desk = (PRODUCT, "P-DESK", "Computer Desk 120cm", 3, 1, 36000, 21300, "GBP",
-            5100, 10200, 0, 6000)
+            5100, 10200, 0, 6000, 1)
     nocost = (UUID("55555555-5555-4555-8555-555555555555"), "P-X", "No cost yet",
-              2, 0, 4000, 3000, "GBP", 0, None, 1, None)
+              2, 0, 4000, 3000, "GBP", 0, None, 1, None, 1)
     loose = Result(["category","tiktok_fee_type","amount_minor","currency"],
                    [("platform_adjustment", "PLATFORM_PENALTY", -500, "GBP")])
     products.tenant = with_conn(products, [
         ("and le.sku_id is null", loose),
         ("with scoped as", Result(cols, [desk, nocost])),
+        # The desk has a variant an unapplied upload would re-cost (A36 item 5).
+        ("from cost_upload_reviews r", Result(["product_id"], [(PRODUCT,)])),
     ])
     r = client.get(f"/v1/shops/{SHOP}/products")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
@@ -264,6 +269,8 @@ def products_ranking():
     _assert(rows["No cost yet"]["kept"] is None, "kept must be null when a cost is missing")
     _assert(rows["No cost yet"]["cost_known"] is False)
     _assert(rows["No cost yet"]["kept_reason"] is not None, "a null kept must say why")
+    _assert(rows["Computer Desk 120cm"]["cost_status"] == "needs_review", rows["Computer Desk 120cm"])
+    _assert(rows["No cost yet"]["cost_status"] == "cost_needed", rows["No cost yet"])
     # A product with an unknown cost ranks last rather than first.
     _assert(b["products"][0]["title"] == "Computer Desk 120cm")
     # Money that belongs to no product is its own line, named as the money screen names it.

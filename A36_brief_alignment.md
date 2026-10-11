@@ -362,3 +362,45 @@ Checked on 11 October 2026:
   writes across origins.
 
 **0033 is applied to no Neon branch.**
+
+## A36.13 Item 5 built: Needs review as a product's cost status, 11 October 2026
+
+Section 8B of the brief lists four cost statuses for a product, and Needs review was the one
+not given. It is now given.
+
+**When a product needs review. Derived, not ruled**; the brief names the status only. A
+product needs review while one of its variants meets all three of these:
+- the shop's latest cost upload has been matched and not applied;
+- that match found a cost for the variant different from the cost in force, which is the
+  upload's own Needs review (A36.9);
+- no cost has been set for the variant since the match.
+
+Applying the upload settles it, whether the seller replaced the cost or kept it. So does a
+newer upload, or a cost set by hand on the product page. Needs review comes before the other
+three statuses, because it asks the seller to decide something.
+
+- Migration 0034 adds `cost_upload_reviews`, one row per variant per upload, with row level
+  security on the shop's account. `matchCostUpload` writes the rows and `applyCostUpload`
+  clears them.
+- `listProducts` and `getProduct` give `needs_review`. The contract's description says when.
+- The product page explains what the latest file found, says nothing has changed, and links
+  to the upload. The web app cannot reopen an unfinished upload, so it asks for the file
+  again.
+- **Safe before 0034 is applied.** An upload matches and applies as before, and no product is
+  Needs review.
+
+Checked on 11 October 2026:
+- The smoke test covers a product given Needs review beside one given Cost needed.
+- On a copy of the local demo database, with the file store replaced by a dictionary, 15 of
+  15 passed. Before 0034 the match worked and no product was Needs review. After 0034:
+  - the match recorded one variant, and the brush became Needs review on both screens while
+    the desk, whose cost matched, stayed Complete;
+  - matching again kept one row;
+  - applying without replacing cleared it, and the cost stayed 3.24;
+  - a second upload brought it back, a newer unmatched upload settled it, and a cost set by
+    hand settled it;
+  - `mse_app` saw no row outside its account.
+- In a browser at 390 and 1280 pixels wide, Products showed the chip and the product page
+  showed the explanation, with no page scrolling sideways.
+
+**0034 is applied to no Neon branch.**
