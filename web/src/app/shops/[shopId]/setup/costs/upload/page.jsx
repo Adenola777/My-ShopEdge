@@ -24,10 +24,10 @@ export default async function UploadPage({ params }) {
     return <UpgradePrompt feature="costs" plan="growth" back={`/shops/${shopId}/products`} />;
   }
   return (
-    <section data-testid="upload-screen">
+    <section className="overview" data-testid="upload-screen">
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/setup/costs`}>Product costs</Link></p>
-        <h1>Upload your product costs.</h1>
+        <h1>Upload your product costs</h1>
         <p>Excel or CSV. You review the matches before anything is saved.</p>
       </header>
       <UploadFlow shopId={shopId} />

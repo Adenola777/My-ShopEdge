@@ -163,40 +163,62 @@ export function ManualCosts({ shopId, rows, currency }) {
   }
 
   const shown = only ? rows.filter((r) => !r.has_cost) : rows;
+  /** Each field's name in full, for the column heading and a screen reader, and short, for a
+   *  phone, where the three fields share one row. @type {[string, string, string][]} */
+  const FIELDS = [["cost", "Product cost (£)", "Cost £"], ["packing", "Packaging you pay (£)", "Packaging £"], ["postage", "Shipping you pay (£)", "Shipping £"]];
+  // A37 phase 5, 11 October 2026: one card with a row per variant and the column names once at
+  // the top, where each variant had been a card with its own three labels. On a phone each row
+  // stacks and every field shows its own label. The cost's hint reads 0.00, because 3.40 beside
+  // a current cost of £5.00 read as a value already entered.
   return (
-    <div className="stack" data-testid="manual-costs">
+    <div data-testid="manual-costs">
       <label className="check">
         <input type="checkbox" checked={only} onChange={(e) => setOnly(e.target.checked)} data-testid="only-missing" />
         Only products without a cost
       </label>
-      {shown.length === 0 && <p className="muted">Every product sold here has a cost.</p>}
-      {shown.map((r) => {
-        const v = values[r.sku_id] ?? { cost: "", packing: "", postage: "", zero: false };
-        return (
-          <div className="card stack" key={r.sku_id} data-testid="cost-row">
-            <div>
-              <strong>{r.title}</strong>
-              <div className="rows__sub">{r.seller_sku ?? "No seller SKU"} · {r.units} sold in the last 30 days{r.cost ? ` · current cost ${formatMoney(r.cost)}` : ""}</div>
+      <div className="card cost-grid overview__more">
+        {shown.length === 0 ? (
+          <p className="muted">Every product sold here has a cost.</p>
+        ) : (
+          <>
+            <div className="cost-grid__head" aria-hidden="true">
+              <span>Product</span>
+              {FIELDS.map(([f, label]) => <span key={f}>{label}</span>)}
             </div>
-            <div className="cost-fields">
-              {/** @type {[string, string][]} */ ([["cost", "Product cost (£)"], ["packing", "Packaging you pay (£)"], ["postage", "Shipping you pay (£)"]]).map(([f, label]) => (
-                <div key={f}>
-                  <label htmlFor={`${f}-${r.sku_id}`}>{label}</label>
-                  <input id={`${f}-${r.sku_id}`} inputMode="decimal" placeholder={f === "cost" ? "3.40" : "Optional"}
-                         value={/** @type {any} */ (v)[f]} onChange={(e) => set(r.sku_id, f, e.target.value)} />
+            {shown.map((r) => {
+              const v = values[r.sku_id] ?? { cost: "", packing: "", postage: "", zero: false };
+              return (
+                <div className="cost-grid__row" key={r.sku_id} data-testid="cost-row">
+                  <div>
+                    <strong>{r.title}</strong>
+                    <span className="rows__sub products__sub">
+                      {r.seller_sku ?? "No seller SKU"} {"\u00b7"} {r.units} sold, 30 days{r.cost ? ` \u00b7 now ${formatMoney(r.cost)}` : ""}
+                    </span>
+                  </div>
+                  {FIELDS.map(([f, label, short]) => (
+                    <div key={f}>
+                      <span className="cost-grid__label" aria-hidden="true">{short}</span>
+                      <input id={`${f}-${r.sku_id}`} aria-label={`${label}, ${r.title}`} inputMode="decimal" placeholder={f === "cost" ? "0.00" : "Optional"}
+                             value={/** @type {any} */ (v)[f]} onChange={(e) => set(r.sku_id, f, e.target.value)}
+                             aria-invalid={errors[r.sku_id] ? "true" : undefined}
+                             aria-describedby={errors[r.sku_id] ? `err-${r.sku_id}` : undefined} />
+                    </div>
+                  ))}
+                  {parsePounds(v.cost) === 0 && (
+                    <label className="check cost-grid__wide"><input type="checkbox" checked={v.zero} onChange={(e) => set(r.sku_id, "zero", e.target.checked)} /> This costs me nothing</label>
+                  )}
+                  {errors[r.sku_id] && <p id={`err-${r.sku_id}`} className="form-error cost-grid__wide" role="alert">{errors[r.sku_id]}</p>}
                 </div>
-              ))}
-            </div>
-            {parsePounds(v.cost) === 0 && (
-              <label className="check"><input type="checkbox" checked={v.zero} onChange={(e) => set(r.sku_id, "zero", e.target.checked)} /> This costs me nothing</label>
-            )}
-            {errors[r.sku_id] && <p className="form-error" role="alert">{errors[r.sku_id]}</p>}
-          </div>
-        );
-      })}
-      {message && <p className="note" role="status" data-testid="costs-message">{message}</p>}
-      <p><button className="btn btn--primary btn--block" onClick={() => save("reveal")} disabled={busy} data-testid="save-costs">{busy ? "Saving" : "Save costs and see gross profit"}</button></p>
-      <p><button className="btn btn--quiet btn--block" onClick={() => save("later")} disabled={busy} data-testid="save-later">Save and continue later</button></p>
+              );
+            })}
+          </>
+        )}
+      </div>
+      {message && <p className="note overview__more" role="status" data-testid="costs-message">{message}</p>}
+      <p className="upload__actions overview__more">
+        <button className="btn btn--primary" onClick={() => save("reveal")} disabled={busy} data-testid="save-costs">{busy ? "Saving" : "Save costs and see gross profit"}</button>
+        <button className="btn btn--quiet" onClick={() => save("later")} disabled={busy} data-testid="save-later">Save and continue later</button>
+      </p>
     </div>
   );
 }
@@ -308,36 +330,30 @@ export function UploadFlow({ shopId }) {
     </div>
   );
 
+  // A37 phase 5, 11 October 2026: the four stages are named in a stepper above the flow, so the
+  // seller sees where they are and what is left. The stage is worked out from the state the
+  // flow already holds; nothing new is stored.
+  const stage = done ? 4 : match ? 3 : upload && columns.length > 0 ? 2 : 1;
+  const stepper = <Stepper steps={["Choose file", "Match columns", "Review", "Done"]} current={stage} />;
+
   if (done) {
     return (
-      <div className="stack" data-testid="upload-done">
-        <p className="note" role="status">{done} You can edit or replace costs later.</p>
-        <p><Link className="btn btn--primary btn--block" href={`/shops/${shopId}/profit-reveal`} data-testid="upload-see-profit">See gross profit</Link></p>
+      <div className="upload" data-testid="upload-done">
+        {stepper}
+        <div className="card">
+          <p className="overview__clear" role="status"><span aria-hidden="true">{"\u2713"}</span> {done}</p>
+          <p className="rows__sub">You can edit or replace costs later.</p>
+          <p className="hero__action"><Link href={`/shops/${shopId}/profit-reveal`} data-testid="upload-see-profit">See gross profit</Link></p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="stack" data-testid="upload-flow">
+    <div className="upload" data-testid="upload-flow">
+      {stepper}
       {!upload && (
-        <div className="card stack">
-          <p>
-            <a className="btn btn--quiet btn--block" href={`/shops/${shopId}/setup/costs/template`} data-testid="cost-template">
-              Download cost template
-            </a>
-          </p>
-          <div>
-            <h2>What the file needs</h2>
-            <ul className="rows" data-testid="expected-columns">
-              <li><span>Product name or SKU</span><span className="muted">Your seller SKU, or TikTok&apos;s SKU ID</span></li>
-              <li><span>Variation</span><span className="muted">Where a product comes in more than one</span></li>
-              <li><span>Cost per unit</span><span className="muted">In pounds, such as 3.40</span></li>
-              <li><span>Effective date</span><span className="muted">Optional, such as 2026-08-01 or 01/08/2026</span></li>
-            </ul>
-            <p className="footnote">
-              Row 1 names the columns. In Excel, format SKU IDs as text.
-            </p>
-          </div>
+        <div className="card">
           <label
             htmlFor="cost-file"
             className={`dropzone${dragging ? " dropzone--over" : ""}`}
@@ -352,24 +368,31 @@ export function UploadFlow({ shopId }) {
                    onChange={(e) => take(e.target.files?.[0])} disabled={busy} data-testid="cost-file" />
           </label>
           {busy && <p className="note" role="status" data-testid="upload-reading">Uploading and reading your file.</p>}
-          <p className="footnote">Stored privately in the EU. Never shared.</p>
+          <p className="upload__links">
+            <a href={`/shops/${shopId}/setup/costs/template`} data-testid="cost-template">Download cost template</a>
+            <span className="rows__sub">Stored privately in the EU. Never shared.</span>
+          </p>
+          <details className="disclose">
+            <summary>What the file needs</summary>
+            <ul className="rows" data-testid="expected-columns">
+              <li><span>Product name or SKU</span><span className="muted">Seller SKU or TikTok SKU ID</span></li>
+              <li><span>Variation</span><span className="muted">If a product has several</span></li>
+              <li><span>Cost per unit</span><span className="muted">In pounds, such as 3.40</span></li>
+              <li><span>Effective date</span><span className="muted">Optional, such as 01/08/2026</span></li>
+            </ul>
+            <p className="footnote">Row 1 names the columns. In Excel, format SKU IDs as text.</p>
+          </details>
         </div>
       )}
       {upload && columns.length === 0 && (
         <div className="card stack" data-testid="upload-unreadable">
           <h2>We could not read your columns</h2>
-          <p>
-            {upload.error
-              ?? "We could not find a row of column headings in this file. The first row should name each column, such as a code column and a product cost column."}
-          </p>
-          <p className="footnote">
-            Cost files are Excel (.xlsx) or CSV. The first row names the columns, every column
-            in it needs a heading, and no two columns share a heading.
-          </p>
+          <p>{upload.error ?? "No row of column headings was found."}</p>
+          <p className="footnote">Row 1 names each column. Every column needs a heading, and no two share one.</p>
           <p>
             <button
               type="button"
-              className="btn btn--primary btn--block"
+              className="btn btn--primary"
               onClick={() => { setUpload(null); setMapping(null); setMatch(null); setError(null); }}
               data-testid="try-another-file"
             >
@@ -379,41 +402,44 @@ export function UploadFlow({ shopId }) {
         </div>
       )}
       {upload && mapping && columns.length > 0 && !match && (
-        <div className="card stack">
-          <h2>Which column is which</h2>
-          <div>
-            <label htmlFor="match-on">The code in your file is</label>
-            <select id="match-on" value={mapping.match_on} onChange={(e) => setMapping({ ...mapping, match_on: /** @type {any} */ (e.target.value) })}>
-              <option value="seller_sku">Your seller SKU</option>
-              <option value="tiktok_sku_id">TikTok&apos;s SKU ID</option>
-            </select>
+        <div className="card">
+          <p className="card__why">Columns read from {upload.filename ?? "your file"}. Nothing is saved yet.</p>
+          <div className="upload__grid">
+            <div>
+              <label htmlFor="match-on">The code in your file is</label>
+              <select id="match-on" value={mapping.match_on} onChange={(e) => setMapping({ ...mapping, match_on: /** @type {any} */ (e.target.value) })}>
+                <option value="seller_sku">Your seller SKU</option>
+                <option value="tiktok_sku_id">TikTok&apos;s SKU ID</option>
+              </select>
+            </div>
+            {picker("key_column", "Code column", false)}
+            {picker("cost_column", "Cost per unit column", false)}
+            {picker("effective_date_column", "Effective date column", true)}
+            {picker("packing_column", "Packaging you pay column", true)}
+            {picker("postage_column", "Shipping you pay column", true)}
           </div>
-          {picker("key_column", "Code column", false)}
-          {picker("cost_column", "Cost per unit column", false)}
-          {picker("effective_date_column", "Effective date column", true)}
-          {picker("packing_column", "Packaging you pay column", true)}
-          {picker("postage_column", "Shipping you pay column", true)}
-          <p><button className="btn btn--primary btn--block" onClick={check} disabled={busy || !mapping.key_column || !mapping.cost_column} data-testid="check-match">{busy ? "Checking" : "Show how it matches"}</button></p>
-          <p className="footnote">Nothing is saved until you apply the costs.</p>
+          <p className="upload__actions">
+            <button className="btn btn--primary" onClick={check} disabled={busy || !mapping.key_column || !mapping.cost_column} data-testid="check-match">{busy ? "Checking" : "Show how it matches"}</button>
+            <button type="button" className="btn btn--quiet" onClick={() => { setUpload(null); setMapping(null); setError(null); }}>Choose a different file</button>
+          </p>
         </div>
       )}
       {match && (
-        <div className="card stack" data-testid="match-preview">
-          <h2>How your file matches</h2>
-          <ul className="rows">
-            <li><span>Ready to apply</span><strong className="chip chip--good" data-testid="ready-count">{match.rows_matched ?? 0} {match.rows_matched === 1 ? "row" : "rows"}</strong></li>
-            <li><span>Requiring review</span><strong className="chip chip--warn" data-testid="review-count">{needsReview + notApplied.length} {needsReview + notApplied.length === 1 ? "row" : "rows"}</strong></li>
-          </ul>
-          <div className="table-scroll table-scroll--sticky">
-            <table data-testid="match-table">
+        <div className="card" data-testid="match-preview">
+          <p className="upload__counts">
+            <span className="chip chip--good" data-testid="ready-count">{match.rows_matched ?? 0} ready</span>
+            <span className={`chip chip--${needsReview + notApplied.length ? "review" : "quiet"}`} data-testid="review-count">{needsReview + notApplied.length} to review</span>
+          </p>
+          {/* Four columns, where there were six: the SKU sits under the matched product and the
+              effective date under the cost, so the table fits without scrolling sideways. */}
+          <div className="table-scroll">
+            <table className="upload__table" data-testid="match-table">
               <thead>
                 <tr>
-                  <th>Imported product</th>
-                  <th>Matched TikTok product</th>
-                  <th>SKU</th>
+                  <th>In your file</th>
+                  <th>TikTok product</th>
                   <th className="num">Cost per unit</th>
-                  <th>Effective date</th>
-                  <th>Match status</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -421,16 +447,20 @@ export function UploadFlow({ shopId }) {
                   const [word, tone, fallback] = ROW_STATUS[x.outcome] ?? ["Not matched", "quiet", ""];
                   return (
                     <tr key={x.row_id} data-testid="match-row">
-                      <td>{x.imported ?? <span className="muted">No code</span>}{x.row_number ? <div className="rows__sub">Row {x.row_number}</div> : null}</td>
-                      <td>{x.product_title ? `${x.product_title}${x.variant_label ? `, ${x.variant_label}` : ""}` : <span className="muted">None</span>}</td>
-                      <td>{x.seller_sku ?? <span className="muted">None</span>}</td>
-                      <td className="num">{x.unit_cost ? formatMoney(x.unit_cost) : <span className="muted">Not read</span>}</td>
-                      <td>{x.effective_from ? formatDate(x.effective_from) : <span className="muted">From today</span>}</td>
+                      <td className="upload__code">{x.imported ?? <span className="muted">No code</span>}{x.row_number ? <span className="rows__sub products__sub">Row {x.row_number}</span> : null}</td>
+                      <td>
+                        {x.product_title ? `${x.product_title}${x.variant_label ? `, ${x.variant_label}` : ""}` : <span className="muted">None</span>}
+                        {x.seller_sku && <span className="rows__sub products__sub">{x.seller_sku}</span>}
+                      </td>
+                      <td className="num">
+                        {x.unit_cost ? formatMoney(x.unit_cost) : <span className="muted">Not read</span>}
+                        <span className="rows__sub products__sub">{x.effective_from ? `From ${formatDate(x.effective_from)}` : "From today"}</span>
+                      </td>
                       <td>
                         <span className={`chip chip--${tone}`}>{word}</span>
-                        <div className="rows__sub">{x.reason ?? fallback}</div>
+                        {x.outcome !== "matched" && <span className="rows__sub products__sub">{x.reason ?? fallback}</span>}
                         {x.outcome === "needs_review" && (
-                          <label className="rows__sub" style={{ display: "block" }}>
+                          <label className="check upload__replace">
                             <input type="checkbox" checked={!!replace[x.row_id]} data-testid="replace-cost"
                                    onChange={(e) => setReplace((r) => ({ ...r, [x.row_id]: e.target.checked }))} />{" "}
                             Replace {x.existing_cost ? formatMoney(x.existing_cost) : "the cost already set"}
@@ -443,27 +473,45 @@ export function UploadFlow({ shopId }) {
               </tbody>
             </table>
           </div>
-          <p>
-            <button className="btn btn--primary btn--block" onClick={apply} disabled={busy || chosen.length === 0} data-testid="apply-costs">
+          {notApplied.length > 0 && (
+            <p className="footnote" data-testid="unmatched-rows">
+              {notApplied.length} {notApplied.length === 1 ? "row is" : "rows are"} not applied. Correct them in your file and upload it again, or type the costs in.
+            </p>
+          )}
+          <p className="upload__actions">
+            <button className="btn btn--primary" onClick={apply} disabled={busy || chosen.length === 0} data-testid="apply-costs">
               {busy ? "Applying" : `Apply costs to ${products} ${products === 1 ? "product" : "products"}`}
             </button>
+            <button type="button" className="btn btn--quiet" onClick={() => { setMatch(null); setError(null); }}>Back to columns</button>
           </p>
-          {notApplied.length > 0 && (
-            <details data-testid="unmatched-rows">
-              <summary>Review unmatched products</summary>
-              <ul className="rows">
-                {notApplied.map((x) => (
-                  <li key={x.row_id}><span>{x.imported ?? "No code"}</span><span className="muted">{x.reason ?? ROW_STATUS[x.outcome]?.[2] ?? "This row was not matched."}</span></li>
-                ))}
-              </ul>
-              <p className="footnote">These rows are not applied. Correct them in your file and upload it again, or type the costs in.</p>
-            </details>
-          )}
-          <p className="footnote">You can edit or replace costs later.</p>
         </div>
       )}
       {error && <p className="form-error" role="alert">{error}</p>}
     </div>
+  );
+}
+
+/**
+ * The stages of a flow as a numbered list, the one in use marked for a screen reader with
+ * `aria-current="step"` and for the eye in orange (A37 phase 5). A finished stage carries a
+ * tick. Nothing in it is a link, because a stage is reached by finishing the one before it.
+ *
+ * @param {{ steps: string[], current: number }} props  `current` counts from 1.
+ */
+function Stepper({ steps, current }) {
+  return (
+    <ol className="stepper" aria-label="Steps">
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const state = n < current ? "done" : n === current ? "current" : "todo";
+        return (
+          <li key={label} className={`stepper__step stepper__step--${state}`} aria-current={state === "current" ? "step" : undefined}>
+            <span className="stepper__dot" aria-hidden="true">{state === "done" ? "\u2713" : n}</span>
+            <span className="stepper__label">{label}{state === "done" && <span className="visually-hidden">, done</span>}</span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

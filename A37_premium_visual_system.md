@@ -144,6 +144,34 @@ Checked with lint, the type check, the production build and screenshots at 390, 
 1280 and 1440 px. No page scrolls sideways. The Starter view, which ranks by net proceeds, was
 not seen, because the local account is on Growth.
 
+## A37.8 Phase 5, cost entry, built 11 October 2026
+
+- **The upload's stepper.** Choose file, Match columns, Review and Done are named above the
+  flow. The stage in use is orange and marked `aria-current="step"`, and a finished stage
+  carries a tick. On a phone only the stage in use shows its name. The stage is worked out from
+  what the flow already holds, so nothing new is stored or sent.
+- **Choose file.** The drop area comes first. The template is a link under it, and what the
+  file needs is folded until clicked.
+- **Match columns.** The six choices sit two to a row on a larger screen, with a way back to
+  choose a different file.
+- **Review.** The table has four columns where it had six: the SKU sits under the TikTok
+  product and the effective date under the cost, and a matched row carries no sentence. On a
+  phone each row is a small block, so nothing scrolls sideways. A replace box is the standard
+  check box, where it had drawn as a large square. Back to columns returns to the choices.
+- **Typing costs in.** One card with the column names once at the top and a row per variant,
+  where each variant had been a card with its own three labels. On a phone the three fields
+  share a row with short labels, and each field's full name, with the product, is its
+  accessible name. The cost's hint reads 0.00, because 3.40 beside a current cost of £5.00 read
+  as a value already entered. Measured: 1,327 px at 1280 where it was 2,699, and 2,389 px at
+  390 where it was 4,019.
+
+Checked with lint, the type check, the production build, and a browser run at 1280 and 390 px
+against the local copy and a local stand-in for the R2 bucket: a CSV of seven rows reached
+Review with three matched, one needing confirmation, one with no match, one invalid cost and
+one duplicate, each shown with its status. Apply was not pressed, so the run saved nothing. A
+typed cost of "abc" showed its error, marked the field invalid and saved nothing. No page
+scrolls sideways.
+
 ## A37.4 The phases still to come
 
 Each is its own pull request, shown to the owner before it merges: the Overview (phase 2), Reconcile

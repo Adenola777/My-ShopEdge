@@ -36,18 +36,19 @@ export default async function ManualCostsPage({ params }) {
   }));
 
   return (
-    <section data-testid="manual-screen">
+    <section className="overview" data-testid="manual-screen">
       <header className="page-head">
         <p className="crumb"><Link href={`/shops/${shopId}/setup/costs`}>Product costs</Link></p>
         <h1>Type your costs</h1>
         <p>Product cost needed. Packaging and shipping optional.</p>
+        {/* A37 phase 5: the coverage is a line under the title, where it had been a boxed note. */}
+        {coverage.ok && (
+          <p className="rows__sub" data-testid="coverage-line">
+            {coverage.data.units_with_cost} of {coverage.data.units_total} units costed in the last 30 days
+            ({Math.round(coverage.data.coverage * 100)}%)
+          </p>
+        )}
       </header>
-      {coverage.ok && (
-        <p className="note" data-testid="coverage-line">
-          {coverage.data.units_with_cost} of {coverage.data.units_total} units costed, last 30 days
-          ({Math.round(coverage.data.coverage * 100)}%)
-        </p>
-      )}
       {rows.length === 0
         ? <p className="muted">Your products appear here once MyShopEdge has read your shop for the first time.</p>
         : <ManualCosts shopId={shopId} rows={rows} currency={currency} />}

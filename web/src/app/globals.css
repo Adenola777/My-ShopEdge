@@ -816,6 +816,60 @@ tbody tr:last-child td { border-bottom: 0; }
 .unit-table__total td .money { font-weight: 650; color: var(--navy-900); }
 @media (max-width: 40rem) { .unit-table th.num, .unit-table td.num { width: 5.5rem; } .unit-table { font-size: 0.875rem; } }
 
+/* Cost entry, A37 phase 5. The stepper names the upload's four stages; the stage in use is
+   orange and a finished one carries a tick. */
+.stepper { list-style: none; margin: 0 0 var(--space-5); padding: 0; display: flex; gap: var(--space-2); counter-reset: none; }
+.stepper__step { flex: 1 1 0; display: flex; align-items: center; gap: var(--space-2); padding-top: var(--space-2); border-top: 3px solid var(--line); color: var(--ink-500); font-size: 0.875rem; font-weight: 600; min-width: 0; }
+.stepper__dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 1px solid var(--line); background: var(--white); }
+.stepper__step--current { border-top-color: var(--orange-600); color: var(--orange-700); }
+.stepper__step--current .stepper__dot { background: var(--orange-600); border-color: var(--orange-600); color: var(--white); }
+.stepper__step--done { border-top-color: var(--good-600); color: var(--ink-700); }
+.stepper__step--done .stepper__dot { background: var(--good-50, #ecfdf3); border-color: var(--good-600); color: var(--good-600); }
+@media (max-width: 40rem) {
+  .stepper__step:not(.stepper__step--current) .stepper__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .stepper__step--current { flex: 3 1 0; }
+}
+.upload__links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2) var(--space-4); margin: var(--space-4) 0 0; font-size: 0.9375rem; font-weight: 600; }
+.upload__grid { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
+@media (min-width: 40rem) { .upload__grid { grid-template-columns: 1fr 1fr; } }
+.upload__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-5) 0 0; }
+@media (max-width: 40rem) { .upload__actions .btn { flex: 1 1 100%; } }
+.upload__counts { display: flex; gap: var(--space-2); margin: 0 0 var(--space-4); }
+.upload__table td { vertical-align: top; }
+.upload__replace { cursor: pointer; margin-top: var(--space-2); font-size: 0.875rem; }
+.upload__code { white-space: nowrap; }
+/* On a phone each matched row is a small block: the code and the cost on one line, the TikTok
+   product under them, then the status, so nothing scrolls sideways. */
+@media (max-width: 48rem) {
+  .upload__table thead { display: none; }
+  .upload__table, .upload__table tbody { display: block; }
+  .upload__table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "code cost" "prod prod" "status status"; gap: 4px var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--ink-100); }
+  .upload__table tr:last-child { border-bottom: 0; }
+  .upload__table td { display: block; border: 0; padding: 0; }
+  .upload__table td:nth-child(1) { grid-area: code; font-weight: 600; }
+  .upload__table td:nth-child(2) { grid-area: prod; }
+  .upload__table td:nth-child(3) { grid-area: cost; }
+  .upload__table td:nth-child(4) { grid-area: status; margin-top: 4px; }
+  .upload__table td:nth-child(1) .products__sub { display: inline; margin-left: var(--space-2); font-weight: 400; }
+}
+.upload__links .rows__sub { font-weight: 400; }
+/* Typing costs in: one card, the column names once, a row per variant. */
+.cost-grid__head, .cost-grid__row { display: grid; gap: var(--space-2) var(--space-3); grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); align-items: start; }
+.cost-grid__head { font-size: 0.8125rem; font-weight: 600; color: var(--ink-700); padding-bottom: var(--space-2); border-bottom: 1px solid var(--ink-100); }
+.cost-grid__row { padding: var(--space-3) 0; border-bottom: 1px solid var(--ink-100); }
+.cost-grid__row:last-child { border-bottom: 0; padding-bottom: 0; }
+.cost-grid__row input { width: 100%; }
+.cost-grid__label { display: none; }
+.cost-grid__wide { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 48rem) {
+  .cost-grid__head { display: none; }
+  .cost-grid__row { grid-template-columns: 1fr 1fr 1fr; }
+  .cost-grid__row > :first-child { grid-column: 1 / -1; }
+  .cost-grid__label { display: block; font-size: 0.8125rem; color: var(--ink-700); margin-bottom: 4px; }
+  .cost-grid__row { gap: var(--space-2); }
+  .cost-grid__row input { padding-left: var(--space-2); padding-right: var(--space-2); }
+}
+
 /* The statement: the whole calculation in one card, each section a group with a small label
    and closed by its subtotal (A37 phase 2). */
 .statement { padding-top: var(--space-2); padding-bottom: var(--space-2); }
