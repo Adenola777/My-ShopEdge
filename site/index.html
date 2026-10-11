@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -316,6 +316,28 @@
     .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 420px) { .nav-actions .btn-ghost { display:none; } }
+
+  /* 11 October 2026, the owner's ruling for the TikTok resubmission. The footer's link columns sit
+     on the same row as the company description, not below it. */
+  .footer-top { display:grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 56px; align-items:start; }
+  .footer-nav { display:grid; grid-template-columns: auto auto auto minmax(250px, max-content); justify-content: space-between; gap: 32px; }
+  .footer-identity { max-width: none; }
+  .footer-col a { white-space: nowrap; }
+  .footer-identity a { white-space: normal; }
+  @media (max-width: 860px) {
+    .footer-top { grid-template-columns: 1fr; gap: 32px; }
+    .footer-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+  }
+  /* Product costs follows the pattern of every other feature: words beside the screenshots. */
+  #features .feature-row { padding: 0; }
+  #features .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  /* Justified text on a larger screen, where lines are long enough to justify cleanly. A phone
+     keeps ragged text, because justifying a short line opens wide gaps. */
+  @media (min-width: 861px) {
+    .section-head p, .feature-copy p, .step-card p, .problem-note, .hero-lead, .trust-head p {
+      text-align: justify; hyphens: auto; -webkit-hyphens: auto;
+    }
+  }
 </style>
 </head>
 <body>
@@ -352,9 +374,9 @@
   <header class="hero">
     <div class="wrap hero-grid">
       <div>
-        <span class="kicker">Built for UK TikTok Shop sellers.</span>
+        <span class="kicker">For UK TikTok Shop sellers</span>
         <h1>See what you actually keep from every TikTok Shop sale.</h1>
-        <p class="hero-lead">MyShopEdge puts your sales, fees, refunds, returns and payouts in one clear picture. Add product costs whenever you are ready to see gross profit and margin for every product.</p>
+        <p class="hero-lead">Sales, fees, refunds and payouts in one clear picture. Add product costs to see real profit on every product.</p>
         <div class="hero-ctas">
           <a class="btn large" href="https://app.myshopedge.inspirecraftglobal.com/start">
             Start your free 30-day trial
@@ -365,11 +387,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
           </a>
         </div>
-        <p class="trust-line">Read-only access. No changes to your TikTok Shop. Add costs later.</p>
+        <p class="trust-line">Read-only access. Nothing in your shop changes.</p>
       </div>
       <div class="hero-visual-wrap">
         <div class="hero-glow" aria-hidden="true"></div>
-        <img class="hero-shot" src="shots/hero-money.webp" width="720" height="1558" alt="Where the money went for the demo shop: gross sales of &pound;7,173.00, seller discounts, net sales and each TikTok fee">
+        <img class="hero-shot" src="shots/hero-money.webp" width="720" height="1560" alt="The Overview: gross profit after returns of &pound;3,387.95, a 52.7% margin, and where the money went">
       </div>
     </div>
   </header>
@@ -379,7 +401,7 @@
       <div class="section-head">
         <div class="eyebrow-line"><span>The problem</span></div>
         <h2>TikTok pays you in pieces.</h2>
-        <p>A sale is not the same as a payout. Platform fees, seller discounts, affiliate commission, shipping, refunds, returns and later adjustments can all change what reaches your bank.</p>
+        <p>Fees, discounts, refunds and adjustments all come out before your payout.</p>
       </div>
       <div class="problem-grid">
         <div class="pain-list">
@@ -392,10 +414,10 @@
           <div class="pain-total"><span class="what">Your payout</span><span class="amount">&pound;40.75</span></div>
         </div>
         <div>
-          <p class="problem-note">Each line is a normal part of selling on TikTok Shop, not a mistake. Together they explain why the payout is smaller than the sale.</p>
+          <p class="problem-note">Each line is normal. Together they explain the gap between sale and payout.</p>
           <p class="bridge-line">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            MyShopEdge puts every deduction back into one clear picture.
+            MyShopEdge shows you every line.
           </p>
         </div>
       </div>
@@ -406,29 +428,30 @@
     <div class="wrap">
       <div class="section-head">
         <div class="eyebrow-line"><span>How it works</span></div>
-        <h2>You are set up in three steps.</h2>
-        <p>Connect your shop once, and MyShopEdge updates your figures every day.</p>
+        <h2>Set up in three steps.</h2>
+        <p>Connect once. Your figures update every day.</p>
       </div>
       <div class="steps-grid">
-        <div class="step-card"><span class="step-badge">1</span><h3>Connect your TikTok Shop</h3><p>Approve read-only access on TikTok&rsquo;s own page. MyShopEdge cannot change your shop, place orders or issue refunds. MyShopEdge starts reading up to 24 months of available orders and payouts.</p></div>
-        <div class="step-card"><span class="step-badge">2</span><h3>Choose a plan and start your trial</h3><p>Choose the plan you want after your trial, then add a card securely through Stripe. You pay &pound;0 today, and your 30-day free trial starts when checkout is complete.</p></div>
-        <div class="step-card"><span class="step-badge">3</span><h3>See what you keep</h3><p>Your net proceeds are there first. On the Growth and Pro plans, add product costs whenever you are ready to see gross profit and margin by product.</p></div>
+        <div class="step-card"><span class="step-badge">1</span><h3>Connect your TikTok Shop</h3><p>Approve read-only access on TikTok&rsquo;s own page. Up to 24 months of orders and payouts are read.</p></div>
+        <div class="step-card"><span class="step-badge">2</span><h3>Start your free trial</h3><p>Choose a plan and add a card through Stripe. &pound;0 today, 30 days free.</p></div>
+        <div class="step-card"><span class="step-badge">3</span><h3>See what you keep</h3><p>Net proceeds first. Add product costs for profit by product.</p></div>
       </div>
     </div>
   </section>
 
   <section class="band alt" id="features">
     <div class="wrap">
-      <div class="section-head">
-        <div class="eyebrow-line"><span>Product costs</span></div>
-        <h2>Know which products make you money.</h2>
-        <p>Revenue does not tell you what you made. Add your product costs by uploading an Excel or CSV file, or type them in one by one. MyShopEdge matches costs with TikTok Shop sales, fees and returns to show gross profit and margin by product.</p>
-        <p class="section-sub">Costs are optional. Start with your net proceeds today and add costs whenever you are ready.</p>
-        <p class="callout">Missing costs are clearly shown, so you know when a profit figure is incomplete.</p>
-      </div>
-      <div class="shot-pair">
-        <img src="shots/costs-choice.webp" width="720" height="1558" alt="The question Do you have your product costs, with Excel or CSV, type them in, and skip costs for now">
-        <img src="shots/costs-manual.webp" width="720" height="1558" alt="Typing product costs, with the share of units sold in the last 30 days that have a cost">
+      <div class="feature-row">
+        <div class="feature-copy">
+          <div class="feature-tag">Product costs</div>
+          <h3>Know which products make you money.</h3>
+          <p>Upload an Excel or CSV file, or type costs in. MyShopEdge matches them to your sales, fees and returns.</p>
+          <p class="feature-sub">Costs are optional. Missing costs are always flagged.</p>
+        </div>
+        <div class="shot-pair">
+          <img src="shots/costs-choice.webp" width="720" height="1560" alt="Do you have your product costs, with Excel or CSV, type them in, or skip for now">
+          <img src="shots/costs-manual.webp" width="720" height="1560" alt="Typing product costs, with cost coverage for the last 30 days">
+        </div>
       </div>
     </div>
   </section>
@@ -438,58 +461,58 @@
       <div class="feature-row">
         <div class="feature-copy">
           <div class="feature-tag">Money</div>
-          <h3>Every fee, refund and adjustment is named and reconciled.</h3>
-          <p>See platform commission, affiliate commission, shipping, promotions, refunds and other deductions separately. Nothing is folded into an unexplained total.</p>
+          <h3>Every fee, named.</h3>
+          <p>Commission, shipping, promotions and refunds, each on its own line. Open any line to see the orders behind it.</p>
         </div>
-        <div class="feature-visual"><img src="shots/money-fees.webp" width="720" height="1422" alt="Each TikTok fee on its own line, then net proceeds before refunds, refunds and net proceeds, for the demo shop"></div>
+        <div class="feature-visual"><img src="shots/money-fees.webp" width="720" height="1560" alt="Each TikTok fee on its own line, down to net proceeds and gross profit"></div>
       </div>
 
       <div class="feature-row reverse">
         <div class="feature-copy">
           <div class="feature-tag">Products</div>
-          <h3>See which products earn you the most, and which cost you.</h3>
-          <p>Rank products by gross profit after returns, see product margin and identify the products that need attention. Where costs are missing, see net proceeds and clear cost-status information instead.</p>
-          <p class="feature-sub">Product costs, gross profit and margin come with the Growth and Pro plans. On Starter, products are ranked by net proceeds.</p>
+          <h3>See what each product earns.</h3>
+          <p>Every unit, pound by pound: sales, fees, returns and cost, down to gross profit and margin.</p>
+          <p class="feature-sub">Growth and Pro plans. Starter ranks products by net proceeds.</p>
         </div>
-        <div class="feature-visual"><img src="shots/products-ranking.webp" width="720" height="1398" alt="Products ranked by gross profit after returns for the demo shop"></div>
+        <div class="feature-visual"><img src="shots/products-ranking.webp" width="720" height="1560" alt="One product, one unit pound by pound: gross sales, refunds, discounts, net sales and each fee"></div>
       </div>
 
       <div class="feature-row">
         <div class="feature-copy">
           <div class="feature-tag">Exports</div>
-          <h3>Your figures, reconciled and ready to export.</h3>
-          <p>Export a monthly summary, a full ledger or one row per order line in Excel or CSV. Choose sales basis to review activity by the day of sale, or cash basis to review it by the month TikTok settled it. A month summary has the same totals as MyShopEdge shows for the same period and basis.</p>
-          <p class="feature-sub">Exports come with the Growth and Pro plans. On the Pro plan, schedule weekly or monthly exports and receive an in-app notification when your file is ready.</p>
+          <h3>Export in a click.</h3>
+          <p>Month summary, ledger or order lines, in Excel or CSV. Totals match your Overview.</p>
+          <p class="feature-sub">Growth and Pro plans. Scheduled exports on Pro.</p>
         </div>
-        <div class="feature-visual"><img src="shots/exports.webp" width="720" height="1558" alt="The Exports screen, with what to export, period, basis and format"></div>
+        <div class="feature-visual"><img src="shots/exports.webp" width="720" height="1560" alt="The Exports screen, with what to export, period, basis and format"></div>
       </div>
 
       <div class="feature-row reverse">
         <div class="feature-copy">
           <div class="feature-tag">Returns</div>
-          <h3>Every return is checked, counted once and reflected in your figures.</h3>
-          <p>Mark returns as resellable or unsellable so stock, write-offs and product-profit figures remain accurate.</p>
+          <h3>Every return, counted once.</h3>
+          <p>Mark each return resellable or unsellable. Stock and profit stay right.</p>
         </div>
-        <div class="feature-visual"><img src="shots/returns.webp" width="720" height="1558" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back"></div>
+        <div class="feature-visual"><img src="shots/returns.webp" width="720" height="1560" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back"></div>
       </div>
 
       <div class="feature-row">
         <div class="feature-copy">
           <div class="feature-tag">VAT and tax</div>
-          <h3>Know when you are approaching the VAT threshold.</h3>
-          <p>MyShopEdge tracks available TikTok Shop turnover over a rolling 12-month period against the current &pound;90,000 VAT registration threshold and shows how much headroom remains. For eligible sole traders, it can also provide a planning estimate of Income Tax and National Insurance based on the shop data available. Add product costs for a more useful estimate.</p>
-          <p class="feature-sub">Tax figures are estimates based on the information in MyShopEdge and are not tax advice. Scottish Income Tax rates are not yet included.</p>
+          <h3>Watch the VAT threshold.</h3>
+          <p>12 months of turnover against the &pound;90,000 threshold, and an estimate of tax to set aside.</p>
+          <p class="feature-sub">Estimates, not tax advice. Scottish rates not yet included.</p>
         </div>
-        <div class="feature-visual"><img src="shots/tax.webp" width="720" height="1558" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve"></div>
+        <div class="feature-visual"><img src="shots/tax.webp" width="720" height="1560" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve"></div>
       </div>
 
       <div class="feature-row reverse">
         <div class="feature-copy">
           <div class="feature-tag">Stock</div>
-          <h3>Know what is running out before it does.</h3>
-          <p>See what is on hand, what has sold, what is coming back and what needs attention first.</p>
+          <h3>Know what is running low.</h3>
+          <p>On hand, coming back and days of cover for every product.</p>
         </div>
-        <div class="feature-visual"><img src="shots/stock.webp" width="720" height="1558" alt="The Stock screen, with units on hand and days of cover for each product"></div>
+        <div class="feature-visual"><img src="shots/stock.webp" width="720" height="1560" alt="The Stock screen, with units on hand and days of cover for each product"></div>
       </div>
     </div>
   </section>
@@ -499,15 +522,15 @@
       <div class="trust-head">
         <span class="icon"><img src="brand/mse-mark-colour.svg" alt=""></span>
         <h2>Your figures stay yours.</h2>
-        <p>MyShopEdge only reads your data. It cannot act on your shop, and you can disconnect at any time.</p>
+        <p>Read-only. Disconnect at any time.</p>
       </div>
       <div class="trust-grid">
-        <div class="trust-item"><h3>MyShopEdge can read your shop, and it can never change it.</h3><p>You approve read-only access on TikTok&rsquo;s own page.</p></div>
-        <div class="trust-item"><h3>It cannot place orders, issue refunds or touch your money.</h3><p>Nothing in MyShopEdge sends an instruction to your shop.</p></div>
-        <div class="trust-item"><h3>Your TikTok access is encrypted.</h3><p>The access TikTok gives MyShopEdge is stored encrypted.</p></div>
-        <div class="trust-item"><h3>Every connection to MyShopEdge uses HTTPS.</h3><p>Your figures travel encrypted between your browser and MyShopEdge.</p></div>
-        <div class="trust-item"><h3>A registered UK company runs it.</h3><p>Inspirecraft Global Ltd is registered with Companies House.</p></div>
-        <div class="trust-item"><h3>You can delete your account and its data from Settings.</h3><p>You can also disconnect your shop there at any time.</p></div>
+        <div class="trust-item"><h3>Read-only access</h3><p>Approved on TikTok&rsquo;s own page.</p></div>
+        <div class="trust-item"><h3>No orders, refunds or payments</h3><p>MyShopEdge never acts on your shop.</p></div>
+        <div class="trust-item"><h3>Encrypted access</h3><p>Your TikTok access is stored encrypted.</p></div>
+        <div class="trust-item"><h3>HTTPS everywhere</h3><p>Every connection is encrypted.</p></div>
+        <div class="trust-item"><h3>A UK registered company</h3><p>Inspirecraft Global Ltd, Companies House.</p></div>
+        <div class="trust-item"><h3>Delete at any time</h3><p>Remove your account and data in Settings.</p></div>
       </div>
     </div>
   </section>
@@ -518,34 +541,34 @@
     <div class="wrap">
       <div class="section-head">
         <div class="eyebrow-line"><span>Pricing</span></div>
-        <h2>Choose the plan that fits your order volume.</h2>
-        <p>Every plan starts with a 30-day free trial. You choose a plan after you connect your shop, then add a card securely through Stripe. You pay &pound;0 today. Your plan renews each month at its stated price unless you cancel in Settings before the trial ends. VAT is not currently charged.</p>
+        <h2>Choose your plan.</h2>
+        <p>30 days free on every plan. &pound;0 today. Renews monthly unless you cancel in Settings. No VAT charged.</p>
       </div>
       <div class="pricing-grid">
         <div class="plan-card">
           <h3>Starter</h3>
           <p class="plan-price"><span>&pound;9.99</span> a month</p>
-          <p class="plan-strap">Understand what TikTok Shop left you. Up to 100 orders a month.</p>
+          <p class="plan-strap">What TikTok Shop left you. Up to 100 orders a month.</p>
           <ul><li>Sales, fees, refunds and payouts in one Overview</li><li>The net proceeds breakdown, line by line</li><li>The status of every payout and statement</li><li>Refunds and returns</li><li>Products ranked by net proceeds</li><li>VAT registration threshold tracking</li><li>Standard support</li></ul>
-          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;9.99 a month unless you cancel in Settings.</p>
+          <p class="plan-trial">&pound;0 today. 30 days free, then &pound;9.99 a month.</p>
         </div>
         <div class="plan-card plan-card--highlight">
           <p class="plan-badge">Most popular</p>
           <h3>Growth</h3>
           <p class="plan-price"><span>&pound;24.99</span> a month</p>
-          <p class="plan-strap">Know which products actually make you money. Up to 500 orders a month.</p>
+          <p class="plan-strap">Profit by product. Up to 500 orders a month.</p>
           <ul><li>Everything in Starter</li><li>Product costs, uploaded in Excel or CSV or typed in</li><li>Cost matching and cost coverage</li><li>Gross profit and gross margin after returns, by product</li><li>The orders and deductions behind each product and figure</li><li>Month summary, ledger and transactions exports in Excel or CSV</li><li>Sales basis and cash basis</li><li>Standard support</li></ul>
-          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;24.99 a month unless you cancel in Settings.</p>
+          <p class="plan-trial">&pound;0 today. 30 days free, then &pound;24.99 a month.</p>
         </div>
         <div class="plan-card">
           <h3>Pro</h3>
           <p class="plan-price"><span>&pound;49.99</span> a month</p>
-          <p class="plan-strap">Keep your financial operations moving without spreadsheets. Up to 2,000 orders a month.</p>
+          <p class="plan-strap">No more spreadsheets. Up to 2,000 orders a month.</p>
           <ul><li>Everything in Growth</li><li>Scheduled weekly and monthly exports</li><li>Your recent export files in one list</li><li>Statements that need review, listed first</li><li>Priority support</li></ul>
-          <p class="plan-trial">&pound;0 due today. 30 days free, then &pound;49.99 a month unless you cancel in Settings.</p>
+          <p class="plan-trial">&pound;0 today. 30 days free, then &pound;49.99 a month.</p>
         </div>
       </div>
-      <p class="pricing-note">Every plan connects one TikTok Shop. If you pass your order allowance, MyShopEdge keeps working and lets you know which plan fits your volume.</p>
+      <p class="pricing-note">One TikTok Shop per plan. Go over your orders and nothing stops.</p>
     </div>
   </section>
 
@@ -556,7 +579,7 @@
         Start free trial
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
-      <p class="final-note">Clear pricing before you subscribe.</p>
+      <p class="final-note">&pound;0 today. Cancel any time.</p>
     </div>
   </section>
 
@@ -565,7 +588,7 @@
       <div class="footer-top">
         <div class="footer-brand">
           <div class="logo-lockup" style="margin-bottom:14px;"><img src="brand/mse-logo-horizontal.svg" alt="MyShopEdge, Know Your Numbers"></div>
-          <p>MyShopEdge is a product of Inspirecraft Global Ltd, Leicester. It is a read-only cost, order and payout reconciliation service for UK TikTok Shop sellers. Inspirecraft Global Ltd is registered with Companies House and with the Information Commissioner's Office.</p>
+          <p>A read-only reconciliation service for UK TikTok Shop sellers, by Inspirecraft Global Ltd, Leicester. Registered with Companies House and the Information Commissioner&rsquo;s Office.</p>
           <img class="ico-badge" src="brand/ico-registered.avif" alt="Registered with the Information Commissioner's Office">
         </div>
         <div class="footer-nav">
@@ -604,7 +627,6 @@
       </div>
       <div class="footer-bottom">
         <span>&copy; 2026 Inspirecraft Global Ltd. All rights reserved.</span>
-        <span>The screenshots show a demo shop with made-up figures.</span>
       </div>
     </div>
   </footer>

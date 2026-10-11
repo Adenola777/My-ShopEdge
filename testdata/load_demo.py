@@ -18,8 +18,10 @@ What it changes from `rows_year.json`, and why:
 
   * Every id is replaced, derived from the account, so the demo shop cannot collide with the
     synthetic shop already on the branch, which the generator gave the same ids.
-  * The shop is named "Demo shop (sample data)" and its TikTok id is `DEMO-` and the account,
-    so nobody mistakes it for a connected shop.
+  * The shop is named "My TikTok Shop" and its TikTok id is `DEMO-` and the account. It was
+    "Demo shop (sample data)" until 11 October 2026, when the owner ruled that no screen or
+    screenshot says demo data (TikTok's Go Live review rejected screenshots full of text). The
+    `DEMO-` id still keeps it apart from a connected shop.
   * Costs take effect on 1 January 2025 instead of 1 July 2026. Under A31.4 a unit is costed
     on its sale date, and the year dataset starts in October 2025, so with July's date nine
     of the twelve months would read kept as unknown. The demo is for walking the screens.
@@ -95,7 +97,7 @@ def load_shop(account) -> dict:
             for item in rows.get(table) or []:
                 item = {k: remap(v) for k, v in item.items()}
                 if table == "shops":
-                    item.update(tiktok_shop_id=f"DEMO-{account}", shop_name="Demo shop (sample data)",
+                    item.update(tiktok_shop_id=f"DEMO-{account}", shop_name="My TikTok Shop",
                                 seller_type="LOCAL", connection_status="connected")
                 if table == "tiktok_connections":
                     item.setdefault("access_token_enc", PLACEHOLDER)

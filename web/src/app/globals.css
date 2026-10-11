@@ -716,6 +716,12 @@ tbody tr:last-child td { border-bottom: 0; }
 /* A compact switch sizes to its words rather than filling the row (A37 phase 2). On a phone
    it fills the row and keeps a 44 px target. */
 .switch--compact { flex: 1 1 100%; }
+/* On a phone a switch's words stay on as few lines as they can: a short label never breaks,
+   and a long one, such as Gross profit after returns, takes two lines at most. */
+@media (max-width: 40rem) {
+  .switch a { padding: var(--space-1) var(--space-2); font-size: 0.875rem; }
+  .switch--compact a { white-space: nowrap; }
+}
 @media (min-width: 40rem) {
   .switch--compact { flex: none; display: inline-flex; }
   .switch--compact a { flex: none; min-height: 36px; padding: 0 var(--space-4); font-size: 0.875rem; white-space: nowrap; }
