@@ -44,9 +44,14 @@ The service enforces these, from the plan Stripe reports (`entitlements.py`):
 | Scheduled exports, export history, the review list | Pro | Unchanged from A35 |
 | Connected shops | Per plan | A new connection beyond the plan's limit is refused |
 
-Return and write-off treatment is locked for Explorer on the screens only. The service still
-posts return costs, because the ledger must balance whatever the plan; the Overview and
-Products show those lines to Explorer as locked.
+Return and write-off treatment is not withheld from Explorer. The service posts return costs
+whatever the plan, because the ledger must balance, and the Overview and Products show
+Explorer those lines as they show every plan. Only the comparison table and the Products lock
+block name the treatment as a Starter feature. Withholding the lines would change Explorer's
+gross profit, so it is left for the owner to rule on.
+
+The landing page, `site/index.html`, shows the four plans at their monthly price with the
+annual price under each, and its calls to action start Explorer rather than a trial.
 
 ## A38.3 The owner's answers of 11 October 2026
 

@@ -294,7 +294,10 @@
   .pricing-note { margin: 22px 0 0; font-size: 0.95rem; color: var(--ink-soft); max-width: 70ch; }
   .plan-badge { align-self: flex-start; margin: 0 0 10px; padding: 3px 10px; border-radius: 999px; background: var(--orange-solid); color: var(--white); font-size: 0.8rem; font-weight: 600; }
   .final-note { margin: 18px 0 0; color: var(--ink-soft); font-size: 0.98rem; }
-  @media (max-width: 860px) { .pricing-grid { grid-template-columns: 1fr; } .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
+  .pricing-grid--four { grid-template-columns: repeat(4, 1fr); }
+  .plan-soon { display:inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: var(--paper-alt); color: var(--ink-soft); font-size: 0.78rem; font-weight: 600; }
+  @media (max-width: 1100px) { .pricing-grid--four { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 860px) { .pricing-grid--four { grid-template-columns: 1fr; } .pricing-grid { grid-template-columns: 1fr; } .shot-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
 
   /* ---------- Revised 10 October 2026 after the owner's review ---------- */
   .hero-shot { width: 100%; max-width: 360px; }
@@ -379,7 +382,7 @@
         <p class="hero-lead">Sales, fees, refunds and payouts in one clear picture. Add product costs to see real profit on every product.</p>
         <div class="hero-ctas">
           <a class="btn large" href="https://app.myshopedge.inspirecraftglobal.com/start">
-            Start your free 30-day trial
+            Start free with Explorer
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
           <a class="link-secondary" href="#how">
@@ -433,7 +436,7 @@
       </div>
       <div class="steps-grid">
         <div class="step-card"><span class="step-badge">1</span><h3>Connect your TikTok Shop</h3><p>Approve read-only access on TikTok&rsquo;s own page. Up to 24 months of orders and payouts are read.</p></div>
-        <div class="step-card"><span class="step-badge">2</span><h3>Start your free trial</h3><p>Choose a plan and add a card through Stripe. &pound;0 today, 30 days free.</p></div>
+        <div class="step-card"><span class="step-badge">2</span><h3>Start free</h3><p>Explorer is free, with no credit card required. Choose a paid plan when you need more.</p></div>
         <div class="step-card"><span class="step-badge">3</span><h3>See what you keep</h3><p>Net proceeds first. Add product costs for profit by product.</p></div>
       </div>
     </div>
@@ -472,7 +475,7 @@
           <div class="feature-tag">Products</div>
           <h3>See what each product earns.</h3>
           <p>Every unit, pound by pound: sales, fees, returns and cost, down to gross profit and margin.</p>
-          <p class="feature-sub">Growth and Pro plans. Starter ranks products by net proceeds.</p>
+          <p class="feature-sub">Gross profit on every plan, Explorer included. Margin from Starter.</p>
         </div>
         <div class="feature-visual"><img src="shots/products-ranking.webp" width="720" height="1560" alt="One product, one unit pound by pound: gross sales, refunds, discounts, net sales and each fee"></div>
       </div>
@@ -482,7 +485,7 @@
           <div class="feature-tag">Exports</div>
           <h3>Export in a click.</h3>
           <p>Month summary, ledger or order lines, in Excel or CSV. Totals match your Overview.</p>
-          <p class="feature-sub">Growth and Pro plans. Scheduled exports on Pro.</p>
+          <p class="feature-sub">Growth and Pro plans.</p>
         </div>
         <div class="feature-visual"><img src="shots/exports.webp" width="720" height="1560" alt="The Exports screen, with what to export, period, basis and format"></div>
       </div>
@@ -542,44 +545,51 @@
       <div class="section-head">
         <div class="eyebrow-line"><span>Pricing</span></div>
         <h2>Choose your plan.</h2>
-        <p>30 days free on every plan. &pound;0 today. Renews monthly unless you cancel in Settings. No VAT charged.</p>
+        <p>Everyone can upload product costs. Starter helps you understand profit. Growth lets you export and manage several shops. Pro gives agencies, accountants and high-volume sellers unlimited scale.</p>
       </div>
-      <div class="pricing-grid">
+      <div class="pricing-grid pricing-grid--four">
+        <div class="plan-card">
+          <h3>Explorer</h3>
+          <p class="plan-price"><span>Free</span></p>
+          <p class="plan-strap">For new sellers getting started.</p>
+          <ul><li>1 TikTok Shop</li><li>Up to 100 orders a month</li><li>Net proceeds and where the money went</li><li>Upload product costs</li><li>Gross profit where costs are added</li><li>Basic payout status</li><li>Last 30 days of data</li></ul>
+          <p class="plan-trial">No credit card required.</p>
+        </div>
         <div class="plan-card">
           <h3>Starter</h3>
-          <p class="plan-price"><span>&pound;9.99</span> a month</p>
-          <p class="plan-strap">What TikTok Shop left you. Up to 100 orders a month.</p>
-          <ul><li>Sales, fees, refunds and payouts in one Overview</li><li>The net proceeds breakdown, line by line</li><li>The status of every payout and statement</li><li>Refunds and returns</li><li>Products ranked by net proceeds</li><li>VAT registration threshold tracking</li><li>Standard support</li></ul>
-          <p class="plan-trial">&pound;0 today. 30 days free, then &pound;9.99 a month.</p>
+          <p class="plan-price"><span>&pound;19</span> a month</p>
+          <p class="plan-strap">For serious single-shop sellers.</p>
+          <ul><li>1 TikTok Shop</li><li>Up to 500 orders a month</li><li>Full product profit and margin</li><li>Cost coverage and missing-cost alerts</li><li>Full payout explanations</li><li>Return and write-off treatment</li><li>12 months of data</li></ul>
+          <p class="plan-trial">Or &pound;190 a year, paid annually.</p>
         </div>
         <div class="plan-card plan-card--highlight">
           <p class="plan-badge">Most popular</p>
           <h3>Growth</h3>
-          <p class="plan-price"><span>&pound;24.99</span> a month</p>
-          <p class="plan-strap">Profit by product. Up to 500 orders a month.</p>
-          <ul><li>Everything in Starter</li><li>Product costs, uploaded in Excel or CSV or typed in</li><li>Cost matching and cost coverage</li><li>Gross profit and gross margin after returns, by product</li><li>The orders and deductions behind each product and figure</li><li>Month summary, ledger and transactions exports in Excel or CSV</li><li>Sales basis and cash basis</li><li>Standard support</li></ul>
-          <p class="plan-trial">&pound;0 today. 30 days free, then &pound;24.99 a month.</p>
+          <p class="plan-price"><span>&pound;39</span> a month</p>
+          <p class="plan-strap">For growing sellers who need exports and multi-shop control.</p>
+          <ul><li>Up to 3 TikTok Shops</li><li>Up to 1,000 orders a month</li><li>All Starter features</li><li>Product profit and reconciliation exports</li><li>Accountant-ready CSV and XLSX</li><li>VAT threshold tracker</li><li>24 months of data</li><li>Multi-shop consolidated view <span class="plan-soon">Coming soon</span></li><li>1 accountant seat <span class="plan-soon">Coming soon</span></li></ul>
+          <p class="plan-trial">Or &pound;390 a year, paid annually.</p>
         </div>
         <div class="plan-card">
           <h3>Pro</h3>
-          <p class="plan-price"><span>&pound;49.99</span> a month</p>
-          <p class="plan-strap">No more spreadsheets. Up to 2,000 orders a month.</p>
-          <ul><li>Everything in Growth</li><li>Scheduled weekly and monthly exports</li><li>Your recent export files in one list</li><li>Statements that need review, listed first</li><li>Priority support</li></ul>
-          <p class="plan-trial">&pound;0 today. 30 days free, then &pound;49.99 a month.</p>
+          <p class="plan-price"><span>&pound;79</span> a month</p>
+          <p class="plan-strap">For agencies, accountants and high-volume sellers.</p>
+          <ul><li>Up to 10 TikTok Shops</li><li>Unlimited orders</li><li>All Growth features</li><li>Unlimited data history</li><li>Client workspaces <span class="plan-soon">Coming soon</span></li><li>Up to 5 accountant and team seats <span class="plan-soon">Coming soon</span></li><li>Priority support <span class="plan-soon">Coming soon</span></li></ul>
+          <p class="plan-trial">Or &pound;790 a year, paid annually.</p>
         </div>
       </div>
-      <p class="pricing-note">One TikTok Shop per plan. Go over your orders and nothing stops.</p>
+      <p class="pricing-note">Monthly prices are shown. Annual prepaid costs less, and an annual plan can also be paid in 12 monthly payments. Prices exclude VAT where applicable; Inspirecraft Global Ltd is not VAT registered, so no VAT is added today. The full comparison is on the <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">pricing page</a>.</p>
     </div>
   </section>
 
   <section class="final-cta">
     <div class="wrap">
-      <h2>Start your free 30-day trial.</h2>
+      <h2>Start free with Explorer.</h2>
       <a class="btn large" href="https://app.myshopedge.inspirecraftglobal.com/start">
-        Start free trial
+        Start free
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
-      <p class="final-note">&pound;0 today. Cancel any time.</p>
+      <p class="final-note">No credit card required.</p>
     </div>
   </section>
 

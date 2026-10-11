@@ -1185,6 +1185,8 @@ details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
 .mark--no { color: var(--ink-500); }
 .mark--text { color: var(--ink-900); font-weight: 500; }
 .mark--lock { color: var(--ink-500); font-size: 0.875rem; }
+/* The current plan's column is tinted orange, where ink-500 falls just short of 4.5:1. */
+.compare__current .mark--lock, .compare__current .mark--no { color: var(--ink-700); }
 .lock { flex: none; vertical-align: -2px; }
 
 .faq { padding-top: var(--space-2); padding-bottom: var(--space-2); }

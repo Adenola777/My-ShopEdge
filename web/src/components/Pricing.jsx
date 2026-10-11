@@ -254,7 +254,8 @@ function Comparison({ plans, current }) {
   return (
     <section className="pricing__section" aria-labelledby="compare-title">
       <h2 id="compare-title" className="overview__heading">Compare plans</h2>
-      <div className="card compare">
+      {/* On a phone the table scrolls sideways, so it takes focus for keyboard scrolling. */}
+      <div className="card compare" tabIndex={0} role="region" aria-labelledby="compare-title">
         <table className="compare__table">
           <caption className="visually-hidden">What each plan includes</caption>
           <thead>
