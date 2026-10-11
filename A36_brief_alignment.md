@@ -445,4 +445,4 @@ Checked on 11 October 2026:
 - In a browser at 390 and 1280 pixels wide, the Payouts page showed the Unmatched card with no
   page scrolling sideways.
 
-**0035 is applied to no Neon branch.**
+**0035 was applied on 11 October 2026**, with the owner's authority, to development, staging and production, each in one transaction with its record and checksum. Queried afterwards on all three, the table belongs to `mse_migrator` with row level security forced, `mse_app` may insert and update, and no bank account column exists. No payout has been read from TikTok yet: the first daily sync after the service redeploys is the first real call to Get Payments.
