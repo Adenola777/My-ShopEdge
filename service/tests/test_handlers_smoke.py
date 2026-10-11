@@ -73,6 +73,7 @@ class Conn:
         raise KeyError(f"No canned answer for: {' '.join(sql.split())[:140]}")
     def __enter__(self): return self
     def __exit__(self, *a): return False
+    def transaction(self): return self  # a savepoint, which the canned answers do not need
 
 
 failures = []
@@ -1205,13 +1206,14 @@ def returns_list():
         ("from returns r join return_reconciliation", Result(RET_COLS, rows)),
         ("from return_items where shop_id", Result(["c"], [(3,)])),
         ("from return_items ri left join skus", Result(
-            ["id","return_id","sku_id","quantity","seller_check_status","checked_at","return_postage_minor","title","variant_label"],
-            [(UUID(int=99), UUID(int=16), SKU, 1, "pending", None, None, "Desk", "Black")])),
+            ["id","return_id","sku_id","quantity","seller_check_status","checked_at","return_postage_minor","title","variant_label","seller_note"],
+            [(UUID(int=99), UUID(int=16), SKU, 1, "pending", None, None, "Desk", "Black", "Box crushed")])),
     ])
     r = client.get(f"/v1/shops/{SHOP}/returns?limit=1")
     _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
     b = r.json()
     _assert(b["awaiting_check_count"] == 3 and b["next_cursor"], b)
+    _assert(b["returns"][0]["items"][0]["seller_note"] == "Box crushed", b["returns"][0]["items"][0])
     _assert(b["returns"][0]["items"][0]["id"] == str(UUID(int=99)) and b["returns"][0]["items"][0]["product_title"] == "Desk",
             "each return carries its items, so S8 can check them by id")
     _assert(b["returns"][0]["return_cost"]["amount_minor"] == 5100, "return costs are the amount lost (A4.2)")
@@ -1384,8 +1386,8 @@ def return_check():
                 ("insert into ledger_entries", Result([], [])),
                 ("insert into stock_movements", Result([], [])),
                 ("update stock_positions", Result([], [])),
-                ("update return_items", Result(["id", "return_id", "sku_id", "quantity", "seller_check_status", "checked_at", "return_postage_minor"],
-                                               [(ITEM, RET, SKU, 1, "unsellable", NOW, 285)])),
+                ("update return_items", Result(["id", "return_id", "sku_id", "quantity", "seller_check_status", "checked_at", "return_postage_minor", "seller_note"],
+                                               [(ITEM, RET, SKU, 1, "unsellable", NOW, 285, None)])),
             ])
         return fake
     url = f"/v1/shops/{SHOP}/return-items/{ITEM}/check"
@@ -1401,7 +1403,31 @@ def return_check():
     _assert(r.status_code == 409 and not writes, "a checked item is refused before anything is written")
     r = client.post(url, json={"seller_check_status": "not_applicable", "return_postage": {"amount_minor": 1, "currency": "GBP"}})
     _assert(r.status_code == 422, "postage on nothing-came-back is refused")
-check("checkReturnItem writes a write-off and postage, and refuses a second check", return_check)
+    r = client.post(url, json={"seller_check_status": "resellable", "seller_note": "x" * 501})
+    _assert(r.status_code == 422 and "501 characters" in r.json()["detail"], r.text)
+    # A note is written with the check, and a note of only spaces names no column.
+    seen = []
+    class Seen(Conn):
+        def execute(self, sql, args=None):
+            flat = " ".join(sql.split())
+            if flat.startswith("update return_items"): seen.append((flat, args))
+            return super().execute(sql, args)
+    @contextlib.contextmanager
+    def noted(_a):
+        yield Seen([
+            ("from return_items ri join returns", Result(ITEM_COLS, [(ITEM, RET, SKU, 1, "pending", ORDER, "GBP")])),
+            ("insert into stock_movements", Result([], [])),
+            ("update stock_positions", Result([], [])),
+            ("update return_items", Result(["id", "return_id", "sku_id", "quantity", "seller_check_status", "checked_at", "return_postage_minor", "seller_note"],
+                                           [(ITEM, RET, SKU, 1, "resellable", NOW, None, "Tag missing")])),
+        ])
+    rets.tenant = noted
+    r = client.post(url, json={"seller_check_status": "resellable", "seller_note": "  Tag missing  "})
+    _assert(r.status_code == 200 and r.json()["item"]["seller_note"] == "Tag missing", r.text)
+    _assert("seller_note = %s" in seen[-1][0] and "Tag missing" in seen[-1][1], seen[-1])
+    r = client.post(url, json={"seller_check_status": "resellable", "seller_note": "   "})
+    _assert(r.status_code == 200 and "seller_note = %s" not in seen[-1][0], seen[-1])
+check("checkReturnItem writes a write-off and postage, keeps a note, and refuses a second check", return_check)
 
 
 # --- account deletion (A30.1)

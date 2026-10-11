@@ -326,3 +326,39 @@ sideways.
 Deleting the data of a shop whose account never starts a trial, 30 days after connection, is
 not built. It removes data, so it needs the owner's approval of the job before it runs, and the
 Privacy Policy needs the same period.
+
+## A36.12 The owner's choices of 11 October 2026, and item 4 built
+
+On 11 October 2026 the owner chose to build three of the remaining items, the optional note on a
+return check, Needs review as a product's cost status, and Unmatched payouts, in that order. He
+agreed that Reconcile keeps no separate Statements tab, for the reason A36.7 gives: TikTok pays
+each statement once, so the list would repeat Payouts row for row.
+
+**Item 4, the optional note on a return check (section 14 of the brief).**
+
+- Migration 0033 adds `return_items.seller_note`, null when the seller wrote nothing, and at
+  most 500 characters. **The bound is derived, not ruled**: the brief sets no length.
+- `checkReturnItem` takes `seller_note`. Spaces alone count as no note, and a longer note is
+  refused with its length. The note is written with the check, and a check is one way, so a
+  note is never edited.
+- `listReturns` serves each item's note, and the Returns page shows it on a checked item as
+  "Your note".
+- The form offers "Note (optional)" once a choice is made.
+- **Safe before 0033 is applied.** The list reads every note as null while the column is
+  missing, and a check that carries a note answers 503 `migration_pending` and records nothing.
+  A check without a note works as before.
+
+Checked on 11 October 2026:
+- The smoke test covers a note kept, a note of spaces dropped, and a note of 501 characters
+  refused.
+- On a copy of the local demo database, 9 of 9 passed: before 0033 the list answered with
+  every note null, and a check with a note answered 503 and recorded nothing. After 0033 the
+  check kept the trimmed note, the list showed it, a second check was refused, and the column
+  refused 501 characters and an empty note.
+- `migrate.py` built a database from empty with 0033.
+- In a browser at 390 and 1280 pixels wide, the field appeared after a choice, held at most 500
+  characters, and a checked item showed its note, with no page scrolling sideways. The check
+  was not recorded from the browser, because the local service does not allow the browser's
+  writes across origins.
+
+**0033 is applied to no Neon branch.**

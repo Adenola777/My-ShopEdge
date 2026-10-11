@@ -3,6 +3,11 @@
 `checkReturnItem` is served since 28 September 2026, on the four rules the owner accepted
 that day (A30.2). It is at the end of this file.
 
+Since 11 October 2026 a check may carry the seller's optional note (A36 item 4, migration
+0033), and every item listed carries the note it was checked with. Until 0033 is applied to a
+branch, the list reads every note as null and a check that carries a note answers 503
+`migration_pending`, so nothing breaks while the column is missing.
+
 LISTING
 
 Each return carries its money from `return_reconciliation`, which is `security_invoker`, so
@@ -37,6 +42,7 @@ from datetime import date, datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
+import psycopg
 from fastapi import APIRouter, Depends, Header, Path, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -66,6 +72,7 @@ class ListedItem(BaseModel):
     return_postage: Money | None = None
     product_title: str | None = None
     variant_label: str | None = None
+    seller_note: str | None = None
 
 
 class ReturnSummary(BaseModel):
@@ -139,14 +146,7 @@ def list_returns(
         ).fetchone()
         # The page's items in one query, so S8 can check each by its id.
         ids = [str(r["id"]) for r in rows[:limit]]
-        item_rows = conn.execute(
-            "select ri.id, ri.return_id, ri.sku_id, ri.quantity, ri.seller_check_status, "
-            "ri.checked_at, ri.return_postage_minor, p.title, k.variant_label "
-            "from return_items ri left join skus k on k.id = ri.sku_id "
-            "left join products p on p.id = k.product_id "
-            "where ri.return_id = any(%s::uuid[]) order by ri.created_at, ri.id",
-            (ids,),
-        ).fetchall() if ids else []
+        item_rows = _items(conn, ids) if ids else []
     by_return: dict[str, list] = {}
     for it in item_rows:
         by_return.setdefault(str(it[1]), []).append(it)
@@ -174,13 +174,32 @@ def list_returns(
                     id=it[0], return_id=it[1], sku_id=it[2], quantity=it[3],
                     seller_check_status=it[4], checked_at=it[5],
                     return_postage=money(int(it[6]), cur_code) if it[6] is not None else None,
-                    product_title=it[7], variant_label=it[8],
+                    product_title=it[7], variant_label=it[8], seller_note=it[9],
                 )
                 for it in by_return.get(str(r["id"]), [])
             ],
         ))
     return ReturnPage(returns=out, awaiting_check_count=int(waiting[0]) if waiting else 0,
                       next_cursor=next_cursor)
+
+
+ITEMS_SQL = """
+select ri.id, ri.return_id, ri.sku_id, ri.quantity, ri.seller_check_status,
+       ri.checked_at, ri.return_postage_minor, p.title, k.variant_label, {note}
+  from return_items ri left join skus k on k.id = ri.sku_id
+  left join products p on p.id = k.product_id
+ where ri.return_id = any(%s::uuid[]) order by ri.created_at, ri.id
+"""
+
+
+def _items(conn, ids: list[str]) -> list[tuple]:
+    """The listed returns' items with their notes. Before migration 0033 the column is
+    missing, so the query is tried inside a savepoint and run again with every note null."""
+    try:
+        with conn.transaction():
+            return conn.execute(ITEMS_SQL.format(note="ri.seller_note"), (ids,)).fetchall()
+    except psycopg.errors.UndefinedColumn:
+        return conn.execute(ITEMS_SQL.format(note="null::text"), (ids,)).fetchall()
 
 
 class MostReturned(BaseModel):
@@ -306,9 +325,13 @@ def get_return_metrics(
 # the check is refused too, because rule 1 has nothing to attach to.
 
 
+NOTE_MAX = 500
+
+
 class CheckIn(BaseModel):
     seller_check_status: Literal["resellable", "unsellable", "not_applicable"]
     return_postage: Money | None = None
+    seller_note: str | None = None
 
 
 class ReturnItemOut(BaseModel):
@@ -319,6 +342,7 @@ class ReturnItemOut(BaseModel):
     seller_check_status: Literal["pending", "resellable", "unsellable", "not_applicable"]
     checked_at: datetime | None = None
     return_postage: Money | None = None
+    seller_note: str | None = None
 
 
 class CheckOut(BaseModel):
@@ -337,14 +361,36 @@ def check_return_item(
 ):
     status = body.seller_check_status
     postage = body.return_postage
+    # A note of only spaces is no note. The bound is migration 0033's.
+    note = (body.seller_note or "").strip() or None
+    if note is not None and len(note) > NOTE_MAX:
+        raise Problem(422, "validation_failed",
+                      f"The note is {len(note)} characters long. Keep it to {NOTE_MAX} or fewer.")
     if postage is not None and postage.amount_minor < 0:
         raise Problem(422, "validation_failed", "Return postage cannot be negative.")
     if status == "not_applicable" and postage is not None and postage.amount_minor > 0:
         raise Problem(422, "validation_failed", "Nothing came back, so no return postage was paid.")
 
     op = "checkReturnItem"
-    digest = request_hash(str(shop_id), str(item_id), status,
-                          postage.amount_minor if postage else None)
+    # The note joins the hash only when there is one, so a key stored before notes existed
+    # still matches its own repeat.
+    parts: list[Any] = [str(shop_id), str(item_id), status,
+                        postage.amount_minor if postage else None]
+    if note:
+        parts.append(note)
+    digest = request_hash(*parts)
+    try:
+        return _check(account, shop_id, item_id, idempotency_key, op, digest, status, postage, note)
+    except psycopg.errors.UndefinedColumn as err:
+        # Only a check with a note reaches the missing column, and the transaction rolled back,
+        # so nothing was recorded.
+        raise Problem(503, "migration_pending",
+                      "Notes on a return check are not available yet, so nothing was recorded. "
+                      "Record the check without a note, or try again later.") from err
+
+
+def _check(account: Account, shop_id: UUID, item_id: UUID, idempotency_key: str | None,
+           op: str, digest: str, status: str, postage: Money | None, note: str | None):
     with tenant(account.id) as conn:
         again = replay(conn, account.id, op, idempotency_key, digest)
         if again:
@@ -435,17 +481,23 @@ def check_return_item(
                 {"q": int(quantity), "st": status, "shop": str(shop_id), "sku": str(sku_id)},
             )
 
+        # The note column is named only when there is a note, so a check without one still
+        # works on a branch that does not have migration 0033.
+        note_set, note_out = (", seller_note = %s", "seller_note") if note else ("", "null::text")
         updated = conn.execute(
             "update return_items set seller_check_status = %s, checked_at = %s, checked_by = %s, "
-            "return_postage_minor = %s where id = %s "
-            "returning id, return_id, sku_id, quantity, seller_check_status, checked_at, return_postage_minor",
-            (status, now, str(account.id), postage.amount_minor if postage else None, str(item_id)),
+            f"return_postage_minor = %s{note_set} where id = %s "
+            "returning id, return_id, sku_id, quantity, seller_check_status, checked_at, "
+            f"return_postage_minor, {note_out}",
+            (status, now, str(account.id), postage.amount_minor if postage else None,
+             *([note] if note else []), str(item_id)),
         ).fetchone()
         out = CheckOut(
             item=ReturnItemOut(
                 id=updated[0], return_id=updated[1], sku_id=updated[2], quantity=updated[3],
                 seller_check_status=updated[4], checked_at=updated[5],
                 return_postage=money(int(updated[6]), currency) if updated[6] is not None else None,
+                seller_note=updated[7],
             ),
             stock_movements_created=movements,
             write_off=money(write_off_minor, currency) if write_off_minor else None,

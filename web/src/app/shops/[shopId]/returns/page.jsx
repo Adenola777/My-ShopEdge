@@ -128,6 +128,9 @@ export default async function ReturnsPage({ params, searchParams }) {
                     )}
                   </ul>
                   {effect && <p className="card__why">{effect}</p>}
+                  {item.seller_note && (
+                    <p className="card__why" data-testid="return-note"><strong>Your note:</strong> {item.seller_note}</p>
+                  )}
                 </div>
               );
             }))}

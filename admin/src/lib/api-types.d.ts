@@ -2779,6 +2779,8 @@ export interface components {
             /** Format: date-time */
             checked_at?: string | null;
             return_postage?: (components["schemas"]["Money"] | null) & components["schemas"]["Money"];
+            /** @description The note the seller wrote with the check, or null. Added 11 October 2026. */
+            seller_note?: string | null;
         };
         ReturnMetrics: {
             period: components["schemas"]["Period"];
@@ -5115,6 +5117,8 @@ export interface operations {
                     seller_check_status: "resellable" | "unsellable" | "not_applicable";
                     /** @description What the seller paid to get the goods back, if anything. */
                     return_postage?: components["schemas"]["Money"];
+                    /** @description The seller's optional note, kept with the check (A36 item 4). Spaces alone count as no note. Added 11 October 2026. Before migration 0033 is applied, a check with a note answers 503 migration_pending. */
+                    seller_note?: string | null;
                 };
             };
         };
@@ -5144,6 +5148,15 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationFailed"];
+            /** @description The check carries a note and migration 0033 is not applied to this database yet. Nothing was recorded */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getReturnMetrics: {

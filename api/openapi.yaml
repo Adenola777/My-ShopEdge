@@ -2390,6 +2390,14 @@ paths:
                   allOf:
                   - $ref: '#/components/schemas/Money'
                   description: What the seller paid to get the goods back, if anything.
+                seller_note:
+                  type:
+                  - string
+                  - 'null'
+                  maxLength: 500
+                  description: 'The seller''s optional note, kept with the check (A36 item 4). Spaces
+                    alone count as no note. Added 11 October 2026. Before migration 0033 is applied,
+                    a check with a note answers 503 migration_pending.'
       responses:
         '200':
           description: Checked
@@ -2422,6 +2430,13 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+        '503':
+          description: The check carries a note and migration 0033 is not applied to this database
+            yet. Nothing was recorded
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /shops/{shopId}/returns/metrics:
     get:
       tags:
@@ -6149,6 +6164,11 @@ components:
           - 'null'
           allOf:
           - $ref: '#/components/schemas/Money'
+        seller_note:
+          type:
+          - string
+          - 'null'
+          description: The note the seller wrote with the check, or null. Added 11 October 2026.
     ReturnMetrics:
       type: object
       required:
