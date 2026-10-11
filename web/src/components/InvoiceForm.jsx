@@ -113,7 +113,7 @@ export function InvoiceForm({ shopId, settlementId, currency, invoice }) {
       <p><button className="btn btn--primary btn--block" disabled={busy} data-testid="save-invoice">
         {busy ? "Saving" : "Save invoice"}
       </button></p>
-      <p className="footnote">MyShopEdge checks that the gross equals the net plus the VAT, and keeps these figures. It does not keep a copy of the PDF.</p>
+      <p className="footnote">Gross must equal net plus VAT. The figures are kept; the PDF is not.</p>
     </form>
   );
 }

@@ -90,6 +90,38 @@ Built and checked so far, against the local copy at 1280 and 390 px:
   eight. Section headings sit 48 px below what precedes them on a larger screen and 32 px on a
   phone, and stock written off is still red.
 
+## A37.6 Phase 3, Reconcile, built 11 October 2026
+
+On the owner's approval of the remaining phases the same day, Reconcile took the Overview's
+pattern. Measured against the local copy at 1280 px, before and after:
+
+| Screen | Words | Cards | Page height |
+|---|---|---|---|
+| Payouts | 240 to 115 | 18 to 2 | 5,423 to 1,832 px |
+| Explain this payout | 237 to 105 | 6 to 4 | 2,958 to 1,794 px |
+| Where the money went | 105 to 82 | 2 to 1 | 1,678 to 1,383 px |
+
+- **Payouts.** Paid out, Awaiting settlement and Net proceeds sit side by side in one card,
+  stacked on a phone. Needs review, Unmatched and Expected from TikTok appear only when they
+  hold something. Every payout is one row of a single list: its date, its statement date, its
+  status chip and its amount, with a difference shown in amber only when there is one. The
+  whole row is the link.
+- **Explain this payout.** The payout is the main figure, with its status, one short line on
+  what the status means, and when the statement was issued, paid and read. The statement is
+  one card of groups, each closed by its subtotal, and every TikTok fee keeps its own line. The
+  check against the orders states the difference once, in amber, where the page had shown it
+  twice and once in red. The orders and the invoice form are folded until clicked. An unpaid
+  statement's last line reads To be paid rather than Paid out.
+- **Where the money went.** The switches are the Overview's compact row and Export sits
+  beside the title. Expected payouts by week are now shown on Payouts alone, which already
+  showed the same weeks from the same call.
+- **Transactions and Issues.** A record's date, order and TikTok's field name sit on one quiet
+  line joined by a middle dot. Issues uses the compact switch and shorter wording.
+
+Checked with lint, the type check, the production build and screenshots at 1280 and 390 px. No
+page scrolls sideways. The local copy cannot reach TikTok, so Expected from TikTok was seen
+only in its unavailable state, and Needs review and Unmatched were not seen with data.
+
 ## A37.4 The phases still to come
 
 Each is its own pull request, shown to the owner before it merges: the Overview (phase 2), Reconcile
