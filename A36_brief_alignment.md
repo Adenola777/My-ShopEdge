@@ -361,7 +361,7 @@ Checked on 11 October 2026:
   was not recorded from the browser, because the local service does not allow the browser's
   writes across origins.
 
-**0033 is applied to no Neon branch.**
+**0033 was applied on 11 October 2026**, with the owner's authority, to development, staging and production, each in one transaction with its record and checksum. Queried afterwards, the column exists on all three.
 
 ## A36.13 Item 5 built: Needs review as a product's cost status, 11 October 2026
 
@@ -403,4 +403,4 @@ Checked on 11 October 2026:
 - In a browser at 390 and 1280 pixels wide, Products showed the chip and the product page
   showed the explanation, with no page scrolling sideways.
 
-**0034 is applied to no Neon branch.**
+**0034 was applied on 11 October 2026**, with the owner's authority, to development, staging and production, each in one transaction with its record and checksum. Queried afterwards on all three, the table belongs to `mse_migrator` with row level security forced, and `mse_app` may insert and delete.
