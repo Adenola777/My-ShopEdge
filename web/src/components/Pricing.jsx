@@ -142,7 +142,8 @@ export function Pricing({ plans, defaultCycle, sub, email, signedIn, initialPlan
 function CurrentPlan({ plan, sub, live, manageHref }) {
   if (!plan) return null;
   const cycle = sub?.cycle ? CYCLE_LABEL[/** @type {Cycle} */ (sub.cycle)] : null;
-  const end = sub?.status === "trialing" ? sub?.trial_ends_at : sub?.current_period_end;
+  const end = sub?.cancel_at_period_end && sub?.ends_at ? sub.ends_at
+    : sub?.status === "trialing" ? sub?.trial_ends_at : sub?.current_period_end;
   return (
     <section className="card current-plan" aria-label="Your current plan" data-testid="current-plan">
       <div>
@@ -156,7 +157,8 @@ function CurrentPlan({ plan, sub, live, manageHref }) {
         </p>
         {live && end && (
           <p className="current-plan__renew">
-            {sub?.cancel_at_period_end ? "Ends" : sub?.status === "trialing" ? "Trial ends" : "Renews"} {formatDate(end)}
+            {sub?.cancel_at_period_end ? "Ends" : sub?.status === "trialing" ? "Trial ends"
+              : sub?.cycle === "annual_monthly" ? "Next payment" : "Renews"} {formatDate(end)}
           </p>
         )}
       </div>
@@ -213,7 +215,7 @@ function PlanCard({ plan, cycle, current, signedIn, onChoose }) {
   const mine = current === plan.slug;
   const label = buttonLabel(plan, current, signedIn);
   return (
-    <article role="listitem" className={`card plan-card${plan.highlight ? " plan-card--popular" : ""}${mine ? " plan-card--current" : ""}`}
+    <div role="listitem" className={`card plan-card${plan.highlight ? " plan-card--popular" : ""}${mine ? " plan-card--current" : ""}`}
              aria-labelledby={`plan-${plan.slug}-name`} data-testid={`plan-card-${plan.slug}`}>
       <div className="plan-card__badges">
         {mine && <span className="chip chip--quiet plan-card__current">Current</span>}
@@ -245,7 +247,7 @@ function PlanCard({ plan, cycle, current, signedIn, onChoose }) {
           </button>
         )}
       </p>
-    </article>
+    </div>
   );
 }
 
@@ -255,7 +257,7 @@ function Comparison({ plans, current }) {
     <section className="pricing__section" aria-labelledby="compare-title">
       <h2 id="compare-title" className="overview__heading">Compare plans</h2>
       {/* On a phone the table scrolls sideways, so it takes focus for keyboard scrolling. */}
-      <div className="card compare" tabIndex={0} role="region" aria-labelledby="compare-title">
+      <div className="card compare" tabIndex={0} role="region" aria-label="Compare plans, table">
         <table className="compare__table">
           <caption className="visually-hidden">What each plan includes</caption>
           <thead>
@@ -437,7 +439,9 @@ function DowngradeDialog({ sub, onClose }) {
     if (d && !d.open) d.showModal();
     return () => { if (d?.open) d.close(); };
   }, []);
-  const end = sub.status === "trialing" ? sub.trial_ends_at : sub.current_period_end;
+  // On Annual, billed monthly the plan runs to the end of its twelve-payment term (A38.6).
+  const term = sub.status !== "trialing" && sub.cycle === "annual_monthly" ? sub.commitment_ends_at : null;
+  const end = term ?? (sub.status === "trialing" ? sub.trial_ends_at : sub.current_period_end);
 
   async function confirm() {
     setBusy(true);
@@ -445,7 +449,8 @@ function DowngradeDialog({ sub, onClose }) {
     const r = await api("/billing/subscription", { method: "PATCH", body: JSON.stringify({ cancel_at_period_end: true }) });
     setBusy(false);
     if (!r.ok) { setError(r.data?.detail ?? "Your plan was not changed. Try again in a moment."); return; }
-    setMsg(end ? `Your plan stays until ${formatDate(end)}, then you move to Explorer.` : "You will move to Explorer at the end of your plan.");
+    const until = r.data?.ends_at ?? end;
+    setMsg(until ? `Your plan stays until ${formatDate(until)}, then you move to Explorer.` : "You will move to Explorer at the end of your plan.");
     router.refresh();
   }
 
@@ -465,6 +470,7 @@ function DowngradeDialog({ sub, onClose }) {
         ) : (
           <>
             <p>Your plan stops renewing{end ? ` and runs until ${formatDate(end)}` : ""}. Then Explorer&apos;s limits apply: 1 TikTok Shop, 100 orders a month and no exports.</p>
+            {term && <p>Your plan is on Annual, billed monthly, so the monthly payments left in its twelve are still taken until then.</p>}
             <p>Your data stays. Nothing is deleted without your confirmation.</p>
             {error && <p className="form-error" role="alert">{error}</p>}
             <p className="upload__actions">

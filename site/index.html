@@ -15,10 +15,16 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="MyShopEdge on a laptop and a phone, with the headline Know your numbers">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* Inter, served from this site since 11 October 2026 (@fontsource-variable/inter 5.3.0,
+     SIL Open Font License, assets/fonts/LICENSE-Inter.txt), so no font service holds up the page. */
+  @font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900;
+    src: url(/assets/fonts/inter-latin-ext-wght-normal.woff2) format('woff2');
+    unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+  @font-face { font-family: 'Inter'; font-style: normal; font-display: swap; font-weight: 100 900;
+    src: url(/assets/fonts/inter-latin-wght-normal.woff2) format('woff2');
+    unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   :root {
     --ink: #12141C;
     --ink-soft: #5B6472;
@@ -259,7 +265,7 @@
   .footer-brand img { height: 26px; margin-bottom: 14px; }
   .footer-brand p { font-size: 13px; color: var(--ink-soft); max-width: 32ch; line-height:1.6; margin:0; }
   .footer-nav { display:flex; gap: 48px; flex-wrap: wrap; }
-  .footer-col h4 { font-size:12.5px; font-weight:600; color: var(--ink-faint); margin:0 0 12px; }
+  .footer-col h4, .footer-col__title { font-size:12.5px; font-weight:600; color: var(--ink-faint); margin:0 0 12px; }
   .footer-col a { display:block; font-size:13.5px; color: var(--ink-soft); text-decoration:none; margin-bottom:9px; }
   .footer-col a:hover { color: var(--ink); }
   .footer-identity { font-style:normal; font-size:13.5px; color: var(--ink-soft); line-height:1.75; max-width: 34ch; }
@@ -401,39 +407,95 @@
     .sticky-cta .btn { width: 100%; justify-content: center; font-size: 19px; padding: 14px 20px; }
   }
   @media (prefers-reduced-motion: reduce) { .sticky-cta { transition: none; } }
+  /* 11 October 2026, the navigation the owner approved: Features, How it works, Pricing,
+     Resources and Security, then Log in and Start free. The bar slims after the first scroll,
+     marks the section being read, and a Back to top button appears on long scrolls. */
+  .nav { transition: box-shadow .2s ease; }
+  .nav-inner { transition: height .2s ease; }
+  .nav.is-slim .nav-inner { height: 72px; }
+  .nav.is-slim .logo-lockup img { height: 56px; }
+  .nav-links { gap: 28px; }
+  .nav-links a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--orange-solid); padding-bottom: 4px; }
+  .nav-drop { position: relative; }
+  .nav-drop summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 14.5px; font-weight: 500; color: var(--ink-soft); }
+  .nav-drop summary::-webkit-details-marker { display: none; }
+  .nav-drop summary svg { width: 16px; height: 16px; transition: transform .15s ease; }
+  .nav-drop[open] summary { color: var(--ink); }
+  .nav-drop[open] summary svg { transform: rotate(180deg); }
+  .nav-drop__panel { position: absolute; top: calc(100% + 14px); left: -16px; width: 300px; background: var(--white); border-radius: 14px; padding: 8px; box-shadow: 0 18px 44px -14px rgba(18,20,28,0.28), 0 0 0 1px rgba(18,20,28,0.06); display: grid; gap: 2px; z-index: 50; }
+  .nav-links .nav-drop__panel a { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; color: var(--ink); }
+  .nav-drop__panel a:hover { background: var(--paper-alt); }
+  .nav-drop__panel strong { font-size: 14.5px; font-weight: 600; }
+  .nav-drop__panel span { font-size: 13px; color: var(--ink-soft); font-weight: 400; }
+  .nav-login { font-size: 14.5px; font-weight: 600; color: var(--ink); text-decoration: none; padding: 8px 6px; }
+  .nav-login:hover { color: var(--orange-solid); }
+  .mobile-menu__panel .mobile-menu__login { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 14px; font-weight: 600; }
+  .nav-links a:focus-visible, .nav-drop summary:focus-visible, .nav-login:focus-visible, .to-top:focus-visible { outline: 2px solid var(--orange-solid); outline-offset: 3px; border-radius: 6px; }
+  .to-top { position: fixed; right: 20px; bottom: 24px; z-index: 55; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--white); color: var(--ink); box-shadow: 0 8px 24px -6px rgba(18,20,28,0.3), 0 0 0 1px rgba(18,20,28,0.06); opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; pointer-events: none; }
+  .to-top.is-on { opacity: 1; transform: none; pointer-events: auto; }
+  .to-top svg { width: 20px; height: 20px; }
+  @media (max-width: 860px) { .to-top { bottom: 92px; right: 14px; width: 42px; height: 42px; } .nav.is-slim .nav-inner { height: 64px; } .nav.is-slim .logo-lockup img { height: 40px; } }
+  @media (max-width: 420px) { .nav-actions .nav-login { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .nav, .nav-inner, .to-top { transition: none; } }
+  .footer-col__title { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin: 0 0 12px; }
+  .skip-link { position: absolute; left: 16px; top: -60px; z-index: 100; background: var(--ink); color: var(--white); padding: 10px 16px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+  .skip-link:focus { top: 12px; }
+  /* 11 October 2026, the responsiveness layer the owner approved: every control answers a
+     press within one frame. A button sinks a little and darkens, a link or menu item takes a
+     tint, and hover lift is kept to devices that can hover, so a tap on a phone leaves nothing
+     raised. Under reduced motion the movement stops and the colours stay. */
+  a, button, summary { -webkit-tap-highlight-color: transparent; }
+  .btn, .btn-ghost { transition: transform .08s ease-out, box-shadow .15s ease, background .15s ease, filter .08s ease-out; }
+  .btn:active { transform: translateY(0) scale(0.97); filter: brightness(0.9); box-shadow: 0 1px 2px rgba(146,45,5,0.35); }
+  .btn-ghost:active { transform: scale(0.97); background: var(--line); }
+  @media (hover: none) { .btn:hover { transform: none; } }
+  .nav-links a:active, .nav-login:active, .link-secondary:active, .footer-col a:active { color: var(--orange-solid); }
+  .nav-drop__panel a:active, .mobile-menu__panel a:active { background: #FFF2EC; box-shadow: inset 0 0 0 2px #F59577; }
+  .to-top:active { transform: scale(0.94); }
+  :focus-visible { outline-width: 3px; }
+  @media (prefers-reduced-motion: reduce) { .btn, .btn-ghost { transition: none; } .btn:active, .btn-ghost:active, .to-top:active { transform: none; } }
 </style>
 </head>
 <body>
 
-<section id="marketing" class="screen">
+<a class="skip-link" href="#main">Skip to content</a>
+<section id="marketing" class="screen"><span id="top"></span>
   <nav class="nav">
     <div class="wrap nav-inner">
       <div class="logo-lockup"><picture><source media="(max-width: 420px)" srcset="brand/mse-mark-colour.svg"><source media="(max-width: 520px)" srcset="brand/mse-logo-horizontal-notagline.svg"><img src="brand/mse-logo-horizontal.svg" alt="MyShopEdge, Know Your Numbers"></picture></div>
-      <div class="nav-links">
-        <a href="#problem">Why MyShopEdge</a>
-        <a href="#how">How it works</a>
-        <a href="#features">Features</a>
-        <a href="#trust">Security</a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="#features" data-spy="features">Features</a>
+        <a href="#how" data-spy="how">How it works</a>
         <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
-      </div>
+        <details class="nav-drop">
+          <summary>Resources <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="nav-drop__panel">
+            <a href="/tools/tiktok-shop-payout-explainer"><strong>Payout Explainer</strong><span>Work out why a payout is lower than sales.</span></a>
+            <a href="/faq/tiktok-shop-seller-finance"><strong>FAQ</strong><span>Answers on fees, payouts, profit and VAT.</span></a>
+          </div>
+        </details>
+        <a href="#trust" data-spy="trust">Security</a>
+      </nav>
       <details class="mobile-menu">
         <summary aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
         <div class="mobile-menu__panel">
-          <a href="#problem">Why MyShopEdge</a>
-          <a href="#how">How it works</a>
           <a href="#features">Features</a>
-          <a href="#trust">Security</a>
+          <a href="#how">How it works</a>
           <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
-          <a href="https://app.myshopedge.inspirecraftglobal.com/start">Sign in</a>
+          <a href="/tools/tiktok-shop-payout-explainer">Payout Explainer</a>
+          <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
+          <a href="#trust">Security</a>
+          <a class="mobile-menu__login" href="https://app.myshopedge.inspirecraftglobal.com/handler/sign-in">Log in</a>
         </div>
       </details>
       <div class="nav-actions">
-        <a class="btn-ghost" href="https://app.myshopedge.inspirecraftglobal.com/start">Sign in</a>
-        <a class="btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Get started</a>
+        <a class="nav-login" href="https://app.myshopedge.inspirecraftglobal.com/handler/sign-in">Log in</a>
+        <a class="btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start free</a>
       </div>
     </div>
   </nav>
 
+  <main id="main">
   <header class="hero">
     <div class="wrap hero-grid">
       <div>
@@ -454,7 +516,7 @@
       </div>
       <div class="hero-visual-wrap">
         <div class="hero-glow" aria-hidden="true"></div>
-        <img class="hero-devices" src="art/hero-devices.webp" width="956" height="645" alt="MyShopEdge on a laptop and a phone">
+        <img class="hero-devices" src="art/hero-devices.webp" width="956" height="645" fetchpriority="high" alt="MyShopEdge on a laptop and a phone">
       </div>
     </div>
   </header>
@@ -514,8 +576,8 @@
           <img class="copy-art" src="art/product-costs.webp" width="850" height="560" loading="lazy" alt="Illustration: what goes into the cost of one product">
         </div>
         <div class="shot-pair">
-          <img src="shots/costs-choice.webp" width="720" height="1560" alt="Do you have your product costs, with Excel or CSV, type them in, or skip for now">
-          <img src="shots/costs-manual.webp" width="720" height="1560" alt="Typing product costs, with cost coverage for the last 30 days">
+          <img loading="lazy" decoding="async" src="shots/costs-choice.webp" width="720" height="1560" alt="Do you have your product costs, with Excel or CSV, type them in, or skip for now">
+          <img loading="lazy" decoding="async" src="shots/costs-manual.webp" width="720" height="1560" alt="Typing product costs, with cost coverage for the last 30 days">
         </div>
       </div>
     </div>
@@ -530,7 +592,7 @@
           <p>Commission, shipping, promotions and refunds, each on its own line. Open any line to see the orders behind it.</p>
           <img class="copy-art" src="art/true-profit.webp" width="900" height="520" loading="lazy" alt="Illustration: revenue on one side, refunds, platform fees and shipping on the other, and the profit left">
         </div>
-        <div class="feature-visual"><img src="shots/money-fees-top.webp" width="720" height="1000" alt="Each TikTok fee on its own line, down to net proceeds"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/money-fees-top.webp" width="720" height="1000" alt="Each TikTok fee on its own line, down to net proceeds"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -540,7 +602,7 @@
           <p>Shop Money sets your net proceeds against what TikTok has paid out, and shows what it still owes you.</p>
           <img class="copy-art" src="art/reconcile.webp" width="850" height="410" loading="lazy" alt="Illustration: sales, returns and charges checked against each other to reach final totals">
         </div>
-        <div class="feature-visual"><img src="shots/overview.webp" width="720" height="1558" alt="The Overview, with gross profit after returns and the Shop Money card showing net proceeds and what has been paid out"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/overview.webp" width="720" height="1558" alt="The Overview, with gross profit after returns and the Shop Money card showing net proceeds and what has been paid out"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -550,7 +612,7 @@
           <p>Every unit, pound by pound: sales, fees, returns and cost, down to gross profit and margin.</p>
           <p class="feature-sub">Gross profit on every plan, Explorer included. Margin from Starter.</p>
         </div>
-        <div class="feature-visual"><img src="shots/products-ranking.webp" width="720" height="1560" alt="One product, one unit pound by pound: gross sales, refunds, discounts, net sales and each fee"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/products-ranking.webp" width="720" height="1560" alt="One product, one unit pound by pound: gross sales, refunds, discounts, net sales and each fee"></div>
       </div>
 
       <div class="feature-row">
@@ -560,7 +622,7 @@
           <p>Month summary, ledger or order lines, in Excel or CSV. Totals match your Overview.</p>
           <p class="feature-sub">Growth and Pro plans.</p>
         </div>
-        <div class="feature-visual"><img src="shots/exports.webp" width="720" height="1560" alt="The Exports screen, with what to export, period, basis and format"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/exports.webp" width="720" height="1560" alt="The Exports screen, with what to export, period, basis and format"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -569,7 +631,7 @@
           <h3>Every return, counted once.</h3>
           <p>Mark each return resellable or unsellable. Stock and profit stay right.</p>
         </div>
-        <div class="feature-visual"><img src="shots/returns.webp" width="720" height="1560" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/returns.webp" width="720" height="1560" alt="A return check with the order, the refund, and the choices Resellable, Unsellable and Nothing came back"></div>
       </div>
 
       <div class="feature-row">
@@ -579,7 +641,7 @@
           <p>12 months of turnover against the &pound;90,000 threshold, and an estimate of tax to set aside.</p>
           <p class="feature-sub">Estimates, not tax advice. Scottish rates not yet included.</p>
         </div>
-        <div class="feature-visual"><img src="shots/tax.webp" width="720" height="1560" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/tax.webp" width="720" height="1560" alt="The VAT and tax screen, with turnover against the &pound;90,000 threshold and the estimated reserve"></div>
       </div>
 
       <div class="feature-row reverse">
@@ -588,7 +650,7 @@
           <h3>Know what is running low.</h3>
           <p>On hand, coming back and days of cover for every product.</p>
         </div>
-        <div class="feature-visual"><img src="shots/stock.webp" width="720" height="1560" alt="The Stock screen, with units on hand and days of cover for each product"></div>
+        <div class="feature-visual"><img loading="lazy" decoding="async" src="shots/stock.webp" width="720" height="1560" alt="The Stock screen, with units on hand and days of cover for each product"></div>
       </div>
     </div>
   </section>
@@ -639,11 +701,15 @@
     </div>
   </section>
 
+  <a class="to-top" id="to-top" href="#top" aria-label="Back to top" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></a>
+
   <div class="sticky-cta" id="sticky-cta" hidden>
     <a class="btn final-cta__btn" href="https://app.myshopedge.inspirecraftglobal.com/start">Start free with Explorer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </div>
 
-  <footer>
+  </main>
+
+  <footer role="contentinfo">
     <div class="wrap">
       <div class="footer-top">
         <div class="footer-brand">
@@ -653,27 +719,32 @@
         </div>
         <div class="footer-nav">
           <div class="footer-col">
-            <h4>Product</h4>
-            <a href="#how">How it works</a>
+            <h3 class="footer-col__title">Product</h3>
             <a href="#features">Features</a>
+            <a href="#how">How it works</a>
             <a href="https://app.myshopedge.inspirecraftglobal.com/pricing">Pricing</a>
-            <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
-            <a href="/tools/tiktok-shop-payout-explainer">Payout Explainer</a>
+            <a href="#trust">Security</a>
+            <a href="https://app.myshopedge.inspirecraftglobal.com/start">Start free</a>
+            <a href="https://app.myshopedge.inspirecraftglobal.com/handler/sign-in">Log in</a>
           </div>
           <div class="footer-col">
-            <h4>Legal</h4>
+            <h3 class="footer-col__title">Resources</h3>
+            <a href="/tools/tiktok-shop-payout-explainer">Payout Explainer</a>
+            <a href="/faq/tiktok-shop-seller-finance">FAQ</a>
+          </div>
+          <div class="footer-col">
+            <h3 class="footer-col__title">Legal</h3>
             <a href="https://app.myshopedge.inspirecraftglobal.com/legal/privacy.html">Privacy Policy</a>
             <a href="https://app.myshopedge.inspirecraftglobal.com/legal/terms.html">Terms and Conditions</a>
             <a href="https://app.myshopedge.inspirecraftglobal.com/legal/cookies.html">Cookie Policy</a>
           </div>
           <div class="footer-col">
-            <h4>Company</h4>
-            <a href="#trust">Security</a>
+            <h3 class="footer-col__title">Company</h3>
             <a href="mailto:support@inspirecraftglobal.com">Contact</a>
             <a href="mailto:info@inspirecraftglobal.com">info@inspirecraftglobal.com</a>
           </div>
           <div class="footer-col">
-            <h4>Inspirecraft Global Ltd</h4>
+            <h3 class="footer-col__title">Inspirecraft Global Ltd</h3>
             <address class="footer-identity">
               Company No. 16159924<br>
               Maisonette 3, 23 Watkins Road, Leicester, United Kingdom<br>
@@ -715,6 +786,27 @@
     new IntersectionObserver(function (e) { heroGone = !e[0].isIntersecting && e[0].boundingClientRect.top < 0; update(); }).observe(hero);
     ends.forEach(function (el, i) { if (el) new IntersectionObserver(function (e) { endSeen[i] = e[0].isIntersecting; update(); }).observe(el); });
     update();
+  })();
+  // The top bar slims after the first scroll and marks the section being read; a Back to top
+  // button appears once the visitor is well down the page. Resources closes on a click outside.
+  (function () {
+    var nav = document.querySelector(".nav"), top = document.getElementById("to-top");
+    var links = Array.prototype.slice.call(document.querySelectorAll(".nav-links a[data-spy]"));
+    function onScroll() {
+      var y = window.scrollY;
+      nav.classList.toggle("is-slim", y > 24);
+      if (top) { top.hidden = false; top.classList.toggle("is-on", y > 1600); top.tabIndex = y > 1600 ? 0 : -1; }
+      var mark = y + 140, current = null;
+      links.forEach(function (a) { var el = document.getElementById(a.dataset.spy); if (el && el.offsetTop <= mark) current = a; });
+      links.forEach(function (a) { if (a === current) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+    document.addEventListener("click", function (e) {
+      document.querySelectorAll(".nav-drop[open]").forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute("open"); });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") document.querySelectorAll(".nav-drop[open], .mobile-menu[open]").forEach(function (d) { d.removeAttribute("open"); d.querySelector("summary").focus(); });
+    });
   })();
 </script>
 </body>

@@ -9,6 +9,7 @@
  * `audit/EMERGENT_review_28_september.md`.
  */
 
+import { Pager } from "@/components/Pager";
 import Link from "next/link";
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
@@ -50,7 +51,7 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
     <section data-testid="product-transactions-screen">
       <header className="page-head">
         <p className="crumb">
-          <Link href={`/shops/${shopId}/products/${productId}`}>Back to product</Link>
+          <Link href={`/shops/${shopId}/products/${productId}`}>Product</Link>
         </p>
         <h1>Transactions for this product</h1>
         <p>
@@ -91,17 +92,12 @@ export default async function ProductTransactionsPage({ params, searchParams }) 
             ))}
           </ul>
         )}
-        {page.next_cursor && (
-          <p className="card__foot">
-            <Link
-              data-testid="records-next"
-              href={`/shops/${shopId}/products/${productId}/transactions?cursor=${encodeURIComponent(page.next_cursor)}${keep ? `&${keep}` : ""}`}
-            >
-              Show more
-            </Link>
-          </p>
-        )}
       </div>
+      <Pager
+        next={page.next_cursor ? `/shops/${shopId}/products/${productId}/transactions?cursor=${encodeURIComponent(page.next_cursor)}${keep ? `&${keep}` : ""}` : null}
+        first={query.cursor ? `/shops/${shopId}/products/${productId}/transactions${keep ? `?${keep}` : ""}` : null}
+        label="Transaction pages"
+      />
     </section>
   );
 }

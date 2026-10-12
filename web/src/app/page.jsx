@@ -6,7 +6,7 @@ import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
  * this address sent everyone to `/shops`, so a first visit to the app's own address showed
  * "Please sign in again" instead of the product.
  */
-const LANDING_URL = "https://myshopedge.inspirecraftglobal.com";
+import { LANDING_URL } from "@/lib/links";
 
 export const dynamic = "force-dynamic";
 

@@ -7,6 +7,10 @@
  *
  * Renewal goes through updateSubscription, which tells Stripe. Nothing is refunded, and a
  * trial that is set not to renew ends without the first payment being taken.
+ *
+ * Since 11 October 2026 a plan on Annual, billed monthly owes the twelve payments of its term
+ * (A38.6). Stopping renewal during a term ends the plan on the term's last day, so the seller
+ * is told that the payments left are still taken and on which day the plan ends.
  */
 
 import { useState } from "react";
@@ -24,7 +28,10 @@ export function PlanControls({ sub }) {
   const [error, setError] = useState(/** @type {string | null} */ (null));
 
   const trial = sub.status === "trialing";
-  const ends = formatDate((trial ? sub.trial_ends_at : sub.current_period_end) ?? "");
+  const ends = formatDate(sub.ends_at ?? (trial ? sub.trial_ends_at : sub.current_period_end) ?? "");
+  // A running twelve-payment term, outside the trial (A38.6).
+  const term = !trial && sub.cycle === "annual_monthly" && sub.commitment_ends_at
+    ? formatDate(sub.commitment_ends_at) : null;
 
   /** @param {boolean} stop */
   async function setRenewal(stop) {
@@ -52,7 +59,9 @@ export function PlanControls({ sub }) {
           <p className="card__why">
             {trial
               ? `Your plan will not start. The trial ends on ${ends} and nothing will be charged.`
-              : `Your plan will end on ${ends} and will not renew.`}
+              : term
+                ? `Your plan will end on ${ends}, after the last of its twelve monthly payments, and will not renew.`
+                : `Your plan will end on ${ends} and will not renew.`}
           </p>
           <p>
             <button type="button" className="btn btn--primary btn--block" disabled={busy}
@@ -67,7 +76,9 @@ export function PlanControls({ sub }) {
             <strong>
               {trial
                 ? `If you stop the plan now, your trial ends on ${ends} and nothing is charged.`
-                : `If you stop renewal now, your plan ends on ${ends}. Nothing is refunded for the time already paid.`}
+                : term
+                  ? `Your plan is on Annual, billed monthly, so its twelve payments run until ${term}. If you stop renewal now, the monthly payments left are still taken and your plan ends on ${term}.`
+                  : `If you stop renewal now, your plan ends on ${ends}. Nothing is refunded for the time already paid.`}
             </strong>
           </p>
           <p className="card__why">Your shops and figures stay. You can turn renewal back on here until that date.</p>
@@ -86,6 +97,11 @@ export function PlanControls({ sub }) {
         </div>
       ) : (
         <p>
+          {term ? (
+            <span className="card__why" style={{ display: "block" }} data-testid="plan-term">
+              Annual, billed monthly: twelve monthly payments, running until {term}.
+            </span>
+          ) : null}
           <button type="button" className="btn btn--quiet btn--block"
             onClick={() => setConfirming(true)} data-testid="plan-stop">
             {trial ? "Stop the plan before the trial ends" : "Stop renewal"}

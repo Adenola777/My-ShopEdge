@@ -48,7 +48,11 @@ function nextStep(sub) {
     return [sub.cancel_at_period_end ? "Trial ends, with no charge" : "First payment", formatDate(sub.trial_ends_at)];
   }
   if (sub.status === "active" && sub.current_period_end) {
-    return [sub.cancel_at_period_end ? "Plan ends" : "Renews", formatDate(sub.current_period_end)];
+    // A stopped plan ends on `ends_at`, which on Annual, billed monthly is the end of its
+    // twelve-payment term rather than of the month (A38.6). A running one on that cycle pays
+    // monthly, so its next date is a payment, not a renewal.
+    if (sub.cancel_at_period_end) return ["Plan ends", formatDate(sub.ends_at ?? sub.current_period_end)];
+    return [sub.cycle === "annual_monthly" ? "Next payment" : "Renews", formatDate(sub.current_period_end)];
   }
   return null;
 }

@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { AREAS, SETTINGS, hrefOf } from "@/lib/nav";
+import { PRICING, SIGN_OUT, SITE } from "@/lib/links";
 
 export const metadata = { title: "More" };
 
@@ -20,6 +21,7 @@ export default async function MorePage({ params }) {
     [hrefOf(base, "notifications"), "Notifications"],
     [hrefOf(base, SETTINGS.pages[0]?.[0] ?? SETTINGS.slug), SETTINGS.label],
     [hrefOf(base, "glossary"), "Help and glossary"],
+    [PRICING, "Plans and pricing"],
   ];
   return (
     <section data-testid="more">
@@ -33,7 +35,10 @@ export default async function MorePage({ params }) {
           </li>
         ))}
         <li>
-          <a href="/handler/sign-out" data-testid="more-sign-out">Sign out</a>
+          <a href={SITE.home}>Back to the website</a>
+        </li>
+        <li>
+          <a href={SIGN_OUT} data-testid="more-sign-out">Sign out</a>
         </li>
       </ul>
     </section>

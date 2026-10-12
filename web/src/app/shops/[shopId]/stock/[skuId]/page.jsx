@@ -18,6 +18,7 @@
  * QA found this screen, which carries the adjustment form, named no item at all.
  */
 
+import { Pager } from "@/components/Pager";
 import Link from "next/link";
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
@@ -60,7 +61,7 @@ export default async function MovementsPage({ params, searchParams }) {
   return (
     <section>
       <header className="page-head">
-        <p><Link href={`/shops/${shopId}/stock`}>Stock</Link></p>
+        <p className="crumb"><Link href={`/shops/${shopId}/stock`}>Stock</Link></p>
         <h1>{sku.product_title || "Untitled product"}</h1>
         <p>{variant}. Every change to this variant&rsquo;s count, newest first.</p>
       </header>
@@ -96,13 +97,12 @@ export default async function MovementsPage({ params, searchParams }) {
         </div>
       )}
 
-      {next_cursor && (
-        <p className="pager">
-          <Link className="btn btn--quiet" href={`${base}?cursor=${encodeURIComponent(next_cursor)}`}>
-            Older movements
-          </Link>
-        </p>
-      )}
+      <Pager
+        next={next_cursor ? `${base}?cursor=${encodeURIComponent(next_cursor)}` : null}
+        first={query.cursor ? base : null}
+        nextLabel="Older movements"
+        label="Movement pages"
+      />
     </section>
   );
 }

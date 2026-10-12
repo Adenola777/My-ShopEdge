@@ -14,6 +14,7 @@
  * does not say which discrepancy touches it.
  */
 
+import { Pager } from "@/components/Pager";
 import Link from "next/link";
 import { fetchShop, formatDate } from "@/lib/api";
 import { apiProblem } from "@/components/ApiProblem";
@@ -100,16 +101,11 @@ export default async function RecordsPage({ params, searchParams }) {
         </div>
       )}
 
-      {page.next_cursor && (
-        <p className="pager">
-          <Link
-            className="btn btn--quiet"
-            href={`${base}?${new URLSearchParams({ ...filters, cursor: page.next_cursor })}`}
-          >
-            Next page
-          </Link>
-        </p>
-      )}
+      <Pager
+        next={page.next_cursor ? `${base}?${new URLSearchParams({ ...filters, cursor: page.next_cursor })}` : null}
+        first={query.cursor ? `${base}?${new URLSearchParams(filters)}` : null}
+        label="Transaction pages"
+      />
     </section>
   );
 }

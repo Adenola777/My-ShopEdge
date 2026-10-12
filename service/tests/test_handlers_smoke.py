@@ -98,10 +98,15 @@ app.dependency_overrides[shops.require_shop] = lambda: SHOP
 # Since A36 an account with no plan holds nothing. The plan cases near the end set a row of
 # their own and put this back.
 from app import db as _db  # noqa: E402
+_real_get_subscription_row = _db.get_subscription_row
+_real_apply_terms = _db.apply_subscription_terms
 _db.get_subscription_row = lambda _a: {"plan_slug": "pro", "status": "trialing",
                                        "stripe_customer_id": "cus_t", "stripe_subscription_id": "sub_t",
                                        "trial_end": None, "current_period_end": None,
                                        "cancel_at_period_end": False}
+# The terms of migration 0036 (A38.6) are written by their own call; the cases that care
+# replace it with one that records what it was given.
+_db.apply_subscription_terms = lambda **_kw: True
 client = TestClient(app)
 
 
@@ -1879,6 +1884,144 @@ def renewal_follows_deletion():
     finally:
         billing._stripe, billing.db.get_subscription_row, billing._apply_stripe_subscription = saved
 check("a deletion stops renewal at period end, and its cancellation restores only that", renewal_follows_deletion)
+
+
+# --- the twelve-payment term of Annual, billed monthly (A38.6, 11 October 2026)
+def annual_monthly_commitment():
+    import contextlib
+    from datetime import datetime, timezone
+    from types import SimpleNamespace as NS
+    import psycopg
+
+    utc = lambda *a: datetime(*a, tzinfo=timezone.utc)  # noqa: E731
+    ts = lambda d: int(d.timestamp())  # noqa: E731
+    now = utc(2026, 12, 1)
+
+    # The term starts at the trial's end and lasts twelve calendar months; a shorter month
+    # takes its last day; a renewing plan moves to its next term; a plan set to end keeps it.
+    sub = {"status": "active", "trial_end": ts(utc(2026, 11, 7)), "metadata": {}}
+    _assert(billing._commitment_end(sub, "annual_monthly", now) == utc(2027, 11, 7), "first term")
+    _assert(billing._commitment_end(sub, "annual_monthly", utc(2027, 11, 8)) == utc(2028, 11, 7), "next term")
+    _assert(billing._commitment_end(dict(sub, cancel_at=1), "annual_monthly", utc(2027, 11, 8))
+            == utc(2027, 11, 7), "a plan set to end keeps its term")
+    _assert(billing._commitment_end(sub, "monthly", now) is None, "monthly has no term")
+    _assert(billing._commitment_end(dict(sub, metadata={"term_start": str(ts(utc(2027, 1, 31)))}),
+                                    "annual_monthly", now) == utc(2028, 1, 31), "term_start wins")
+    _assert(billing._add_months(utc(2027, 1, 31), 1) == utc(2027, 2, 28), "short month")
+
+    # The cycle comes from the price; a price sold before A38 is monthly.
+    os.environ.update(STRIPE_PRICE_STARTER_ANNUAL_MONTHLY="price_s_am", STRIPE_PRICE_STARTER="price_s_old",
+                      STRIPE_PRICE_STARTER_MONTHLY="price_s_m", STRIPE_PRICE_PRO_ANNUAL_MONTHLY="price_p_am",
+                      STRIPE_PRICE_STARTER_ANNUAL="price_s_a")
+    item = lambda pid: {"items": {"data": [{"id": "si_1", "price": {"id": pid}}]}}  # noqa: E731
+    _assert(billing._cycle_for_subscription(item("price_s_am")) == "annual_monthly", "cycle")
+    _assert(billing._cycle_for_subscription(item("price_s_old")) == "monthly", "legacy")
+    _assert(billing._cycle_for_subscription({"metadata": {"cycle": "annual"}}) == "annual", "metadata")
+
+    # Writing a subscription passes the cycle, the end date and the term to the new call.
+    terms, events = [], []
+    saved = (billing.db.apply_subscription_terms, billing.db.apply_subscription_event, billing._stripe,
+             billing.db.get_subscription_row)
+    billing.db.apply_subscription_terms = lambda **kw: terms.append(kw) or True
+    billing.db.apply_subscription_event = lambda **kw: events.append(kw)
+    try:
+        billing._apply_stripe_subscription(dict(item("price_s_am"), id="sub_c", customer="cus_c",
+                                                status="active", trial_end=ts(utc(2026, 11, 7)),
+                                                cancel_at=ts(utc(2027, 11, 7))))
+        _assert(terms[-1] == {"stripe_customer_id": "cus_c", "cycle": "annual_monthly",
+                              "cancel_at": utc(2027, 11, 7), "commitment_ends_at": utc(2027, 11, 7)}, terms)
+
+        calls = []
+        row = {"plan_slug": "starter", "status": "active", "stripe_customer_id": "cus_c",
+               "stripe_subscription_id": "sub_c", "trial_end": utc(2026, 11, 7),
+               "current_period_start": utc(2027, 3, 7), "current_period_end": utc(2027, 4, 7),
+               "cancel_at_period_end": False, "cycle": "annual_monthly", "cancel_at": None,
+               "commitment_ends_at": utc(2099, 11, 7)}
+        state = {"row": row}
+
+        class Subs:
+            def update(self, sid, params):
+                calls.append(params)
+                return {"id": sid, "customer": "cus_c", "status": "active"}
+            def retrieve(self, sid):
+                return dict(item("price_s_am"), id=sid, customer="cus_c", status="active")
+        billing._stripe = lambda: NS(subscriptions=Subs())
+        billing.db.get_subscription_row = lambda _a: state["row"]
+
+        # Stopping during a term ends the plan on the term's last day, with no proration.
+        r = client.patch("/v1/billing/subscription", json={"cancel_at_period_end": True})
+        _assert(r.status_code == 200, r.text)
+        _assert(calls[-1] == {"cancel_at": ts(utc(2099, 11, 7)), "proration_behavior": "none"}, calls[-1])
+
+        # A stopped plan reads as stopped, ending on the term's last day.
+        state["row"] = dict(row, cancel_at=utc(2099, 11, 7))
+        out = billing._subscription_out(state["row"])
+        _assert(out.cancel_at_period_end and out.ends_at == utc(2099, 11, 7).isoformat()
+                and out.commitment_ends_at == utc(2099, 11, 7).isoformat() and out.cycle == "annual_monthly", out)
+
+        # Turning renewal back on clears the date.
+        r = client.patch("/v1/billing/subscription", json={"cancel_at_period_end": False})
+        _assert(r.status_code == 200 and calls[-1] == {"cancel_at": "", "metadata": {billing.DELETION_FLAG: ""}},
+                calls[-1])
+
+        # In the trial no payment is owed yet, so the plan stops when the trial ends.
+        state["row"] = dict(row, status="trialing")
+        client.patch("/v1/billing/subscription", json={"cancel_at_period_end": True})
+        _assert(calls[-1] == {"cancel_at_period_end": True}, calls[-1])
+
+        # During a term: Monthly and a smaller plan are refused and Stripe is not called; a
+        # larger plan and Annual prepaid are allowed.
+        state["row"] = dict(row, plan_slug="pro")
+        for body in ({"plan": "pro", "cycle": "monthly"}, {"plan": "starter", "cycle": "annual_monthly"}):
+            n = len(calls)
+            r = client.patch("/v1/billing/subscription", json=body)
+            _assert(r.status_code == 409 and r.json()["code"] == "commitment_running" and len(calls) == n, r.text)
+        state["row"] = dict(row)
+        r = client.patch("/v1/billing/subscription", json={"plan": "pro", "cycle": "annual_monthly"})
+        _assert(r.status_code == 200 and calls[-1]["items"] == [{"id": "si_1", "price": "price_p_am"}]
+                and "term_start" not in calls[-1]["metadata"], calls[-1])
+        r = client.patch("/v1/billing/subscription", json={"plan": "starter", "cycle": "annual"})
+        _assert(r.status_code == 200 and calls[-1]["metadata"]["term_start"] == "", calls[-1])
+
+        # Moving onto the cycle starts a term today.
+        state["row"] = dict(row, cycle="monthly", commitment_ends_at=None)
+        r = client.patch("/v1/billing/subscription", json={"plan": "starter", "cycle": "annual_monthly"})
+        _assert(r.status_code == 200 and calls[-1]["metadata"]["term_start"].isdigit(), calls[-1])
+    finally:
+        (billing.db.apply_subscription_terms, billing.db.apply_subscription_event, billing._stripe,
+         billing.db.get_subscription_row) = saved
+
+    # Before migration 0036 is applied, the row is read without its three columns, and the
+    # terms write reports that it wrote nothing, so no page fails.
+    from app import db as real_db
+    tried = []
+
+    @contextlib.contextmanager
+    def tenant(_a):
+        class C:
+            def execute(self, sql, args=None):
+                tried.append(sql)
+                if "commitment_ends_at" in sql:
+                    raise psycopg.errors.UndefinedColumn("no column")
+                return NS(description=[NS(name="plan_slug")], fetchone=lambda: ("starter",))
+        yield C()
+
+    @contextlib.contextmanager
+    def unscoped():
+        class C:
+            def execute(self, sql, args=None):
+                raise psycopg.errors.UndefinedFunction("no function")
+        yield C()
+
+    saved_db = (real_db.tenant, real_db.unscoped)
+    real_db.tenant, real_db.unscoped = tenant, unscoped
+    try:
+        row = _real_get_subscription_row(ACCOUNT.id)
+        _assert(row == {"plan_slug": "starter"} and len(tried) == 2, (row, tried))
+        _assert(_real_apply_terms("cus_c", "monthly", None, None) is False, "terms")
+    finally:
+        real_db.tenant, real_db.unscoped = saved_db
+check("Annual, billed monthly holds its twelve payments, and the service runs before 0036", annual_monthly_commitment)
 
 
 # --- getExpectedPayouts groups TikTok's unsettled transactions by London week (7 October 2026)

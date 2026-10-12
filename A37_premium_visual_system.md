@@ -196,3 +196,43 @@ Each is shown to the owner before it merges: the Overview (phase 2), Reconcile a
 payout (phase 3), Products (phase 4), cost upload (phase 5), and accessibility and wording
 (phase 6). Phase 2 merged in PR 79. Phases 3 to 6 were built on 11 October 2026 (A37.6 to A37.9)
 and are one pull request with a commit for each, because the session works on one branch.
+
+## A37.10 Responsiveness and click feedback, built 11 October 2026
+
+The owner approved the audit and structure the same day and asked for all of it in one batch.
+Before the change, no control in the app or on the website had a pressed state, a tap on a
+phone showed nothing until the next page arrived, and no form told a screen reader it was busy.
+
+- **A press answers within one frame.** A button sinks to 97 per cent and darkens while held. A
+  tab, a page link, a switch, a menu item or a payout row takes the orange tint with a 2px
+  orange edge. Hover effects that change a background apply only on a device that can hover,
+  so a tap on a phone leaves nothing lit. Payout rows and selectable plan cards rise by 2px on
+  hover. Every focus ring is now 3px, the width of the app's own rule.
+- **A click shows where it is going.** `web/src/components/NavFeedback.jsx` marks a clicked link
+  `data-pending`, and the link takes the selected look while the area being left gives it up.
+  An orange bar runs along the top of the window when a page takes longer than 120ms, and it
+  keeps running while the page's loading skeleton is on the screen.
+- **A running action says so.** A button that becomes disabled within 1.5 seconds of its press
+  takes `aria-busy` and a small spinner beside its label, and both come off when it is enabled
+  again. The buttons that already disable themselves while they work needed no change.
+- **Nothing moves after it appears.** The footer was the only shift measured on Pricing and the
+  Overview: it showed while a page loaded and was then pushed away. The page now fills the first
+  screen, so the footer starts below it.
+- **The website serves its own font.** Inter comes from `site/assets/fonts/` (from
+  `@fontsource-variable/inter` 5.3.0, under the SIL Open Font License in the same folder), so
+  no font service holds up the first paint. The FAQ and the Payout Explainer moved from Space
+  Grotesk and IBM Plex Sans to Inter, and their orange and faint grey to the landing page's.
+- **The landing images are smaller.** Every image was re-encoded at WebP quality 72, from 868 KB
+  to 583 KB in all, and every image below the first screen loads when it is scrolled to.
+- **Full prefetching was not added.** The app's links already fetch the next page's frame when
+  they come into view and again on hover, in the production build. Fetching the figures too
+  would let Next.js show figures up to 300 seconds old (`staleTimes.static` in Next 15.5.27),
+  which a finance screen should not do.
+
+Measured on the local copy on 11 October 2026: layout shift 0.000 on 14 app pages and 3 website
+pages at 1280 and 390 px, against 0.242 on the Overview and 0.171 on Pricing before; axe-core
+clean on all of them; the landing page at 426 KB on first load at 1280 and 332 KB at 390, with
+no stylesheet or font from another site. With every page fetch slowed by 700ms, the clicked tab
+was lit 20ms after the click, the bar ran from about 190ms, and it finished when the figures
+arrived. **Unverified**: the speed of the live sites, because the session's proxy blocks them,
+and the feel on a real phone, because only a browser at phone width was used.

@@ -129,7 +129,13 @@ class SubscriptionOut(BaseModel):
     trial_ends_at: str | None = None
     current_period_end: str | None = None
     card_last4: str | None = None
+    # True when renewal is stopped, whether at the end of the period or, for Annual, billed
+    # monthly, at the end of its twelve-payment term (A38.6). `ends_at` is the day the plan
+    # then ends.
     cancel_at_period_end: bool = False
+    ends_at: str | None = None
+    # The end of the running twelve-payment term, on Annual, billed monthly only (A38.6).
+    commitment_ends_at: str | None = None
     # What the plan unlocks, from `entitlements.py`. The browser shows or prompts from this
     # list, and every route checks the plan again itself, so the list grants nothing.
     features: list[str] = []
@@ -296,12 +302,15 @@ def set_renewal_for_deletion(account_id, closing: bool) -> str:
     try:
         sub = _plain(client.subscriptions.retrieve(row["stripe_subscription_id"]))
         flagged = (sub.get("metadata") or {}).get(DELETION_FLAG) == "true"
-        if closing and not sub.get("cancel_at_period_end"):
-            params = {"cancel_at_period_end": True, "metadata": {DELETION_FLAG: "true"}}
+        stopped = bool(sub.get("cancel_at_period_end") or sub.get("cancel_at"))
+        if closing and not stopped:
+            # On Annual, billed monthly the plan ends when its twelve payments are done (A38.6).
+            params = {**_renewal_params(row, stop=True), "metadata": {DELETION_FLAG: "true"}}
             outcome = "stopped"
         elif not closing and flagged:
             # Stripe removes a metadata key that is set to an empty string.
-            params = {"cancel_at_period_end": False, "metadata": {DELETION_FLAG: ""}}
+            params = {**_renewal_params(dict(row, cancel_at=sub.get("cancel_at")), stop=False),
+                      "metadata": {DELETION_FLAG: ""}}
             outcome = "restored"
         else:
             return "unchanged"
@@ -379,9 +388,12 @@ def get_subscription(account: Annotated[Account, Depends(require_account)]) -> S
 
 
 def _cycle_of(row: dict) -> str | None:
-    """Annual or monthly, from the length of the billing period. A period longer than about
-    forty days is a year. Annual, billed monthly has a monthly period, so it reads as monthly
-    until its price exists to tell them apart (A38.5)."""
+    """The plan's billing cycle. Since A38.6 it is the one the row holds, worked out from the
+    price the plan is on. A row without one, written before migration 0036, falls back to the
+    length of the billing period: a period longer than about forty days is a year, and Annual,
+    billed monthly then reads as monthly."""
+    if row.get("cycle") in CYCLES:
+        return row["cycle"]
     start, end = row.get("current_period_start"), row.get("current_period_end")
     if not start or not end or row.get("status") == "trialing":
         return None
@@ -403,7 +415,10 @@ def _subscription_out(row: dict) -> SubscriptionOut:
         trial_ends_at=_iso_dt(row["trial_end"]),
         current_period_end=_iso_dt(row["current_period_end"]),
         card_last4=None,
-        cancel_at_period_end=bool(row["cancel_at_period_end"]),
+        cancel_at_period_end=bool(row["cancel_at_period_end"] or row.get("cancel_at")),
+        ends_at=_iso_dt(row.get("cancel_at")
+                        or (row["trial_end"] if status == "trialing" else row["current_period_end"])),
+        commitment_ends_at=_iso_dt(row.get("commitment_ends_at")),
     )
 
 
@@ -455,7 +470,7 @@ def update_subscription(
     row = _live_row(account.id)
     params: dict = {}
     if body.cancel_at_period_end is not None:
-        params["cancel_at_period_end"] = body.cancel_at_period_end
+        params.update(_renewal_params(row, stop=body.cancel_at_period_end))
         if not body.cancel_at_period_end:
             # A seller turning renewal back on owns the choice from now, so a flag a deletion
             # left is cleared. Stripe removes a metadata key that is set to an empty string.
@@ -494,6 +509,17 @@ def _plan_change(client: stripe.StripeClient, account_id, row: dict, slug: str,
     project has observed. **Unverified against Stripe**: only the live account is reachable,
     so this has run against the stand-in client in the smoke test only.
     """
+    term_end = _running_commitment(row)
+    if term_end is not None:
+        # A38.6: during a twelve-payment term a seller may move up, or pay the rest of the year
+        # at once on Annual prepaid, but not to Monthly or a smaller plan, which would cut what
+        # the term owes. The change can be made once the term has ended.
+        smaller = PLAN_ORDER.index(slug) < PLAN_ORDER.index(row["plan_slug"])
+        if cycle == "monthly" or (cycle == "annual_monthly" and smaller):
+            raise Problem(409, "commitment_running",
+                          "Your plan is on Annual, billed monthly, and its twelve payments run until "
+                          f"{term_end:%-d %B %Y}. You can move to a larger plan or to Annual prepaid "
+                          "now, and to Monthly or a smaller plan after that date. Nothing was changed.")
     price_id = _price_id(slug, cycle)
     if not price_id:
         raise Problem(503, "plan_unavailable",
@@ -509,8 +535,15 @@ def _plan_change(client: stripe.StripeClient, account_id, row: dict, slug: str,
     if item is None or not item.get("id"):
         raise Problem(409, "no_live_subscription",
                       "This account has no plan running, so nothing was changed.")
-    return {"items": [{"id": item["id"], "price": price_id}],
-            "metadata": {"plan": slug, "cycle": cycle}}
+    metadata = {"plan": slug, "cycle": cycle}
+    if cycle == "annual_monthly" and _cycle_of(row) != "annual_monthly":
+        # A move onto Annual, billed monthly starts a twelve-payment term today, or when the
+        # trial ends if the plan is still in its trial (A38.6).
+        trial_end = current.get("trial_end") if current.get("status") == "trialing" else None
+        metadata["term_start"] = str(int(trial_end or datetime.now(timezone.utc).timestamp()))
+    elif cycle != "annual_monthly" and _cycle_of(row) == "annual_monthly":
+        metadata["term_start"] = ""  # Stripe removes a key set to an empty string
+    return {"items": [{"id": item["id"], "price": price_id}], "metadata": metadata}
 
 
 @router.post("/billing/card", response_model=CardSetupOut,
@@ -739,6 +772,15 @@ def _apply_stripe_subscription(sub) -> None:
         period_end=end,
         cancel_at_period_end=bool(sub.get("cancel_at_period_end")),
     )
+    cycle = _cycle_for_subscription(sub)
+    written = db.apply_subscription_terms(
+        stripe_customer_id=customer,
+        cycle=cycle,
+        cancel_at=_dt(sub.get("cancel_at")),
+        commitment_ends_at=_commitment_end(sub, cycle),
+    )
+    if not written:
+        logger.warning("subscription terms not written: migration 0036 is not applied")
 
 
 def _refresh_from_stripe(account_id, customer_id: str | None) -> dict | None:
@@ -766,6 +808,89 @@ def _refresh_from_stripe(account_id, customer_id: str | None) -> dict | None:
             raise
         return None
     return db.get_subscription_row(account_id)
+
+
+# --- the twelve-payment term of Annual, billed monthly (A38.6, 11 October 2026) ----------------
+#
+# The owner asked on 11 October 2026 for the commitment to be built: a seller on Annual, billed
+# monthly owes all twelve payments of a term, even after stopping renewal. The term starts when
+# the trial ends, or on the day a running plan moves onto the cycle (`metadata.term_start`), and
+# lasts twelve calendar months. Stopping renewal during a term asks Stripe to cancel the plan on
+# the day the term ends (`cancel_at`), so the remaining monthly payments are still taken and no
+# more after them. A plan whose renewal is left on starts a new term of twelve. Stopping during
+# the free trial ends the plan when the trial ends, as on every cycle, because no payment has
+# yet fallen due. **Unverified against Stripe**: only the live account is reachable, so this
+# has run against stand-in clients only.
+
+
+def _add_months(value: datetime, months: int) -> datetime:
+    """The same day `months` calendar months on, or the month's last day when it is shorter."""
+    import calendar
+    index = value.month - 1 + months
+    year, month = value.year + index // 12, index % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
+
+
+def _cycle_for_subscription(sub) -> str | None:
+    """The cycle of the price a Stripe subscription is on. A price sold before A38 is monthly.
+    `metadata.cycle`, which this service sets, is read only when no price variable matches."""
+    price_id = _first_price_id(sub)
+    if price_id:
+        for slug in PAID:
+            plan = PLANS[slug]
+            for cycle, price in plan.prices.items():
+                if os.environ.get(price.env_var) == price_id:
+                    return cycle
+            if plan.legacy_env_var and os.environ.get(plan.legacy_env_var) == price_id:
+                return "monthly"
+    cycle = (sub.get("metadata") or {}).get("cycle")
+    return cycle if cycle in CYCLES else None
+
+
+def _commitment_end(sub, cycle: str | None, now: datetime | None = None) -> datetime | None:
+    """The end of the running twelve-payment term, or None on any other cycle."""
+    if cycle != "annual_monthly" or sub.get("status") in ("canceled", "incomplete_expired"):
+        return None
+    start = str((sub.get("metadata") or {}).get("term_start") or "")
+    begun = int(start) if start.isdigit() else (sub.get("trial_end") or sub.get("start_date"))
+    if not begun:
+        return None
+    payments = PLANS[PAID[0]].prices["annual_monthly"].payments
+    end = _add_months(_dt(begun), payments)
+    now = now or datetime.now(timezone.utc)
+    # A plan cancelled for a date keeps that term; one left to renew moves to its next term.
+    while end <= now and not sub.get("cancel_at"):
+        end = _add_months(end, payments)
+    return end
+
+
+def _running_commitment(row: dict, now: datetime | None = None) -> datetime | None:
+    """The end of the term a seller is bound by now: on Annual, billed monthly, out of the trial,
+    before the term's end. None otherwise."""
+    end = row.get("commitment_ends_at")
+    now = now or datetime.now(timezone.utc)
+    if _cycle_of(row) != "annual_monthly" or row.get("status") == "trialing" or end is None or end <= now:
+        return None
+    return end
+
+
+def _renewal_params(row: dict, stop: bool) -> dict:
+    """The Stripe parameters that stop or restore renewal for the row's plan.
+
+    Stopping during a twelve-payment term sets `cancel_at` to the term's end, with no
+    proration, so the remaining payments are taken. Otherwise renewal stops at the end of the
+    period. Restoring clears whichever was set. The two are never sent together, because
+    whether Stripe accepts both at once has not been checked.
+    """
+    if stop:
+        term_end = _running_commitment(row)
+        if term_end is not None:
+            return {"cancel_at": int(term_end.timestamp()), "proration_behavior": "none"}
+        return {"cancel_at_period_end": True}
+    if row.get("cancel_at"):
+        return {"cancel_at": ""}
+    return {"cancel_at_period_end": False}
 
 
 def _dt(seconds: int | None) -> datetime | None:
