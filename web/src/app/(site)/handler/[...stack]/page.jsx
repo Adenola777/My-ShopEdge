@@ -16,7 +16,9 @@
  */
 
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { StackHandler } from "@stackframe/stack";
+import { REVIEWER_ENABLED } from "@/lib/reviewer";
 import { STACK_CONFIGURED } from "@/lib/stack";
 import { Problem } from "@/components/ApiProblem";
 
@@ -33,7 +35,17 @@ export async function generateMetadata({ params }) {
   return { title: TITLES[stack?.[0] ?? ""] ?? "Account" };
 }
 
-export default function Handler() {
+/**
+ * @param {{ params: Promise<{ stack?: string[] }>, searchParams: Promise<Record<string, string | string[] | undefined>> }} props
+ */
+export default async function Handler({ params, searchParams }) {
+  // On the demo address sign-in and sign-up lead to the reviewer sign-in, because a reviewer
+  // who types the test credentials here is told "Wrong e-mail or password" (lib/reviewer.js).
+  // `?google=1` still reaches Google sign-in.
+  const [{ stack }, query] = await Promise.all([params, searchParams]);
+  if (REVIEWER_ENABLED && ["sign-in", "sign-up"].includes(stack?.[0] ?? "") && query.google !== "1") {
+    redirect("/reviewer");
+  }
   if (!STACK_CONFIGURED) {
     return (
       <Problem

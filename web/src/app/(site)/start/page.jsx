@@ -19,13 +19,16 @@
  */
 
 import { redirect } from "next/navigation";
-import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
+import { STACK_CONFIGURED, currentUser, reviewerToken } from "@/lib/stack";
+import { REVIEWER_ENABLED } from "@/lib/reviewer";
 import { Problem } from "@/components/ApiProblem";
 
 export const metadata = { title: "Start" };
 export const dynamic = "force-dynamic";
 
 export default async function StartPage() {
+  // On the demo address Get started leads to the reviewer sign-in (lib/reviewer.js).
+  if (REVIEWER_ENABLED && !(await reviewerToken())) redirect("/reviewer");
   if (!STACK_CONFIGURED) {
     return (
       <Problem

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
+import { STACK_CONFIGURED, currentUser, reviewerToken } from "@/lib/stack";
+import { REVIEWER_ENABLED } from "@/lib/reviewer";
 
 /**
  * The product website, where a visitor who is not signed in starts. Until 30 September 2026
@@ -16,6 +17,9 @@ export const dynamic = "force-dynamic";
  * Where sign-in is not configured, as on a local copy, it goes to `/shops` as before.
  */
 export default async function Home() {
+  // On the demo address a visitor who is not signed in goes to the reviewer sign-in, not to
+  // the public website, whose Log in leads to the production app (see lib/reviewer.js).
+  if (REVIEWER_ENABLED && !(await reviewerToken())) redirect("/reviewer");
   if (STACK_CONFIGURED && !(await currentUser())) redirect(LANDING_URL);
   redirect("/shops");
 }
