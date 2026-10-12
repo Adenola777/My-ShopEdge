@@ -389,6 +389,22 @@ was done. The email is in the owner's inbox.
    The reviewer signs in at `/reviewer` on the demo address. The keypair is the owner's to
    generate in his own terminal, so no private key enters a session or the repository.
 
+   **Rejected a second time, reported 12 October 2026**, with the same words: "Wrong e-mail or
+   password". That is Stack Auth's own message (`known-errors.js` in `@stackframe/stack-shared`);
+   `/reviewer` says "That email or password was not recognised." The reviewers therefore typed
+   the credentials into the Google sign-in page, reached from the demo address's front page,
+   which sent visitors to the public website and so to the production app. Checked that day:
+   the five reviewer variables exist on Vercel for `claude/gifted-ride-rmmuc6`, the latest demo
+   deployment was built after them, Vercel Authentication is off on the project, and
+   `https://reviewer.myshopedge.inspirecraftglobal.com/reviewer` served the form. With the owner's
+   approval, commit `3e44b37` on the demo branch sends the front page, `/start`, and Stack's
+   sign-in and sign-up pages to `/reviewer` wherever the reviewer variables are set
+   (`web/src/lib/reviewer.js`); `?google=1` still reaches Google sign-in, and production, which
+   sets none of them, is unchanged. Checked on a local build of the branch with and without the
+   variables, and on the live address after deployment `dpl_Ap6gK8WicvoacLQ5jKG8k6HthmhF`, which
+   carries `reviewer.myshopedge.inspirecraftglobal.com`. **Unverified**: a sign-in with the real
+   credentials, which never enter a session, and the demo service on Render answering after it.
+
 2. **The TikTok webhook receiver was built on 7 October 2026**, after the owner pasted
    TikTok's webhook configuration guide. `POST /v1/webhooks/tiktok` (`service/app/tiktok_webhooks.py`,
    added to the contract) verifies the signature TikTok's way, which is HMAC-SHA256 of the app
