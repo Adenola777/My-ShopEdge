@@ -480,6 +480,21 @@ was done. The email is in the owner's inbox.
    branch, if any, is stale and stays. A declined claim is forgotten in the browser only, and its row
    expires on the service after thirty minutes.
 
+   **Resubmission ruled on 25 October 2026.** After the batch was live, the owner ruled that the
+   reviewers are sent to the reviewer dashboard only, at
+   `https://reviewer.myshopedge.inspirecraftglobal.com/reviewer`, with the email and password
+   given in the submission. They are not asked to complete a TikTok authorisation, for two
+   reasons. The reviewer credential works only on the demo deployment, while an authorisation
+   ends on the production app, whose sign-in is Google only. And production's `TIKTOK_APP_KEY`
+   connected the three live shops before "My ShopEdge" existed (created 3 October 2026) and
+   refreshed them up to 11 October, so it is the earlier app's key there. A code that "My
+   ShopEdge" issues would therefore be refused at exchange, and switching the key would stop
+   those shops refreshing. That Render still holds the earlier app's key is unverified, because
+   this session cannot read Render's settings. Checked on the live addresses the same day: the
+   site carries the forward, the service exchanges a code that has no state instead of
+   answering "State is needed", the app's callback page passes the code on, and the reviewer
+   address answers 200.
+
 ## What is blocked, and on what
 
 | Item | Blocked on |
