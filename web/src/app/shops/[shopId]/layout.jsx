@@ -5,6 +5,7 @@
  */
 
 import { AppBar } from "@/components/AppBar";
+import { PendingTikTokClaim } from "@/components/PendingTikTokClaim";
 import { SectionNav } from "@/components/SectionNav";
 import { ShopNav } from "@/components/ShopNav";
 
@@ -14,6 +15,8 @@ export default async function ShopLayout({ children, params }) {
   return (
     <div className="shopframe">
       <AppBar shopId={shopId} />
+      {/* A TikTok approval held for sign-in (0037). Renders nothing unless one is waiting. */}
+      <PendingTikTokClaim />
       <main id="main" className="content">
         <SectionNav shopId={shopId} />
         {children}

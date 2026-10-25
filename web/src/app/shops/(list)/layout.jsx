@@ -5,12 +5,15 @@
  */
 
 import { AppBar } from "@/components/AppBar";
+import { PendingTikTokClaim } from "@/components/PendingTikTokClaim";
 
 /** @param {{ children: React.ReactNode }} props */
 export default function ShopListLayout({ children }) {
   return (
     <>
       <AppBar shopsLink />
+      {/* A TikTok approval held for sign-in (0037). Renders nothing unless one is waiting. */}
+      <PendingTikTokClaim />
       <main id="main" className="content">{children}</main>
     </>
   );

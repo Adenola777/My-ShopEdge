@@ -17,14 +17,22 @@
  * state is what binds the result to the seller who started it.
  *
  * **Unverified against TikTok.** No real authorisation has passed through this page. What
- * TikTok puts in the address when a seller declines is not recorded in A23, so any arrival
- * without both `code` and `state` is treated as a connection that did not complete.
+ * TikTok puts in the address when a seller declines is not recorded in A23, so an arrival
+ * without a `code` is treated as a connection that did not complete.
+ *
+ * **25 October 2026.** An arrival with a `code` and no `state`, or a state the service did not
+ * issue, is no longer refused. A seller who installs the app from TikTok's App & Service Store
+ * starts on TikTok's side, and whether TikTok then sends any state is unverified. The service
+ * answers 202 with a one-time claim, and `HeldConnection` asks the seller to sign in and
+ * confirm the shop by name before it is attached (migration 0037).
  */
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api } from "@/lib/api";
 import { Problem } from "@/components/ApiProblem";
+import { HeldConnection } from "@/components/HeldConnection";
+import { STACK_CONFIGURED, currentUser } from "@/lib/stack";
 
 export const metadata = { title: "Your shop connection" };
 export const dynamic = "force-dynamic";
@@ -85,7 +93,7 @@ async function startAgainLink() {
 export default async function TikTokCallbackPage({ searchParams }) {
   const { code, state } = await searchParams;
 
-  if (!code || !state) {
+  if (!code) {
     return (
       <Problem
         title="The connection was not completed."
@@ -95,7 +103,7 @@ export default async function TikTokCallbackPage({ searchParams }) {
     );
   }
 
-  const qs = new URLSearchParams({ code, state }).toString();
+  const qs = new URLSearchParams(state ? { code, state } : { code }).toString();
   const result = await api(`/connections/tiktok/callback?${qs}`, {
     cache: "no-store",
     timeoutMs: 45000,
@@ -118,6 +126,11 @@ export default async function TikTokCallbackPage({ searchParams }) {
       "Nothing has changed. Start again in a few minutes.",
     ]);
     return <Problem title={title} note={note} startAgain={await startAgainLink()} />;
+  }
+
+  if (result.status === 202) {
+    const signedIn = !STACK_CONFIGURED || Boolean(await currentUser());
+    return <HeldConnection held={result.data} signedIn={signedIn} />;
   }
 
   /** @type {{ shop: any, accepted: boolean, rejection_reason: string | null }} */

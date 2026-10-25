@@ -21,7 +21,7 @@ production, so this sits alongside the checks against the real database rather t
 replacing them.
 """
 
-import os, sys, hashlib, base64
+import os, sys, hashlib, base64, json
 from datetime import datetime, timezone, date
 from uuid import UUID
 
@@ -722,17 +722,6 @@ def authorize_respects_shop_limit():
 check("POST authorize refuses a shop beyond the plan's limit but not a reconnection", authorize_respects_shop_limit)
 
 
-def callback_refuses_unknown_state():
-    # consume_tiktok_auth_state returns no row for unknown, spent and expired alike.
-    connections.unscoped = _fake_unscoped([("consume_tiktok_auth_state", Result(["a", "r"], []))])
-    r = client.get("/v1/connections/tiktok/callback", params={"code": "c", "state": "whatever"})
-    _assert(r.status_code == 400, f"status {r.status_code}: {r.text[:200]}")
-    _assert(r.json()["code"] == "state_invalid", r.text[:200])
-    # The detail must not echo what it was given back into a page the seller may screenshot.
-    _assert("whatever" not in r.text and "c" != r.json()["detail"], "the detail echoed the input")
-check("GET callback refuses a state it did not issue", callback_refuses_unknown_state)
-
-
 def callback_refuses_a_creator_account():
     connections.unscoped = _fake_unscoped(
         [("consume_tiktok_auth_state", Result(["a", "r"], [(ACCOUNT.id, "/connect/done")]))]
@@ -904,6 +893,95 @@ def callback_stores_every_authorised_shop():
     # The contract returns one shop: the first accepted one.
     _assert(r.json()["shop"]["tiktok_shop_code"] == "GBGBLCUKQTCE" and r.json()["accepted"] is True, r.json())
 check("GET callback stores every shop TikTok authorises, each with its own cipher", callback_stores_every_authorised_shop)
+
+
+def _held_approval(state):
+    """Runs the callback with a state MyShopEdge did not issue, or none, and returns the
+    response and what it handed create_tiktok_pending_connection (0037, 25 October 2026)."""
+    held = {}
+
+    class Holder(Conn):
+        def execute(self, sql, args=None):
+            flat = " ".join(sql.split())
+            if "consume_tiktok_auth_state" in flat:
+                held["consumed"] = True
+                return Result(["a", "r"], [])  # unknown, spent and expired alike
+            if "create_tiktok_pending_connection" in flat:
+                held["args"] = args
+                return Result(["id"], [("b0c1",)])
+            return super().execute(sql, args)
+
+    @contextlib.contextmanager
+    def fake():
+        yield Holder([])
+    connections.unscoped = fake
+    connections._exchange_code = lambda code: {
+        "access_token": "act.tok", "refresh_token": "rft.tok", "user_type": 0,
+        "access_token_expire_in": 1791309162, "refresh_token_expire_in": 4912765591,
+        "granted_scopes": ["seller.finance"],
+    }
+    connections._authorized_shops = lambda token: [GB_SHOP]
+    params = {"code": "c"} if state is None else {"code": "c", "state": state}
+    return client.get("/v1/connections/tiktok/callback", params=params), held
+
+
+def callback_holds_an_approval_without_our_state():
+    for state in (None, "whatever"):
+        r, held = _held_approval(state)
+        _assert(r.status_code == 202, f"state {state!r}: status {r.status_code}: {r.text[:300]}")
+        b = r.json()
+        _assert(len(b["claim"]) >= 32, "the claim must be long enough not to be guessed")
+        _assert([s["shop_name"] for s in b["shops"]] == ["My ShopEdge"], b["shops"])
+        _assert(state is None or held.get("consumed"), "a state that was sent must be spent")
+        # The database keeps the claim's digest, never the claim, and no token in the clear.
+        args = held["args"]
+        _assert(args[0] != b["claim"] and len(args[0]) == 64, "the claim was stored, not its digest")
+        _assert(b"act.tok" not in args[1] and b"rft.tok" not in args[2], "a token was held in the clear")
+        _assert("GCP_test" not in args[7], "the shop cipher was held in the clear")
+        # The answer carries no token either.
+        _assert("act.tok" not in r.text and "GCP_test" not in r.text, "the answer leaked a token")
+check("GET callback holds an approval that carries no state of ours", callback_holds_an_approval_without_our_state)
+
+
+def claim_attaches_a_held_shop_once():
+    r, held = _held_approval(None)
+    claim, args = r.json()["claim"], held["args"]
+    spent = []
+
+    class Claimer(Conn):
+        def execute(self, sql, args_=None):
+            flat = " ".join(sql.split())
+            if "claim_tiktok_pending_connection" in flat:
+                # The function deletes as it returns, so a second claim finds nothing.
+                if args_[0] != args[0] or spent:
+                    return Result([], [])
+                spent.append(True)
+                return Result(["a"] * 7, [(args[1], args[2], args[3], args[4], args[5], args[6],
+                                           json.loads(args[7]))])
+            return super().execute(sql, args_)
+
+    @contextlib.contextmanager
+    def fake():
+        yield Claimer([])
+
+    written = {}
+    _callback_with(GB_SHOP, written)  # installs the tenant writer and the first sync stub
+    written.clear()
+    connections.unscoped = fake
+    r = client.post("/v1/connections/tiktok/claim", json={"claim": claim})
+    _assert(r.status_code == 200, f"status {r.status_code}: {r.text[:300]}")
+    b = r.json()
+    _assert(b["accepted"] is True and b["shop"]["tiktok_shop_code"] == "GBGBLCRKQTEX", b)
+    _assert(written["conn"][1] == args[1], "the held access token must be stored as it was held")
+    from app.tiktok_api import decrypt as _decrypt
+    _assert(_decrypt(written["conn"][3]) == "GCP_test", "the held cipher must survive the hand-over")
+    _assert(written.get("first_sync") == [(str(SHOP), str(ACCOUNT.id))], written.get("first_sync"))
+    # A claim works once, and a wrong one is refused the same way.
+    for again in (claim, "not-a-claim"):
+        r = client.post("/v1/connections/tiktok/claim", json={"claim": again})
+        _assert(r.status_code == 400, f"status {r.status_code}: {r.text[:200]}")
+        _assert(r.json()["code"] == "claim_invalid", r.text[:200])
+check("POST claim attaches a held shop once, and refuses it after", claim_attaches_a_held_shop_once)
 
 
 def callback_refuses_a_shop_another_account_holds():
