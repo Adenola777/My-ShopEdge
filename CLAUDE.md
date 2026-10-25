@@ -507,6 +507,9 @@ was done. The email is in the owner's inbox.
    seconds, and a local run of the demo branch with Stack configured reached Today with or without
    the origin allowed. **Unverified**: whether this change ends the stall, whose cause is not
    established.
+   **The owner then signed in with the real reviewer credentials the same day and the figures
+   showed**, as he reported. The stall happened before the change and not after it; that the
+   change is what ended it is not shown.
 
 ## What is blocked, and on what
 
