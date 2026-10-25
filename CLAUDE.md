@@ -495,6 +495,19 @@ was done. The email is in the owner's inbox.
    answering "State is needed", the app's callback page passes the code on, and the reviewer
    address answers 200.
 
+   **The demo service refused browser calls from the reviewer address**, found on 25 October 2026
+   while looking into a sign-in that stalled on "MyShopEdge is loading this page". Its
+   `ALLOWED_ORIGINS` held only the demo branch's `vercel.app` address, so a preflight from
+   `https://reviewer.myshopedge.inspirecraftglobal.com` answered 400. With the owner's approval the
+   same day, the reviewer address was added to `ALLOWED_ORIGINS` on `My-ShopEdge-demo` through
+   Render's API and the service was redeployed (`dep-dbf4cam7bikc73c51hq0`). Checked afterwards:
+   the preflight from the reviewer address answers 200 with that origin allowed, and one from
+   another origin still answers 400. Render's logs showed that the server side of both stalled
+   sign-ins succeeded, with the account, its shop and the Today figures answered in about five
+   seconds, and a local run of the demo branch with Stack configured reached Today with or without
+   the origin allowed. **Unverified**: whether this change ends the stall, whose cause is not
+   established.
+
 ## What is blocked, and on what
 
 | Item | Blocked on |
