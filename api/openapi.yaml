@@ -377,6 +377,19 @@ paths:
 
         single-use `state`.
 
+
+        Since 25 October 2026 a callback without a state MyShopEdge issued, or with an
+
+        unknown, spent or expired one, is answered 202 with a PendingConnection rather than
+
+        refused. A seller who installs the app from TikTok''s App & Service Store starts on
+
+        TikTok''s side, and whether TikTok then sends a state is unverified. The code is
+
+        exchanged at once and the tokens are held, encrypted, for thirty minutes (migration
+
+        0037) until the seller signs in and confirms the shop with claimTikTokConnection.
+
         '
       operationId: tiktokCallback
       security: []
@@ -388,7 +401,7 @@ paths:
           type: string
       - name: state
         in: query
-        required: true
+        required: false
         schema:
           type: string
       responses:
@@ -398,8 +411,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConnectionResult'
+        '202':
+          description: The approval carried no state of ours, so it is held until the seller
+            signs in and confirms the shop. Nothing is attached to any account yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingConnection'
         '400':
-          description: 'The state was unknown, already used or expired, or the code exchange failed.
+          description: 'The code exchange failed, or the TikTok account is not a seller with a shop.
 
             The detail never echoes the code or the state back.
 
@@ -422,6 +442,62 @@ paths:
             The code is `shop_already_connected`, and nothing from this authorisation is kept.
 
             '
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /connections/tiktok/claim:
+    post:
+      tags:
+      - Connection
+      summary: Attach a held approval to the signed-in account
+      description: 'Added 25 October 2026 with migration 0037. Spends the one-time `claim` that
+
+        tiktokCallback returned with a 202, and attaches the shops it holds to the signed-in
+
+        account, as tiktokCallback does for an approval with a state. The page asks the seller
+
+        to confirm the shop by name before calling this, because the claim stands in for the
+
+        state. A claim works once and lasts thirty minutes.
+
+        '
+      operationId: claimTikTokConnection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - claim
+              properties:
+                claim:
+                  type: string
+      responses:
+        '200':
+          description: The shops are attached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionResult'
+        '400':
+          description: The claim is unknown, expired or already used (`claim_invalid`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: The account already holds as many shops as its plan allows
+            (`shop_limit_reached`), so no shop was connected.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: A shop belongs to a different MyShopEdge account (`shop_already_connected`).
           content:
             application/problem+json:
               schema:
@@ -4730,6 +4806,41 @@ components:
           - string
           - 'null'
           format: uri
+    PendingConnection:
+      type: object
+      description: A TikTok approval held until the seller signs in and confirms the shop
+        (migration 0037). `claim` is secret and works once.
+      required:
+      - claim
+      - expires_at
+      - shops
+      properties:
+        claim:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        shops:
+          type: array
+          items:
+            type: object
+            required:
+            - tiktok_shop_id
+            properties:
+              tiktok_shop_id:
+                type: string
+              tiktok_shop_code:
+                type:
+                - string
+                - 'null'
+              shop_name:
+                type:
+                - string
+                - 'null'
+              region:
+                type:
+                - string
+                - 'null'
     SyncStatus:
       type: object
       required:

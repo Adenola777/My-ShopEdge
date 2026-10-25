@@ -154,10 +154,41 @@ export interface paths {
          *     This endpoint is reached by browser redirect, not by the client application, and
          *     is therefore not authenticated by bearer token. It is authenticated by the
          *     single-use `state`.
+         *
+         *     Since 25 October 2026 a callback without a state MyShopEdge issued, or with an
+         *     unknown, spent or expired one, is answered 202 with a PendingConnection rather than
+         *     refused. A seller who installs the app from TikTok's App & Service Store starts on
+         *     TikTok's side, and whether TikTok then sends a state is unverified. The code is
+         *     exchanged at once and the tokens are held, encrypted, for thirty minutes (migration
+         *     0037) until the seller signs in and confirms the shop with claimTikTokConnection.
          */
         get: operations["tiktokCallback"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/connections/tiktok/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach a held approval to the signed-in account
+         * @description Added 25 October 2026 with migration 0037. Spends the one-time `claim` that
+         *     tiktokCallback returned with a 202, and attaches the shops it holds to the signed-in
+         *     account, as tiktokCallback does for an approval with a state. The page asks the seller
+         *     to confirm the shop by name before calling this, because the claim stands in for the
+         *     state. A claim works once and lasts thirty minutes.
+         */
+        post: operations["claimTikTokConnection"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2186,6 +2217,18 @@ export interface components {
             /** Format: uri */
             return_to?: string | null;
         };
+        /** @description A TikTok approval held until the seller signs in and confirms the shop (migration 0037). `claim` is secret and works once. */
+        PendingConnection: {
+            claim: string;
+            /** Format: date-time */
+            expires_at: string;
+            shops: {
+                tiktok_shop_id: string;
+                tiktok_shop_code?: string | null;
+                shop_name?: string | null;
+                region?: string | null;
+            }[];
+        };
         SyncStatus: {
             /** Format: uuid */
             shop_id: string;
@@ -3585,7 +3628,7 @@ export interface operations {
         parameters: {
             query: {
                 code: string;
-                state: string;
+                state?: string;
             };
             header?: never;
             path?: never;
@@ -3602,8 +3645,17 @@ export interface operations {
                     "application/json": components["schemas"]["ConnectionResult"];
                 };
             };
+            /** @description The approval carried no state of ours, so it is held until the seller signs in and confirms the shop. Nothing is attached to any account yet. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingConnection"];
+                };
+            };
             /**
-             * @description The state was unknown, already used or expired, or the code exchange failed.
+             * @description The code exchange failed, or the TikTok account is not a seller with a shop.
              *     The detail never echoes the code or the state back.
              */
             400: {
@@ -3627,6 +3679,60 @@ export interface operations {
              * @description A shop TikTok authorised already belongs to a different MyShopEdge account.
              *     The code is `shop_already_connected`, and nothing from this authorisation is kept.
              */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    claimTikTokConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    claim: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The shops are attached */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionResult"];
+                };
+            };
+            /** @description The claim is unknown, expired or already used (`claim_invalid`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description The account already holds as many shops as its plan allows (`shop_limit_reached`), so no shop was connected. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A shop belongs to a different MyShopEdge account (`shop_already_connected`). */
             409: {
                 headers: {
                     [name: string]: unknown;

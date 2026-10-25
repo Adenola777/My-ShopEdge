@@ -36,6 +36,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 import secrets
@@ -409,34 +410,29 @@ class ConnectionResultOut(BaseModel):
     return_to: str | None = None
 
 
-@router.get("/connections/tiktok/callback", response_model=ConnectionResultOut)
-def tiktok_callback(
-    code: Annotated[str, Query()],
-    state: Annotated[str, Query()],
-    background: BackgroundTasks,
-) -> ConnectionResultOut:
-    """Receive the seller back from TikTok. Traces CON-1.
+class PendingShopOut(BaseModel):
+    tiktok_shop_id: str
+    tiktok_shop_code: str | None = None
+    shop_name: str | None = None
+    region: str | None = None
 
-    This endpoint carries `security: []` in the contract. It arrives by browser redirect
-    with no bearer token, so the state is the only thing that says whose connection this is.
-    """
-    # One statement reads and spends it. An unknown state, a spent state and an expired
-    # state are indistinguishable here, which is deliberate: telling them apart tells
-    # somebody guessing which guesses were close.
-    with unscoped() as conn:
-        row = conn.execute(
-            "select account_id, return_to from consume_tiktok_auth_state(%s)",
-            (_digest(state),),
-        ).fetchone()
 
-    if row is None:
-        raise Problem(
-            400, "state_invalid",
-            "That connection link is no longer valid. Start the connection again.",
-        )
+class PendingConnectionOut(BaseModel):
+    """An approval with no state of ours, held until the seller signs in and confirms (0037).
+    `claim` is a one-time value; whoever holds it may attach these shops to the account they
+    are signed in to, which is why the page asks the seller to confirm the shop by name."""
+    claim: str
+    expires_at: datetime
+    shops: list[PendingShopOut]
 
-    account_id, return_to = row[0], row[1]
 
+# 0037. Long enough to sign in with Google, short enough that held tokens do not linger.
+PENDING_TTL = timedelta(minutes=30)
+
+
+def _seller_tokens(code: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Exchanges the code and lists the shops it covers, refusing anything but a seller with a
+    shop. Shared by both kinds of arrival."""
     data = _exchange_code(code)
 
     # A23.3. Asserted rather than ignored, because anything but 0 means the seller went
@@ -455,22 +451,128 @@ def tiktok_callback(
             "TikTok did not give MyShopEdge access to a shop on that account. Start the connection "
             "again and approve access for your shop on TikTok's page.",
         )
+    return data, shops
+
+
+@router.get("/connections/tiktok/callback", response_model=ConnectionResultOut,
+            responses={202: {"model": PendingConnectionOut}})
+def tiktok_callback(
+    code: Annotated[str, Query()],
+    background: BackgroundTasks,
+    state: Annotated[str | None, Query()] = None,
+):
+    """Receive the seller back from TikTok. Traces CON-1.
+
+    This endpoint carries `security: []` in the contract. It arrives by browser redirect
+    with no bearer token, so a state MyShopEdge issued is what says whose connection this is.
+
+    Since 25 October 2026 an arrival without such a state is held rather than refused: a
+    seller who installs the app from TikTok's App & Service Store starts on TikTok's side, and
+    whether TikTok then sends a state is unverified. The code is exchanged at once, because it
+    is short-lived, and the tokens wait encrypted for the seller to sign in and confirm the
+    shop (`claim_tiktok_connection`, migration 0037). An expired or spent state takes the same
+    route, so a seller who took longer than ten minutes can still finish.
+    """
+    # One statement reads and spends it. An unknown state, a spent state and an expired
+    # state are indistinguishable here, which is deliberate: telling them apart tells
+    # somebody guessing which guesses were close.
+    row = None
+    if state:
+        with unscoped() as conn:
+            row = conn.execute(
+                "select account_id, return_to from consume_tiktok_auth_state(%s)",
+                (_digest(state),),
+            ).fetchone()
+
+    data, shops = _seller_tokens(code)
 
     # Every shop TikTok lists is stored. A12.7 ruled one shop per account; on 29 September
-    # 2026 the owner ruled that an account holds every shop its authorisation covers (A31.7),
-    # because his authorisation of the custom app returned IkonetU when he also wanted
-    # GBGBLCRKQTEX. How many shops that first list held was not logged, so whether one
-    # authorisation can list both is UNVERIFIED until the next connection.
-    access_expires = expiry(data, "access_token_expire_in")
-    refresh_expires = expiry(data, "refresh_token_expire_in")
-
-    # Encrypted before the transaction opens, so a missing key fails before anything is
-    # written rather than halfway through. Every shop from one authorisation carries the
-    # same tokens and its own cipher.
-    enc_access = _encrypt(data["access_token"])
-    enc_refresh = _encrypt(data.get("refresh_token") or "")
+    # 2026 the owner ruled that an account holds every shop its authorisation covers (A31.7).
+    # Encrypted before anything is written, so a missing key fails before a row exists. Every
+    # shop from one authorisation carries the same tokens and its own cipher.
+    tokens = {
+        "access_token_enc": _encrypt(data["access_token"]),
+        "refresh_token_enc": _encrypt(data.get("refresh_token") or ""),
+        "access_expires_at": expiry(data, "access_token_expire_in"),
+        "refresh_expires_at": expiry(data, "refresh_token_expire_in"),
+        "scopes": data.get("granted_scopes") or [],
+        "key_version": KEY_VERSION,
+    }
     ciphers = [_encrypt(s["cipher"]) if s.get("cipher") else None for s in shops]
 
+    if row is None:
+        return _hold_for_sign_in(tokens, shops, ciphers)
+
+    account_id, return_to = row[0], row[1]
+    return _attach_shops(account_id, tokens, shops, ciphers, return_to, background)
+
+
+def _hold_for_sign_in(tokens: dict[str, Any], shops: list[dict[str, Any]],
+                      ciphers: list[bytes | None]) -> JSONResponse:
+    """Keeps an approval that carries no state of ours until the seller signs in (0037)."""
+    claim = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + PENDING_TTL
+    held = [
+        {"id": s["id"], "code": s.get("code"), "name": s.get("name"), "region": s.get("region"),
+         "seller_type": s.get("seller_type"),
+         "cipher_enc": base64.b64encode(c).decode("ascii") if c else None}
+        for s, c in zip(shops, ciphers, strict=True)
+    ]
+    with unscoped() as conn:
+        conn.execute(
+            "select create_tiktok_pending_connection(%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s)",
+            (_digest(claim), tokens["access_token_enc"], tokens["refresh_token_enc"],
+             tokens["access_expires_at"], tokens["refresh_expires_at"], tokens["scopes"],
+             tokens["key_version"], json.dumps(held), expires_at),
+        )
+    log.warning("tiktok callback held %d shop(s) for sign-in: %s", len(shops),
+                ", ".join(f"{s.get('code')} {s.get('name')} {s.get('region')}" for s in shops))
+    out = PendingConnectionOut(
+        claim=claim, expires_at=expires_at,
+        shops=[PendingShopOut(tiktok_shop_id=s["id"], tiktok_shop_code=s.get("code"),
+                              shop_name=s.get("name"), region=s.get("region")) for s in shops],
+    )
+    return JSONResponse(status_code=202, content=out.model_dump(mode="json"))
+
+
+class ClaimRequest(BaseModel):
+    claim: str
+
+
+@router.post("/connections/tiktok/claim", response_model=ConnectionResultOut)
+def claim_tiktok_connection(
+    body: ClaimRequest,
+    account: Annotated[Account, Depends(require_account)],
+    background: BackgroundTasks,
+) -> ConnectionResultOut:
+    """Attach a held approval to the signed-in seller's account, once they have confirmed the
+    shop by name (0037, 25 October 2026). The claim works once and lasts thirty minutes."""
+    with unscoped() as conn:
+        row = conn.execute(
+            "select access_token_enc, refresh_token_enc, access_expires_at, refresh_expires_at, "
+            "scopes, key_version, shops from claim_tiktok_pending_connection(%s)",
+            (_digest(body.claim),),
+        ).fetchone()
+    if row is None:
+        raise Problem(
+            400, "claim_invalid",
+            "That connection has expired or was already finished. Connect your shop again.",
+        )
+    tokens = {
+        "access_token_enc": bytes(row[0]), "refresh_token_enc": bytes(row[1]),
+        "access_expires_at": row[2], "refresh_expires_at": row[3],
+        "scopes": list(row[4] or []), "key_version": row[5],
+    }
+    held = row[6] if isinstance(row[6], list) else json.loads(row[6])
+    shops = [{k: h.get(k) for k in ("id", "code", "name", "region", "seller_type")} for h in held]
+    ciphers = [base64.b64decode(h["cipher_enc"]) if h.get("cipher_enc") else None for h in held]
+    return _attach_shops(account.id, tokens, shops, ciphers, None, background)
+
+
+def _attach_shops(account_id, tokens: dict[str, Any], shops: list[dict[str, Any]],
+                  ciphers: list[bytes | None], return_to: str | None,
+                  background: BackgroundTasks) -> ConnectionResultOut:
+    """Writes the shops and their encrypted tokens for one account, in one transaction."""
     results = []
     # The shop rows and their tokens are written together. A shop without its connection is
     # a shop that cannot be read from, and a connection without its shop has nothing to hang
@@ -537,8 +639,9 @@ def tiktok_callback(
                 "  refresh_expires_at = excluded.refresh_expires_at, "
                 "  scopes = excluded.scopes, key_version = excluded.key_version, "
                 "  authorised_at = now(), revoked_at = null",
-                (str(shop_id), enc_access, enc_refresh, enc_cipher, access_expires,
-                 refresh_expires, data.get("granted_scopes") or [], KEY_VERSION),
+                (str(shop_id), tokens["access_token_enc"], tokens["refresh_token_enc"],
+                 enc_cipher, tokens["access_expires_at"], tokens["refresh_expires_at"],
+                 tokens["scopes"], tokens["key_version"]),
             )
             results.append((shop, shop_id, region, seller_type, rejection_reason))
 

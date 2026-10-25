@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+  /* 25 October 2026. The TikTok app "My ShopEdge" (App ID 7692362323998852870) was submitted
+     for review with this page as its Redirect URL, and the address cannot be changed while the
+     review runs. TikTok sends a seller who approves the app here with ?code=...&state=... in
+     the address, so a visit carrying a TikTok code goes straight on to the app's callback,
+     with the query unchanged, before anything is drawn. A visit without a code is untouched. */
+  (function () {
+    var q = new URLSearchParams(window.location.search);
+    if (q.get("code")) {
+      window.location.replace("https://app.myshopedge.inspirecraftglobal.com/connections/tiktok/callback" + window.location.search);
+    }
+  })();
+</script>
 <link rel="icon" href="brand/mse-favicon.svg" type="image/svg+xml">
 <title>MyShopEdge: see what you keep from every TikTok Shop sale</title>
 <meta name="description" content="MyShopEdge puts a UK TikTok Shop seller's sales, fees, refunds, returns and payouts in one clear picture, with gross profit by product once costs are added.">

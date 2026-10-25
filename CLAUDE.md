@@ -431,6 +431,41 @@ was done. The email is in the owner's inbox.
    Partner Center; the receiver uses the `TIKTOK_APP_KEY` and `TIKTOK_APP_SECRET` already on the
    service.
 
+3. **Rejected a third time, reported 25 October 2026**, with "Must enable API and provide
+   callback URL". That rejection was of "MYSHOPEDGE" (ID 7686383214894761745), a partner service
+   listing with no API. The API app is "My ShopEdge" (App ID 7692362323998852870, app key
+   `6lg8v2j54sp88`), and its Redirect URL was submitted as `https://myshopedge.inspirecraftglobal.com/`,
+   which TikTok will not let the owner change while its review runs. TikTok support's reply,
+   pasted by the owner, said to continue with "My ShopEdge" and that an approval may arrive
+   without our state. With the owner's approval of 25 October 2026 two changes were built, committed
+   locally and not deployed:
+
+   - `site/index.html` sends a visit carrying `?code=` on to
+     `https://app.myshopedge.inspirecraftglobal.com/connections/tiktok/callback` with the query
+     unchanged, before anything is drawn. A visit without a code is untouched.
+   - The callback no longer refuses an approval without a state the service issued. It exchanges
+     the code at once and holds the encrypted tokens for thirty minutes behind a one-time claim
+     (migration 0037, `tiktok_pending_connections`). The seller signs in, is shown the shop's
+     name, and confirms it; `POST /v1/connections/tiktok/claim` (`claimTikTokConnection`) then
+     attaches the shop. The confirmation stands in for the state, so nobody can attach their own
+     shop to another seller's account by sending them a link. The web keeps the claim in the
+     tab's session storage (`web/src/components/PendingTikTokClaim.jsx`, `HeldConnection.jsx`).
+     `state_invalid` is no longer answered, because an unknown or expired state takes the held
+     route.
+
+   Verified: the smoke tests (with two new cases, the hold and a claim that works once), ruff,
+   the contract test, the web type check, lint and build, and a browser walk of 13 checks on a
+   local build against the real service and a local PostgreSQL 16 with TikTok's two calls
+   stubbed: the site forward, the hold, the confirmation on a shop screen, declining it,
+   confirming it, a spent claim refused, and an arrival without a code. 0037 was applied to
+   local databases only, where as `mse_app` a claim worked once, an expired claim returned
+   nothing, and a direct read of the table was refused. **Unverified**: whether TikTok sends a
+   state on an App Store install, which came from TikTok support's reply and not from TikTok's
+   documentation; the signed-out screen, because sign-in is not configured locally; and any
+   real approval. **0037 is applied to no Neon branch.** The hold and the claim call its two
+   functions, so it must be applied with the owner's authority before this is deployed. A declined claim is forgotten in the browser only, and its row
+   expires on the service after thirty minutes.
+
 ## What is blocked, and on what
 
 | Item | Blocked on |
